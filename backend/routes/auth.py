@@ -50,18 +50,13 @@ async def signup(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "message": "User created successfully. Please check your email to verify your account"})
 
 @router.post("/v1/auth/verify")
-@require_auth
 async def verify_email(request: Request) -> JSONResponse:
 
-    user = request.state.user
     token = request.query_params.get("token")
     if not token:
         raise InvalidOrExpiredTokenError
-
-    if user.email_verified:
-        raise EmailAlreadyVerified
-
-    user_tools.check_and_verify_email(user.id)
+    
+    user_tools.check_and_verify_email(token)
 
     return JSONResponse({"success": True, "message": "Email verified successfully!"})
 
