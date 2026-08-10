@@ -1,14 +1,19 @@
 from utils.database import Database
 from models.user import User, SafeUser
-from errors.user import EmailAlreadyRegisteredError, UserNotFoundError
+from errors.user import *
 from pydantic import SecretStr
+from utils.jwt import JWT
+from utils.mailer import Mailer
 import uuid
 import bcrypt
 import datetime
+import os
 
 class UserTools:
     def __init__(self) -> None:
         self.db = Database()
+        self.jwt = JWT()
+        self.mailer = Mailer()
         pass
     
     def _hash_password(self, password) -> str:
@@ -83,7 +88,43 @@ class UserTools:
       
         return user
 
-    def send_verification_link(self, id) -> None:
+    def update_user(self, id, **kwargs) -> User:
+        user = self.get_user_by_id(id)
 
+        for key, value in kwargs.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+
+        self.db.mongo.users.update_one({"id": id}, {"$set": user.model_dump()})
+
+        self.db.redis.set(f"users.user:{id}", user.model_dump_json(), ex=10800)
+        self.db.redis.set(f"users.lookup.email:{user.email}", str(user.id), ex=10800)
+
+        return user
+    
+    def send_verification_link(self, id, name, email) -> None:
+        now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+
+        payload = {
+            "iss": "school-tools.backend.verification",
+            "sub": str(id),
+            "exp": now + 86400, # 1 day
+            "iat": now,
+            "jti": str(uuid.uuid4())
+        }
+        token = self.jwt.encode(payload)
+
+        self.db.redis.set(f"users.verification:{id}", str(token), ex=86400)
+        link = f"{os.environ.get("BASE_URL", "http://localhost:3000")}/auth/email_verify?token={token}"
+        self.mailer.send_email(subject="Verify your email", template="verify_email_en",to=email, name=name, link=link)
+        return
+
+    def check_and_verify_email(self, token):
+        decoded = self.jwt.decode(token)
+        if not decoded["iss"] == "school-tools.backend.verification":
+            raise InvalidOrExpiredTokenError
         
-        self.db.redis.set(f"users.verification:{id}", "",ex=86400)
+        user = self.get_user_by_id(decoded["sub"])
+
+        self.update_user(user.id, email_verified=True)
+        return

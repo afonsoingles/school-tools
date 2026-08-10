@@ -1,30 +1,25 @@
 from utils.database import Database
-import jwt
 import uuid
 import datetime
-import os
+from utils.jwt import JWT
 
 
 class SessionTools:
     def __init__(self) -> None:
         self.db = Database()
-        self.jwt_secret = os.environ.get("JWT_SECRET")
+        self.jwt = JWT()
     
     def create_session(self, id) -> str:
         now = datetime.datetime.now(datetime.timezone.utc).timestamp()
         payload = {
-            "iss": "school-tools.backend",
+            "iss": "school-tools.backend.auth",
             "sub": str(id),
             "exp": now + 604800, # 7 days
             "iat": now,
             "jti": str(uuid.uuid4())
         }
 
-        token = jwt.encode(
-            payload,
-            self.jwt_secret,
-            algorithm="HS256"
-        )
+        token = self.jwt.encode(payload)
 
         self.db.redis.set(f"users.sessions.{token}", "valid", ex=604800)
 

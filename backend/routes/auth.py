@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from tools.users import UserTools
 from tools.sessions import SessionTools
-from errors.user import UserSuspendedError, UserPasswordIncorrectError
+from errors.user import *
 from models.user import SafeUser
 from decorators.auth import require_auth
 from decorators.valid_json import valid_json
@@ -34,6 +34,36 @@ async def authenticate(request: Request) -> JSONResponse:
 
     
     return JSONResponse({"success": True, "message": "Authentication was successful!", "token": token})
+
+@router.post("/v1/auth/signup")
+@valid_json(["name", "email", "password"])
+async def signup(request: Request) -> JSONResponse:
+
+    name = request.state.json["name"]
+    email = request.state.json["email"]
+    password = request.state.json["password"]
+
+    user = user_tools.create_user(name, email, password)
+
+    user_tools.send_verification_link(user.id, user.name, user.email)
+
+    return JSONResponse({"success": True, "message": "User created successfully. Please check your email to verify your account"})
+
+@router.post("/v1/auth/verify")
+@require_auth
+async def verify_email(request: Request) -> JSONResponse:
+
+    user = request.state.user
+    token = request.query_params.get("token")
+    if not token:
+        raise InvalidOrExpiredTokenError
+
+    if user.email_verified:
+        raise EmailAlreadyVerified
+
+    user_tools.check_and_verify_email(user.id)
+
+    return JSONResponse({"success": True, "message": "Email verified successfully!"})
 
 @router.get("/v1/auth/me")
 @require_auth
