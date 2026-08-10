@@ -11,7 +11,7 @@ class Database:
         if os.environ.get("MONGO_FORCE_DB_NAME"):
             name = os.environ.get("MONGO_FORCE_DB_NAME", "inventory_default")
         else:
-            name = "inventory_" + os.environ.get("ENVIRONMENT", "development")
+            name = "school_tools_" + os.environ.get("ENVIRONMENT", "development")
         
         if not Database._mongo_client:
             Database._mongo_client = MongoClient(

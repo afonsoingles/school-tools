@@ -13,7 +13,7 @@ class SessionTools:
     def create_session(self, id) -> str:
         now = datetime.datetime.now(datetime.timezone.utc).timestamp()
         payload = {
-            "iss": "api.inventory.afonsoingles.dev",
+            "iss": "school-tools.backend",
             "sub": str(id),
             "exp": now + 604800, # 7 days
             "iat": now,

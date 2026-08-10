@@ -44,4 +44,4 @@ async def handle_errors(request, err: BaseError) -> JSONResponse:
 
 @app.get("/")
 async def root() -> RedirectResponse:
-    return RedirectResponse(url=os.environ.get("BEAVER_BASE_URL", "http://localhost:3000/"), status_code=308)
+    return RedirectResponse(url=os.environ.get("BASE_URL", "http://localhost:3000/"), status_code=308)

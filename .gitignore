@@ -52,3 +52,4 @@ wheels/
 
 # Other
 .env
+tmp/*

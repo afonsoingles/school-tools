@@ -12,6 +12,7 @@ class SafeUser(BaseModel):
     id: uuid.UUID =  Field(default_factory=uuid.uuid4)
     name: str
     email: EmailStr
+    email_verified: bool = Field(default=False)
     active: bool = Field(default=True)
     admin: bool = Field(default=False)
     superadmin: bool = Field(default=False) 

@@ -5,8 +5,13 @@ description = "School Tools API backend"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.141.1",
+    "markdown>=3.10.3",
     "pyjwt>=2.13.0",
+    "pymongo>=4.17.0",
     "python-dotenv>=1.2.2",
+    "redis>=8.1.0",
+    "requests>=2.34.2",
     "sentry-sdk>=2.66.1",
 ]

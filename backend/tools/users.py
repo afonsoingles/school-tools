@@ -20,7 +20,7 @@ class UserTools:
     def verify_password_hash(self, password, hashed) -> bool:
         return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
     
-    def create_user(self, name, email, password) -> EmailAlreadyRegisteredError | User:
+    def create_user(self, name, email, password) -> User:
         
         exists_redis = self.db.redis.get(f"users.lookup.email:{email}")
         if exists_redis:
@@ -82,3 +82,8 @@ class UserTools:
 
       
         return user
+
+    def send_verification_link(self, id) -> None:
+
+        
+        self.db.redis.set(f"users.verification:{id}", "",ex=86400)

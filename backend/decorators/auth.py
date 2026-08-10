@@ -1,12 +1,11 @@
 from functools import wraps
-from fastapi import Request, HTTPException
+from fastapi import Request
 import jwt
 import os
-from errors.user import InvalidOrExpiredTokenError, UserSuspendedError, UnsufficientPermissionsError
+from errors.user import *
 from tools.sessions import SessionTools
 from tools.users import UserTools
 from typing import TypeVar, ParamSpec, Callable, Awaitable, cast
-from models.permissions import *
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -48,13 +47,8 @@ def require_auth(func: Callable[P, Awaitable[R]] | None = None, *, permissions: 
             if not user.active:
                 raise UserSuspendedError
             if not user.admin and require_admin:
-                raise UnsufficientPermissionsError
+                raise UserNotAdmin
             
-            for permission in permissions:
-                if user.admin or user.superadmin:
-                    continue
-                if permission not in user.permissions:
-                    raise UnsufficientPermissionsError
 
             if request is not None:
                 request.state.user = user
