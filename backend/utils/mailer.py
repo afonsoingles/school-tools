@@ -4,6 +4,7 @@ import re
 import markdown
 from pathlib import Path
 import datetime
+from sentry_sdk import metrics, capture_exception
 
 class Mailer:
     def _load_template(self, template, **vars):
@@ -40,7 +41,7 @@ class Mailer:
         if not os.environ.get("ENVIRONMENT") == "production":
             return self._write_to_disk(payload)
         
-        return requests.post(
+        response = requests.post(
             f"https://api.eu.mailgun.net/v3/{os.environ.get('MAILGUN_DOMAIN')}/messages",
             auth=("api", os.environ.get("MAILGUN_API_KEY", "")),
             data={
@@ -49,4 +50,10 @@ class Mailer:
                 "subject": subject,
                 "html": html,
             }
-        ).json()
+        )
+        if response.status_code != 200:
+            metrics.count("mailer.failed", 1, attributes={"response": response.text, "to": to, "template": template})
+            capture_exception(Exception(f"Failed to send email: {response.text}"))
+        else:
+            metrics.count("mailer.sent", 1, attributes={"to": to, "template": template})
+            

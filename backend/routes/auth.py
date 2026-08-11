@@ -6,6 +6,7 @@ from errors.user import *
 from models.user import SafeUser
 from decorators.auth import require_auth
 from decorators.valid_json import valid_json
+from sentry_sdk import metrics
 
 router = APIRouter()
 user_tools = UserTools()
@@ -32,7 +33,7 @@ async def authenticate(request: Request) -> JSONResponse:
     
     token = session_tools.create_session(user.id)
 
-    
+    metrics.count("user.login", 1, attributes={"user_id": user.id})
     return JSONResponse({"success": True, "message": "Authentication was successful!", "token": token})
 
 @router.post("/v1/auth/signup")
@@ -46,7 +47,7 @@ async def signup(request: Request) -> JSONResponse:
     user = user_tools.create_user(name, email, password)
 
     user_tools.send_verification_link(user.id, user.name, user.email)
-
+    metrics.count("user.signup", 1, attributes={"user_id": user.id})
     return JSONResponse({"success": True, "message": "User created successfully. Please check your email to verify your account"})
 
 @router.post("/v1/auth/verify")
@@ -57,7 +58,7 @@ async def verify_email(request: Request) -> JSONResponse:
         raise InvalidOrExpiredTokenError
     
     user_tools.check_and_verify_email(token)
-
+    metrics.count("user.email_verified", 1)
     return JSONResponse({"success": True, "message": "Email verified successfully!"})
 
 @router.get("/v1/auth/me")

@@ -13,8 +13,12 @@ from errors.base import BaseError
 from routes.auth import router as auth_router
 
 sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DSN", ""),
+    dsn=os.environ.get("BACKEND_SENTRY_DSN", ""),
     send_default_pii=True,
+    enable_logs=True,
+    traces_sample_rate=1.0,
+    profile_session_sample_rate=1.0,
+    profile_lifecycle = "trace",
     environment=os.environ.get("ENVIRONMENT", "development")
 )
 
@@ -35,12 +39,22 @@ app.include_router(auth_router)
 
 @app.exception_handler(BaseError)
 async def handle_errors(request, err: BaseError) -> JSONResponse:
-    #TODO: Log the error to Sentry
     return JSONResponse(
         status_code=err.status_code,
         content=err.to_dict(),
     )
 
+@app.exception_handler(Exception)
+async def handle_err(request, err: Exception) -> JSONResponse:
+    sentry_sdk.capture_exception(err)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "code": "unknown",
+            "message": "Something broke :(",
+        },
+    )
 
 @app.get("/")
 async def root() -> RedirectResponse:
