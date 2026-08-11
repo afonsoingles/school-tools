@@ -9,8 +9,10 @@ const geistSans = Geist({
 
 
 export const metadata: Metadata = {
-  title: "Create Next App",
-  description: "meow",
+  title: {
+    default: "School Tools",
+    template: "%s | School Tools",
+  },
 };
 
 export default function RootLayout ({

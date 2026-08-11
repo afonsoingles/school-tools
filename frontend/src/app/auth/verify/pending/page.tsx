@@ -1,3 +1,10 @@
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Check your email",
+}
+
+
 export default function VerifyEmailPendingPage() {
   return (
     <div className="flex flex-col items-center w-full max-w-sm gap-3 text-center">
