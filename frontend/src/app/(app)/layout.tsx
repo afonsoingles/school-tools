@@ -1,12 +1,28 @@
+import { redirect } from "next/navigation"
+
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { getCurrentUser } from "@/lib/api/auth"
+import type { User } from "@/types"
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  let user: User
+
+  try {
+    user = await getCurrentUser()
+  } catch {
+    redirect("/auth/login")
+  }
+
+  if (!user.email_verified) {
+    redirect("/auth/verify/pending")
+  }
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar user={user} />
       <SidebarInset>
-        <div className="flex min-h-svh flex-1 flex-col">{children}</div>
+        <div className="flex flex-col flex-1 min-h-svh">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )

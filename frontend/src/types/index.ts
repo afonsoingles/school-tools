@@ -2,9 +2,37 @@ export interface User {
   id: string
   name: string
   email: string
-  avatarUrl?: string
+  email_verified: boolean
+  active: boolean
+  admin: boolean
+  superadmin: boolean
+  created_at: string
+  updated_at: string
 }
 
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+
+export interface SignupPayload extends LoginCredentials {
+  name: string
+}
+
+export interface ApiErrorBody {
+  success: false,
+  code: string,
+  message: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
+
+export interface MessageResponse {
+  message: string
+}
 export interface CalendarEvent {
   id: string
   title: string

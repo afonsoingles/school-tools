@@ -16,7 +16,7 @@
   --popover: #131519;
   --popover-foreground: #e7e8ea;
 
-  --primary: #7c86ff;
+  --primary: #ffffff;
   --primary-foreground: #0b0c0f;
 
   --secondary: #1a1c22;
@@ -33,16 +33,16 @@
 
   --border: #1f222a;
   --input: #1f222a;
-  --ring: #7c86ff;
+  --ring: #ffffff;
 
   --sidebar: #0d0e12;
   --sidebar-foreground: #cfd0d6;
-  --sidebar-primary: #7c86ff;
+  --sidebar-primary: #ffffff;
   --sidebar-primary-foreground: #0b0c0f;
   --sidebar-accent: #16181d;
   --sidebar-accent-foreground: #e7e8ea;
   --sidebar-border: #1a1c22;
-  --sidebar-ring: #7c86ff;
+  --sidebar-ring: #ffffff;
 }
 
 @theme inline {

@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/sidebar"
 import { UserMenu } from "@/components/layout/user-menu"
 import { navigation } from "@/lib/navigation"
+import type { User } from "@/types"
 
-export function AppSidebar() {
+
+export function AppSidebar({ user }: { user: User }) {
   const pathname = usePathname()
 
   return (
@@ -56,7 +58,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
-        <UserMenu />
+        <UserMenu user={user}/>
       </SidebarFooter>
     </Sidebar>
   )

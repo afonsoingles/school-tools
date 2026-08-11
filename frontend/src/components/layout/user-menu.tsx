@@ -1,8 +1,9 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { Bell, ChevronsUpDown, LogOut, Settings } from "lucide-react"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,13 +18,6 @@ import {
 } from "@/components/ui/sidebar"
 import type { User } from "@/types"
 
-// DEMO
-const currentUser: User = {
-  id: "1",
-  name: "Afonso Inglês",
-  email: "afonso@example.com",
-}
-
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -33,7 +27,15 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
-export function UserMenu() {
+export function UserMenu({ user }: { user: User }) {
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch("/api/v1/auth/logout", { method: "POST" })
+    router.push("/auth/login")
+    router.refresh()
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -46,27 +48,19 @@ export function UserMenu() {
               />
             }
           >
-            <Avatar className="h-8 w-8 rounded-md">
-              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-              <AvatarFallback className="rounded-md bg-sidebar-accent text-xs">
-                {getInitials(currentUser.name)}
+            <Avatar className="w-8 h-8 rounded-md">
+              <AvatarFallback className="text-xs rounded-md bg-sidebar-accent">
+                {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{currentUser.name}</span>
-              <span className="truncate text-xs text-sidebar-foreground/60">
-                {currentUser.email}
-              </span>
+            <div className="grid flex-1 text-sm leading-tight text-left">
+              <span className="font-medium truncate">{user.name}</span>
+              <span className="text-xs truncate text-sidebar-foreground/60">{user.email}</span>
             </div>
-            <ChevronsUpDown className="ml-auto size-4 opacity-50" />
+            <ChevronsUpDown className="ml-auto opacity-50 size-4" />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent
-            className="min-w-56 rounded-lg"
-            side="top"
-            align="end"
-            sideOffset={4}
-          >
+          <DropdownMenuContent className="rounded-lg min-w-56" side="top" align="end" sideOffset={4}>
             <DropdownMenuItem>
               <Bell className="size-4" />
               Notifications
@@ -76,7 +70,7 @@ export function UserMenu() {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="size-4" />
               Logout
             </DropdownMenuItem>
