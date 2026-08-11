@@ -115,7 +115,7 @@ class UserTools:
         token = self.jwt.encode(payload)
 
         self.db.redis.set(f"users.verification:{id}", str(token), ex=86400)
-        link = f"{os.environ.get("BASE_URL", "http://localhost:3000")}/auth/email_verify?token={token}"
+        link = f"{os.environ.get("BASE_URL", "http://localhost:3000")}/auth/verify?token={token}"
         self.mailer.send_email(subject="Verify your email", template="verify_email_en",to=email, name=name, link=link)
         return
 

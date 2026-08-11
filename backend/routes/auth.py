@@ -69,6 +69,7 @@ async def me(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "user": user.model_dump(mode="json")})
 
 @router.post("/v1/auth/logout")
+@require_auth
 async def logout(request: Request) -> JSONResponse:
 
     session_tools.revoke_session(request.state.token)
