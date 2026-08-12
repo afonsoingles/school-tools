@@ -9,7 +9,7 @@ class Database:
 
     def __init__(self) -> None:
         if os.environ.get("MONGO_FORCE_DB_NAME"):
-            name = os.environ.get("MONGO_FORCE_DB_NAME", "inventory_default")
+            name = os.environ.get("MONGO_FORCE_DB_NAME", "school_tools_default")
         else:
             name = "school_tools_" + os.environ.get("ENVIRONMENT", "development")
         
