@@ -53,7 +53,7 @@ async def handle_err(request, err: Exception) -> JSONResponse:
         content={
             "success": False,
             "code": "unknown",
-            "message": "Something broke :(",
+            "message": "Something went wrong. This error has been reported.",
         },
     )
 
