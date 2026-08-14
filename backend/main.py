@@ -19,6 +19,7 @@ sentry_sdk.init(
     traces_sample_rate=1.0,
     profile_session_sample_rate=1.0,
     profile_lifecycle = "trace",
+    max_request_body_size="always",
     environment=os.environ.get("ENVIRONMENT", "development")
 )
 
