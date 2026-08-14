@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-
+import * as Sentry from "@sentry/nextjs"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getCurrentUser } from "@/lib/api/auth"
@@ -10,6 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   try {
     user = await getCurrentUser()
+    Sentry.setUser({ id: user.id, email: user.email })
   } catch {
     redirect("/api/auth/clear-session")
   }

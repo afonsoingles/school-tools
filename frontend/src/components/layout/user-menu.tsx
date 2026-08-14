@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import * as Sentry from "@sentry/nextjs"
 import { Bell, ChevronsUpDown, LogOut, Settings } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -31,9 +32,13 @@ export function UserMenu({ user }: { user: User }) {
   const router = useRouter()
 
   async function handleLogout() {
-    await fetch("/api/v1/auth/logout", { method: "POST" })
-    router.push("/auth/login")
-    router.refresh()
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST" })
+    } finally {
+      Sentry.setUser(null)
+      router.push("/auth/login")
+      router.refresh()
+    }
   }
 
   return (

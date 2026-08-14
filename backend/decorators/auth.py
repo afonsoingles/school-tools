@@ -6,6 +6,7 @@ from errors.user import *
 from tools.sessions import SessionTools
 from tools.users import UserTools
 from typing import TypeVar, ParamSpec, Callable, Awaitable, cast
+import sentry_sdk
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -53,6 +54,7 @@ def require_auth(func: Callable[P, Awaitable[R]] | None = None, *, permissions: 
             if request is not None:
                 request.state.user = user
                 request.state.token = auth_token
+                sentry_sdk.set_user({"id": str(user.id), "email": user.email})
 
             return await fn(*args, **kwargs)
         return wrapper
