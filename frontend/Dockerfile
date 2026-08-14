@@ -10,15 +10,15 @@ WORKDIR /app
 
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_SENTRY_DSN
-ARG SENTRY_AUTH_TOKEN
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
-    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
-    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npm run build
+RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
+    export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN 2>/dev/null || true)" && \
+    npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
