@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   try {
     user = await getCurrentUser()
   } catch {
-    redirect("/auth/login")
+    redirect("/api/auth/clear-session")
   }
 
   if (!user.email_verified) {
