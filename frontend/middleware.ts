@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 const SESSION_COOKIE = "school_tools_session"
-const PROTECTED_PREFIXES = ["/dashboard", "/calendar", "/homework", "/evaluations", "/settings"]
+const PROTECTED_PREFIXES = ["/dashboard", "/calendar", "/homework", "/evaluations", "/settings", "/admin"]
 const AUTH_PAGES = ["/auth/login", "/auth/signup"]
 
 export function middleware(request: NextRequest) {

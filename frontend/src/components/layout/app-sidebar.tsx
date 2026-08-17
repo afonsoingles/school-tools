@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
+import { ShieldCheck } from "lucide-react"
 
 import {
   Sidebar,
@@ -55,7 +56,24 @@ export function AppSidebar({ user }: { user: User }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
       </SidebarContent>
+
+      {user.admin && (
+        <SidebarMenu className="px-2 pb-1">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link href="/admin" />}
+              isActive={pathname.startsWith("/admin")}
+              tooltip="Admin"
+              className="border border-dashed border-amber-500/25 bg-amber-500/10 text-white hover:bg-amber-500/20 hover:text-white hover:border-amber-500/40 data-active:bg-amber-500/15 data-active:text-white"
+            >
+              <ShieldCheck />
+              <span>Admin</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      )}
 
       <SidebarFooter className="border-t border-sidebar-border">
         <UserMenu user={user}/>
