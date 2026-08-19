@@ -127,4 +127,5 @@ class UserTools:
         user = self.get_user_by_id(decoded["sub"])
 
         self.update_user(user.id, email_verified=True)
+        self.db.redis.delete(f"users.verification:{user.id}")
         return
