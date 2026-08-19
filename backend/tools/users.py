@@ -59,7 +59,7 @@ class UserTools:
         if redis_user:
             return User.model_validate_json(redis_user)
         
-        raw = self.db.mongo.users.find_one({"id": id})
+        raw = self.db.mongo.users.find_one({"id": uuid.UUID(id)})
 
         if not raw:
             raise UserNotFoundError
@@ -115,7 +115,7 @@ class UserTools:
         token = self.jwt.encode(payload)
 
         self.db.redis.set(f"users.verification:{id}", str(token), ex=86400)
-        link = f"{os.environ.get("BASE_URL", "http://localhost:3000")}/auth/verify?token={token}"
+        link = f"{os.environ.get('BASE_URL', 'http://localhost:3000')}/auth/verify?token={token}"
         self.mailer.send_email(subject="Verify your email", template="verify_email_en",to=email, name=name, link=link)
         return
 
