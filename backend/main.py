@@ -7,6 +7,8 @@ import os
 import sentry_sdk
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from utils.scheduler import scheduler
 
 from errors.base import BaseError
 
@@ -24,7 +26,13 @@ sentry_sdk.init(
     environment=os.environ.get("ENVIRONMENT", "development")
 )
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+app = FastAPI(lifespan=lifespan)
 
 
 app.add_middleware(
