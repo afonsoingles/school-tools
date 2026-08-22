@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
-import { ShieldCheck } from "lucide-react"
+import { Hammer } from "lucide-react"
 
 import {
   Sidebar,
@@ -68,7 +68,7 @@ export function AppSidebar({ user }: { user: User }) {
               tooltip="Admin"
               className="border border-dashed border-amber-500/25 bg-amber-500/10 text-white hover:bg-amber-500/20 hover:text-white hover:border-amber-500/40 data-active:bg-amber-500/15 data-active:text-white"
             >
-              <ShieldCheck />
+              <Hammer />
               <span>Admin</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
