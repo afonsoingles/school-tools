@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import * as Sentry from "@sentry/nextjs"
 import { Bell, ChevronsUpDown, LogOut, Settings } from "lucide-react"
 
@@ -66,11 +67,9 @@ export function UserMenu({ user }: { user: User }) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="rounded-lg min-w-56" side="top" align="end" sideOffset={4}>
-            <DropdownMenuItem>
-              <Bell className="size-4" />
-              Notifications
-            </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              render={<Link href="/settings" />}
+            >
               <Settings className="size-4" />
               Settings
             </DropdownMenuItem>

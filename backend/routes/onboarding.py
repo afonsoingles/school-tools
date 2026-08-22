@@ -7,7 +7,7 @@ import json
 router = APIRouter()
 
 @router.post("/v1/onboarding/import")
-@require_auth
+@require_auth(require_admin=True)
 async def onboarding_import_data(request: Request) -> JSONResponse:
 
     FILE_SIZE_LIMIT = 10 * 1024 * 1024 #10MB

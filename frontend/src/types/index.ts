@@ -62,8 +62,6 @@ export interface Evaluation {
 export interface Subject {
   id: string
   name: string
-  color: string
-  teacher?: string
 }
 
 export interface DashboardSummary {
