@@ -5,7 +5,7 @@ const SESSION_COOKIE = "school_tools_session"
 const PROTECTED_PREFIXES = ["/dashboard", "/calendar", "/homework", "/evaluations", "/settings", "/admin"]
 const AUTH_PAGES = ["/auth/login", "/auth/signup"]
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasSession = request.cookies.has(SESSION_COOKIE)
 
@@ -32,6 +32,7 @@ export const config = {
     "/homework/:path*",
     "/evaluations/:path*",
     "/settings/:path*",
+    "/admin/:path*",
     "/auth/login",
     "/auth/signup",
   ],
