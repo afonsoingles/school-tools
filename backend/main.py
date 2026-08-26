@@ -15,6 +15,7 @@ from errors.base import BaseError
 from routes.auth import router as auth_router
 from routes.admin import router as admin_router
 from routes.subjects import router as subjects_router
+from routes.classes import router as classes_router
 
 sentry_sdk.init(
     dsn=os.environ.get("BACKEND_SENTRY_DSN", ""),
@@ -48,6 +49,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(subjects_router)
+app.include_router(classes_router)
 
 
 @app.exception_handler(BaseError)

@@ -108,3 +108,11 @@ async def uncancel_class(request: Request) -> JSONResponse:
     class_tools.uncancel_class(cancellation_uuid)
     
     return JSONResponse({"success": True, "message": "Class uncanceled successfully."})
+
+@router.get("/v1/classes/cancellations")
+@require_auth
+async def get_canceled_classes(request: Request) -> JSONResponse:
+    canceled = class_tools.get_user_canceled_classes(request.state.user.id)
+    canceled = [SafeCanceledClassEvent(**cls.model_dump()) for cls in canceled]
+
+    return JSONResponse({"success": True, "cancellations": [cls.model_dump() for cls in canceled]})
