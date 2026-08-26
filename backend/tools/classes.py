@@ -34,7 +34,7 @@ class ClassTools:
         if cached_classes:
             return [ClassEvent.model_validate(json.loads(cached_classes[key])) for key in cached_classes]
 
-        classes = self.db.mongo.classees.find({"user_id": user_id})
+        classes = self.db.mongo.classes.find({"user_id": user_id})
 
         class_list = [ClassEvent.model_validate(class_event) for class_event in classes]
         if not class_list:
