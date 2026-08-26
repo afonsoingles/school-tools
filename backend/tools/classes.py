@@ -1,4 +1,4 @@
-from models.classes import CancellationReason, ClassEvent, CanceledClassEvent, Weekday
+from models.classes import CancellationReason, ClassEvent, CancelledClassEvent, Weekday
 from errors.classes import *
 from models.time_field import HHMM
 from utils.database import Database
@@ -57,12 +57,12 @@ class ClassTools:
         self.db.redis.hdel(f"users.classes:{str(user_id)}", str(class_id))
         return ClassEvent.model_validate(class_event)
 
-    def cancel_class(self, user_id: uuid.UUID, class_id: uuid.UUID, date: datetime.date, reason: CancellationReason) -> CanceledClassEvent:
-        canceled_class = CanceledClassEvent(
+    def cancel_class(self, user_id: uuid.UUID, class_id: uuid.UUID, date: datetime.datetime, reason: CancellationReason) -> CancelledClassEvent:
+        canceled_class = CancelledClassEvent(
             user_id=user_id,
             class_id=class_id,
-            canceled_date=date,
-            cancellation_reason=reason
+            date=date,
+            reason=reason
         )
 
         self.db.mongo.class_cancellations.insert_one(canceled_class.model_dump())
@@ -85,16 +85,16 @@ class ClassTools:
 
         return
 
-    def get_user_canceled_classes(self, user_id: uuid.UUID)-> list[CanceledClassEvent]:
+    def get_user_canceled_classes(self, user_id: uuid.UUID)-> list[CancelledClassEvent]:
         if self.db.redis.get(f"users.class_cancellations.is_empty:{str(user_id)}"):
             return []
 
         cached = self.db.redis.hgetall(f"users.class_cancellations:{str(user_id)}")
         if cached:
-            return [CanceledClassEvent.model_validate(json.loads(cached[key])) for key in cached]
+            return [CancelledClassEvent.model_validate(json.loads(cached[key])) for key in cached]
 
         canceled_classes = self.db.mongo.class_cancellations.find({"user_id": user_id})
-        canceled_class_list = [CanceledClassEvent.model_validate(canceled_class) for canceled_class in canceled_classes]
+        canceled_class_list = [CancelledClassEvent.model_validate(canceled_class) for canceled_class in canceled_classes]
         if not canceled_class_list:
             self.db.redis.set(f"users.class_cancellations.is_empty:{str(user_id)}", "1", ex=7200)
             return []

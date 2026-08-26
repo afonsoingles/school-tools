@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -7,7 +9,7 @@ from errors.classes import *
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
 from models.time_field import is_valid_hhmm_string
-from models.classes import Weekday, SafeClassEvent, SafeCanceledClassEvent, CancellationReason
+from models.classes import Weekday, SafeClassEvent, SafeCancelledClassEvent, CancellationReason
 import uuid
 import datetime
 
@@ -87,18 +89,18 @@ async def cancel_class(request: Request, class_id: str) -> JSONResponse:
         raise InvalidCancellationReason
 
     try:
-        cancel_date = datetime.datetime.strptime(request.state.json["date"], "%d/%m/%Y").date()
+        cancel_date = datetime.datetime.strptime(request.state.json["date"], "%d/%m/%Y")
     except:
         raise InvalidDate
 
     for class_event in class_tools.get_user_canceled_classes(request.state.user.id):
-        if class_event.class_id == class_uuid and class_event.canceled_date == cancel_date:
+        if class_event.class_id == class_uuid and class_event.date == cancel_date:
             raise ClassAlreadyCanceled
     
     canceled_class = class_tools.cancel_class(user_id=request.state.user.id, class_id=class_uuid, date=cancel_date, reason=reason)
-    safe_class = SafeCanceledClassEvent(**canceled_class.model_dump())
+    safe_class = SafeCancelledClassEvent(**canceled_class.model_dump())
 
-    return JSONResponse({"success": True, "cancellation": safe_class.model_dump()})
+    return JSONResponse(jsonable_encoder({"success": True, "cancellation": safe_class.model_dump()}))
 
 @router.post("/v1/classes/uncancel")
 @require_auth
@@ -117,6 +119,6 @@ async def uncancel_class(request: Request) -> JSONResponse:
 @require_auth
 async def get_canceled_classes(request: Request) -> JSONResponse:
     canceled = class_tools.get_user_canceled_classes(request.state.user.id)
-    canceled = [SafeCanceledClassEvent(**cls.model_dump()) for cls in canceled]
+    canceled = [SafeCancelledClassEvent(**cls.model_dump()) for cls in canceled]
 
-    return JSONResponse({"success": True, "cancellations": [cls.model_dump() for cls in canceled]})
+    return JSONResponse(jsonable_encoder({"success": True, "cancellations": [cls.model_dump() for cls in canceled]}))

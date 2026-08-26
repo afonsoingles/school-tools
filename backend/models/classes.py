@@ -38,15 +38,15 @@ class ClassEvent(SafeClassEvent):
     user_id: uuid.UUID
 
 
-class SafeCanceledClassEvent(BaseModel):
+class SafeCancelledClassEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
 
     id: uuid.UUID =  Field(default_factory=uuid.uuid4)
     class_id: uuid.UUID
-    canceled_date: datetime.date
-    cancellation_reason: CancellationReason
+    date: datetime.datetime
+    reason: CancellationReason
 
-class CanceledClassEvent(SafeCanceledClassEvent):
+class CancelledClassEvent(SafeCancelledClassEvent):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
 
     user_id: uuid.UUID
