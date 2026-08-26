@@ -18,35 +18,35 @@ class EvaluationType(str, Enum):
     QUIZ = "quiz"
     OTHER = "other"
 
-class CancelationReason(str, Enum):
+class CancellationReason(str, Enum):
     BREAK = "break"
     PUBLIC_HOLIDAY = "public_holiday"
     OTHER = "other"
 
-class ScheduledClassEvent(BaseModel):
+class SafeClassEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
                               
     id: uuid.UUID =  Field(default_factory=uuid.uuid4)
-    user_id: uuid.UUID
     subject_id: uuid.UUID
     weekday: Weekday
     start_time: HHMM 
     end_time: HHMM
 
-class EvaluationClassEvent(BaseModel):
+class ClassEvent(SafeClassEvent):
+    model_config = ConfigDict(extra="ignore", revalidate_instances="always")
+    
+    user_id: uuid.UUID
+
+
+class SafeCanceledClassEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
 
     id: uuid.UUID =  Field(default_factory=uuid.uuid4)
-    user_id: uuid.UUID
-    scheduled_class_id: uuid.UUID
-    evaluation_type: EvaluationType
-    evaluation_date: datetime.date
-
-class CanceledClassEvent(BaseModel):
-    model_config = ConfigDict(extra="ignore", revalidate_instances="always")
-
-    id: uuid.UUID =  Field(default_factory=uuid.uuid4)
-    user_id: uuid.UUID
-    scheduled_class_id: uuid.UUID
+    class_id: uuid.UUID
     canceled_date: datetime.date
-    cancelation_reason: CancelationReason
+    cancellation_reason: CancellationReason
+
+class CanceledClassEvent(SafeCanceledClassEvent):
+    model_config = ConfigDict(extra="ignore", revalidate_instances="always")
+
+    user_id: uuid.UUID

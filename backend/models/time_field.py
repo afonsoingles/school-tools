@@ -10,3 +10,10 @@ HHMM = Annotated[
     AfterValidator(_truncate_seconds),
     PlainSerializer(lambda t: t.strftime("%H:%M"), return_type=str),
 ]
+
+def is_valid_hhmm_string(s: str) -> bool:
+    try:
+        datetime.datetime.strptime(s, "%H:%M")
+        return True
+    except ValueError:
+        return False
