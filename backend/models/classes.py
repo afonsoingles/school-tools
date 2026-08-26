@@ -4,7 +4,7 @@ from enum import Enum
 import datetime
 import uuid
 
-class Weekday(str, Enum):
+class Weekday(int, Enum):
     MONDAY = 1
     TUESDAY = 2
     WEDNESDAY = 3

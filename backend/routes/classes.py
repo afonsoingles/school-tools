@@ -21,8 +21,12 @@ class_tools = ClassTools()
 @require_auth
 @valid_json(["subject_id", "weekday", "start_time", "end_time"])
 async def add_class(request: Request) -> JSONResponse:
-   
-    if request.state.json["weekday"] not in ["1", "2", "3", "4", "5", "6", "7"]:
+    try:
+        weekday = Weekday(int(request.state.json["weekday"]))
+    except ValueError:
+        raise InvalidWeekday
+
+    if weekday not in Weekday:
         raise InvalidWeekday
 
     if not is_valid_hhmm_string(request.state.json["start_time"]):
@@ -39,7 +43,7 @@ async def add_class(request: Request) -> JSONResponse:
     class_event = class_tools.create_class(
         user_id=request.state.user.id,
         subject=request.state.json["subject_id"],
-        weekday=Weekday(int(request.state.json["weekday"])),
+        weekday=weekday,
         start=request.state.json["start_time"],
         end=request.state.json["end_time"]
     )
@@ -52,7 +56,7 @@ async def get_classes(request: Request) -> JSONResponse:
     classes = class_tools.get_user_class_schedule(request.state.user.id)
     classes = [SafeClassEvent(**cls.model_dump()) for cls in classes]
 
-    return JSONResponse({"success": True, "classes": [cls.model_dump() for cls in classes]})
+    return JSONResponse(jsonable_encoder({"success": True, "classes": classes}))
 
 @router.delete("/v1/classes/{class_id}")
 @require_auth

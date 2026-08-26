@@ -18,7 +18,7 @@ class ClassTools:
         class_dict["_id"] = class_event.id
 
         self.db.mongo.classes.insert_one(class_dict)
-        self.db.redis.hset(f"users.classes:{str(user_id)}", str(class_event.id), json.dumps(class_dict))
+        self.db.redis.hset(f"users.classes:{str(user_id)}", str(class_event.id), class_event.model_dump_json())
         self.db.redis.expire(f"users.classes:{str(user_id)}", 7200)
         if self.db.redis.get(f"users.classes.is_empty:{str(user_id)}"):
             self.db.redis.delete(f"users.classes.is_empty:{str(user_id)}")
@@ -41,7 +41,7 @@ class ClassTools:
             self.db.redis.set(f"users.classes.is_empty:{str(user_id)}", "1", ex=7200)
             return []
 
-        self.db.redis.hset(f"users.classes:{str(user_id)}", mapping={str(class_event.id): json.dumps(class_event.model_dump()) for class_event in class_list})
+        self.db.redis.hset(f"users.classes:{str(user_id)}", mapping={str(class_event.id): class_event.model_dump_json() for class_event in class_list})
         self.db.redis.expire(f"users.classes:{str(user_id)}", 7200)
 
         return class_list
@@ -66,7 +66,7 @@ class ClassTools:
         )
 
         self.db.mongo.class_cancellations.insert_one(canceled_class.model_dump())
-        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", str(canceled_class.id), json.dumps(canceled_class.model_dump()))
+        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", str(canceled_class.id), canceled_class.model_dump_json())
         self.db.redis.expire(f"users.class_cancellations:{str(user_id)}", 7200)
         if self.db.redis.get(f"users.class_cancellations.is_empty:{str(user_id)}"):
             self.db.redis.delete(f"users.class_cancellations.is_empty:{str(user_id)}")
@@ -99,7 +99,7 @@ class ClassTools:
             self.db.redis.set(f"users.class_cancellations.is_empty:{str(user_id)}", "1", ex=7200)
             return []
 
-        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", mapping={str(canceled_class.id): json.dumps(canceled_class.model_dump()) for canceled_class in canceled_class_list})
+        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", mapping={str(canceled_class.id): canceled_class.model_dump_json() for canceled_class in canceled_class_list})
         self.db.redis.expire(f"users.class_cancellations:{str(user_id)}", 7200)
 
         return canceled_class_list
