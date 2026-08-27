@@ -21,9 +21,9 @@ export const navigation = [
     href: "/evaluations",
     icon: GraduationCap,
   },
-  {
+  /*{
     title: "Homework",
     href: "/homework",
     icon: ClipboardList,
-  },
+  },*/
 ];
