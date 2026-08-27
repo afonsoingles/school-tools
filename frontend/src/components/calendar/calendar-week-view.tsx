@@ -179,7 +179,7 @@ export function CalendarWeekView() {
           <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o - 1)}>
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="text-sm font-medium min-w-[200px] text-center">{weekLabel()}</span>
+          <span className="text-sm font-medium min-w-50 text-center">{weekLabel()}</span>
           <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o + 1)}>
             <ChevronRight className="size-4" />
           </Button>
