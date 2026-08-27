@@ -44,7 +44,8 @@ async def add_evaluation(request: Request) -> JSONResponse:
             raise ClassNotFound
         if any(cancellation.class_id == class_id and cancellation.date.date() == date_obj.date() for cancellation in cancellations):
             raise ClassCancelled
-
+    except ClassCancelled:
+        raise ClassCancelled
     except:
         raise ClassNotFound
 
