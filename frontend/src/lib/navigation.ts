@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Calendar,
-  ClipboardList,
   GraduationCap,
 } from "lucide-react";
 
