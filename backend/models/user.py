@@ -1,13 +1,8 @@
 from pydantic import BaseModel, EmailStr, SecretStr, AwareDatetime, Field, PlainSerializer, ConfigDict, field_serializer
 from typing_extensions import Annotated
-from enum import Enum
 import datetime
 import uuid
 
-class UserOnboardingStatus(str, Enum):
-    NOT_STARTED = "not_started" # user needs to upload the file
-    IN_PROGRESS = "in_progress" # system is processing the file
-    COMPLETED = "completed" # onboarding done
 
 class SafeUser(BaseModel):
 
@@ -17,7 +12,6 @@ class SafeUser(BaseModel):
     name: str
     email: EmailStr
     email_verified: bool = Field(default=False)
-    onboarding_status: UserOnboardingStatus = Field(default=UserOnboardingStatus.NOT_STARTED)
     active: bool = Field(default=True)
     admin: bool = Field(default=False)
     superadmin: bool = Field(default=False) 
