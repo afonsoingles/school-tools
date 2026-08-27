@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation"
-
+import type { Metadata } from "next"
 import { getCurrentUser } from "@/lib/api/auth"
 import { PageHeader } from "@/components/layout/page-header"
 import { ClearCacheButton } from "@/components/admin/clear-cache-button"
+
+export const metadata: Metadata = {
+  title: "Admin",
+}
 
 export default async function AdminPage() {
   const user = await getCurrentUser()

@@ -1,6 +1,10 @@
 import { PageHeader } from "@/components/layout/page-header"
 import { EvaluationsManager } from "@/components/evaluations/evaluations-manager"
+import type { Metadata } from "next"
 
+export const metadata: Metadata = {
+  title: "Evaluations",
+}
 export default function EvaluationsPage() {
   return (
     <>

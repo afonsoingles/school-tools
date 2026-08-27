@@ -11,7 +11,7 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: {
     default: "School Tools",
-    template: "%s | School Tools",
+    template: "%s · School Tools",
   },
 };
 
