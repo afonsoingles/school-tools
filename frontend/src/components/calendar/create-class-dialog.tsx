@@ -102,6 +102,14 @@ export function CreateClassDialog({
             <DialogDescription>Add a class to your schedule</DialogDescription>
           </DialogHeader>
 
+          {subjects.length === 0 ? (
+            <div className="flex flex-col gap-1.5 p-4">
+              <p className="text-sm text-muted-foreground">
+                Please add a subject in settings first before creating a class
+              </p>
+            </div>
+          ) : (
+          <>
           <div className="flex flex-col gap-1.5">
             <Label>Subject</Label>
             <Select value={subjectId} onValueChange={(v) => setSubjectId(String(v))}>
@@ -163,11 +171,12 @@ export function CreateClassDialog({
             </p>
           )}
 
-          
           <Button type="submit" disabled={loading || !subjectId || !weekday} className="gap-1.5">
             {loading && <Loader2 className="size-4 animate-spin" />}
             Create
           </Button>
+          </>
+          )}
         </form>
       </DialogContent>
     </Dialog>
