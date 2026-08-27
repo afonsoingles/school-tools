@@ -17,13 +17,13 @@ export const navigation = [
     icon: Calendar,
   },
   {
-    title: "Homework",
-    href: "/homework",
-    icon: ClipboardList,
-  },
-  {
     title: "Evaluations",
     href: "/evaluations",
     icon: GraduationCap,
+  },
+  {
+    title: "Homework",
+    href: "/homework",
+    icon: ClipboardList,
   },
 ];
