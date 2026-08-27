@@ -52,11 +52,9 @@ export interface HomeworkItem {
 
 export interface Evaluation {
   id: string
-  subject: string
-  title: string
-  grade: number
-  maxGrade: number
-  date: string // ISO 8601
+  class_id: string
+  date: string 
+  type: "exam" | "quiz" | "other"
 }
 
 export interface Subject {

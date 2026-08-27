@@ -14,10 +14,17 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { getClasses, getCancellations, uncancelClass } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
-import type { ClassEvent, CanceledClassEvent, Subject } from "@/types"
+import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
+import type { ClassEvent, CanceledClassEvent, Subject, Evaluation } from "@/types"
 import { CancelClassDialog } from "./cancel-class-dialog"
 import { DeleteClassDialog } from "./delete-class-dialog"
 import { CreateClassDialog } from "./create-class-dialog"
+
+const EVALUATION_TYPE_LABELS: Record<string, string> = {
+  exam: "Exam",
+  quiz: "Quiz",
+  other: "Other",
+}
 
 const SLOT_HEIGHT = 20
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -71,6 +78,7 @@ export function CalendarWeekView() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
   const [cancellations, setCancellations] = useState<CanceledClassEvent[]>([])
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -79,6 +87,7 @@ export function CalendarWeekView() {
   const [createOpen, setCreateOpen] = useState(false)
   const [createDefaults, setCreateDefaults] = useState<{ weekday?: number; time?: string }>({})
   const [uncancelingId, setUncancelingId] = useState<string | null>(null)
+  const [deletingEvalId, setDeletingEvalId] = useState<string | null>(null)
 
   const weekStart = getWeekStart(weekOffset)
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -98,10 +107,11 @@ export function CalendarWeekView() {
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
 
   const fetchData = useCallback(() => {
-    Promise.all([getClasses(), getCancellations(), getSubjects()])
-      .then(([c, canc, s]) => {
+    Promise.all([getClasses(), getCancellations(), getEvaluations(), getSubjects()])
+      .then(([c, canc, ev, s]) => {
         setClasses(c)
         setCancellations(canc)
+        setEvaluations(ev)
         setSubjects(s)
       })
       .catch(() => {})
@@ -133,6 +143,13 @@ export function CalendarWeekView() {
     return cancellations.find((c) => c.class_id === classId && c.date === dateStr)
   }
 
+  function evaluationForDay(classId: string, dateStr: string): Evaluation | undefined {
+    return evaluations.find((e) => {
+      const eDate = e.date.includes("T") ? e.date.split("T")[0] : e.date
+      return e.class_id === classId && eDate === dateStr
+    })
+  }
+
   async function handleUncancel(cancellationId: string) {
     setUncancelingId(cancellationId)
     try {
@@ -140,6 +157,16 @@ export function CalendarWeekView() {
       fetchData()
     } finally {
       setUncancelingId(null)
+    }
+  }
+
+  async function handleDeleteEvaluation(evaluationId: string) {
+    setDeletingEvalId(evaluationId)
+    try {
+      await deleteEvaluation(evaluationId)
+      fetchData()
+    } finally {
+      setDeletingEvalId(null)
     }
   }
 
@@ -249,32 +276,42 @@ export function CalendarWeekView() {
 
                 {classesForDay(day.weekday).map((cls) => {
                   const cancel = canceledForDay(cls.id, day.dateStr)
+                  const evaluation = evaluationForDay(cls.id, day.dateStr)
                   const top = (timeToMinutes(cls.start_time) / 15) * SLOT_HEIGHT
                   const height = Math.max(((timeToMinutes(cls.end_time) - timeToMinutes(cls.start_time)) / 15) * SLOT_HEIGHT, 20)
                   const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
                   const isCancelled = !!cancel
+                  const hasEvaluation = !!evaluation
 
                   return (
                     <Popover key={cls.id}>
                       <PopoverTrigger
                         className={cn(
                           "absolute left-0.5 right-0.5 flex flex-col justify-start rounded px-2.5 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
-                          isCancelled
-                            ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                            : "bg-blue-600 text-white hover:bg-blue-500",
+                          hasEvaluation
+                            ? "bg-red-500 text-white hover:bg-red-400"
+                            : isCancelled
+                              ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                              : "bg-blue-600 text-white hover:bg-blue-500",
                         )}
                         style={{ top: `${top}px`, height: `${height}px` }}
                       >
                         <span className="font-semibold text-sm leading-tight truncate text-left">{subjectName}</span>
                         {height >= 40 && (
-                          <span className="text-xs leading-tight opacity-90 text-left">{cls.start_time} – {cls.end_time}</span>
+                          <span className="text-xs leading-tight opacity-90 text-left">
+                            {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : `${cls.start_time} – ${cls.end_time}`}
+                          </span>
                         )}
                       </PopoverTrigger>
                       <PopoverContent side="right" align="start">
                         <div className="flex flex-col gap-2">
                           <div>
                             <PopoverTitle>{subjectName}</PopoverTitle>
-                            {isCancelled ? (
+                            {hasEvaluation ? (
+                              <PopoverDescription>
+                                {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                              </PopoverDescription>
+                            ) : isCancelled ? (
                               <div className="flex items-center gap-1 text-destructive mt-1">
                                 <AlertTriangle className="size-3.5 shrink-0" />
                                 <span className="text-sm">This class was cancelled.</span>
@@ -285,19 +322,32 @@ export function CalendarWeekView() {
                               </PopoverDescription>
                             )}
                           </div>
-                          {isCancelled && (
+                          {(isCancelled || hasEvaluation) && (
                             <>
-                              <div className="text-sm text-muted-foreground">
-                                Reason: {REASON_LABELS[cancel.reason] ?? cancel.reason}
-                              </div>
                               <div className="text-sm text-muted-foreground">
                                 {day.full} · {cls.start_time} – {cls.end_time}
                               </div>
+                              {isCancelled && (
+                                <div className="text-sm text-muted-foreground">
+                                  Reason: {REASON_LABELS[cancel.reason] ?? cancel.reason}
+                                </div>
+                              )}
                             </>
                           )}
                           <Separator />
                           <div className="flex gap-2">
-                            {isCancelled ? (
+                            {hasEvaluation ? (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="flex-1"
+                                disabled={deletingEvalId === evaluation.id}
+                                onClick={() => handleDeleteEvaluation(evaluation.id)}
+                              >
+                                {deletingEvalId === evaluation.id && <Loader2 className="size-3.5 animate-spin" />}
+                                Delete evaluation
+                              </Button>
+                            ) : isCancelled ? (
                                 <Button
                                   variant="outline"
                                   size="sm"

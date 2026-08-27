@@ -45,3 +45,8 @@ class CancellationNotFound(BaseError):
     status_code = 400
     code = "cancellation_not_found"
     message = "This cancellation does not exist or does not belong to you."
+
+class ClassCancelled(BaseError):
+    status_code = 400
+    code = "class_cancelled"
+    message = "This class has been canceled for the specified date."

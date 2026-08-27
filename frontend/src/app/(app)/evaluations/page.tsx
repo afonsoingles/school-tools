@@ -1,10 +1,13 @@
 import { PageHeader } from "@/components/layout/page-header"
+import { EvaluationsManager } from "@/components/evaluations/evaluations-manager"
 
-export default function DashboardPage() {
+export default function EvaluationsPage() {
   return (
     <>
-      <PageHeader title="evaluations" subtitle="okay" />
-      <div className="flex-1 px-8 py-6" />
+      <PageHeader title="Evaluations" subtitle="exams, quizzes and other assessments" />
+      <div className="flex flex-col flex-1 min-h-0 px-8 pb-6">
+        <EvaluationsManager />
+      </div>
     </>
   )
 }

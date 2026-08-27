@@ -13,10 +13,6 @@ class Weekday(int, Enum):
     SATURDAY = 6
     SUNDAY = 7
 
-class EvaluationType(str, Enum):
-    EXAM = "exam"
-    QUIZ = "quiz"
-    OTHER = "other"
 
 class CancellationReason(str, Enum):
     BREAK = "break"
