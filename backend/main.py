@@ -76,7 +76,3 @@ async def handle_err(request, err: Exception) -> JSONResponse:
 @app.get("/")
 async def root() -> RedirectResponse:
     return RedirectResponse(url=os.environ.get("BASE_URL", "http://localhost:3000/"), status_code=308)
-
-@app.get("/error")
-async def error() -> float:
-    return 1/0
