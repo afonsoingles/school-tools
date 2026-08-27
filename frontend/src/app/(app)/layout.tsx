@@ -20,10 +20,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="!min-h-0 !h-dvh">
       <AppSidebar user={user} />
-      <SidebarInset>
-        <div className="flex flex-col flex-1 min-h-svh">{children}</div>
+      <SidebarInset className="!overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )

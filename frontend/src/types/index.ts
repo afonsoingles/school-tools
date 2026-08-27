@@ -64,6 +64,21 @@ export interface Subject {
   name: string
 }
 
+export interface ClassEvent {
+  id: string
+  subject_id: string
+  weekday: number  // 1=Mon…7=Sun
+  start_time: string  // "HH:MM"
+  end_time: string  // "HH:MM"
+}
+
+export interface CanceledClassEvent {
+  id: string
+  class_id: string
+  date: string  // "YYYY-MM-DD"
+  reason: "break" | "public_holiday" | "other"
+}
+
 export interface DashboardSummary {
   upcomingEvents: CalendarEvent[]
   pendingHomework: HomeworkItem[]
