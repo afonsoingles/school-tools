@@ -1,11 +1,5 @@
 from errors.base import BaseError
 
-
-class InvalidCalendarToken(BaseError):
-    status_code = 401
-    code = "invalid_calendar_token"
-    message = "This calendar token is invalid or has been revoked."
-
 class FeedNotFound(BaseError):
     status_code = 404
     code = "feed_not_found"

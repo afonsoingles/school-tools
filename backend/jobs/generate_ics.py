@@ -5,7 +5,6 @@ from tools.subjects import SubjectTools
 from tools.classes import ClassTools
 from tools.calendar import CalendarTools
 from tools.evaluations import EvaluationTools
-from tools.calendar import CalendarTools
 from models.calendar import CalendarFeedType
 import sentry_sdk
 
