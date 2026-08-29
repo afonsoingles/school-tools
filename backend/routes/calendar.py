@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from decorators.auth import require_auth
 from jobs.generate_ics import generate_and_publish_ics_feed
 from tools.calendar import CalendarTools
@@ -21,10 +22,10 @@ async def get_feed(request: Request) -> JSONResponse:
         feeds = tools.generate_calendar_tokens(request.state.user.id)
 
 
-    return JSONResponse({"success": True, "feeds": {
+    return JSONResponse(jsonable_encoder({"success": True, "feeds": {
         "classes": f"{os.environ.get("BASE_URL")}/api/v1/calendar/feeds/classes/{feeds.token_classes}?user={str(request.state.user.id)}",
         "evaluations": f"{os.environ.get("BASE_URL")}/api/v1/calendar/feeds/evaluations/{feeds.token_evaluations}?user={str(request.state.user.id)}"
-    }})
+    }}))
 
 @router.post("/v1/calendar/feeds")
 @require_auth

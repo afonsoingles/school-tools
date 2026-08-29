@@ -42,9 +42,8 @@ class CalendarTools:
             token_evaluations=secrets.token_urlsafe(64)
         )
         settings_dict = settings.model_dump()
-        settings_dict["_id"] = settings_dict["id"]
         self.db.mongo.calendar_feed_settings.update_one({"user_id": user_id}, {"$set": settings_dict}, upsert=True)
-        self.db.redis.set(f"users.calendar.settings:{user_id}", json.dumps(settings_dict), ex=21600)
+        self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)
 
         return settings
 
