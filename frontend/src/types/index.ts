@@ -88,3 +88,8 @@ export interface AppSettings {
   theme: "dark"
   notificationsEnabled: boolean
 }
+
+export interface CalendarFeeds {
+  classes: string
+  evaluations: string
+}
