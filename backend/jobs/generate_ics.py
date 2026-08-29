@@ -89,9 +89,11 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     return
 
 def generate_pending_feeds() -> None:
+    print("[FEED GENERATOR] Generating pending feeds...")
     calendar_tools = CalendarTools()
     dirty_users = calendar_tools.get_dirty_users()
     for user in dirty_users:
+        print(f"[FEED GENERATOR] Generating feed for user {user}")
         count_before = calendar_tools.get_user_dirty_count(user)
         generate_and_publish_ics_feed(user)
         count_after = calendar_tools.get_user_dirty_count(user)
