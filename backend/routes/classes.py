@@ -111,7 +111,7 @@ async def uncancel_class(request: Request) -> JSONResponse:
     except:
         raise CancellationNotFound
 
-    class_tools.uncancel_class(cancellation_uuid)
+    class_tools.uncancel_class(request.state.user.id, cancellation_uuid)
     
     return JSONResponse({"success": True, "message": "Class uncanceled successfully."})
 

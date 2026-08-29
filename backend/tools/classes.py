@@ -83,9 +83,9 @@ class ClassTools:
 
         return canceled_class
 
-    def uncancel_class(self, cancellation_id: uuid.UUID) -> None:
+    def uncancel_class(self, user_id: uuid.UUID, cancellation_id: uuid.UUID) -> None:
         canceled_class = self.db.mongo.class_cancellations.find_one_and_delete(
-            {"id": cancellation_id},
+            {"id": cancellation_id, "user_id": user_id},
             return_document=ReturnDocument.BEFORE
         )
         if not canceled_class:
