@@ -67,8 +67,13 @@ class CalendarTools:
         settings = self.get_calendar_tokens(user_id)
         if not settings:
             return False
-
-        return token == settings.token_classes if type == CalendarFeedType.CLASSES else token == settings.token_evaluations
+        try:
+            if type == CalendarFeedType.CLASSES:
+                return secrets.compare_digest(str(token), str(settings.token_classes))
+            else:
+                return secrets.compare_digest(str(token), str(settings.token_evaluations))
+        except Exception:
+            return False
 
     def get_dirty_users(self) -> list[uuid.UUID]:
         dirty_users = self.db.redis.smembers(f"users.calendar.dirty")
