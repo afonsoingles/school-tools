@@ -7,6 +7,7 @@ from models.calendar import *
 from errors.calendar import *
 from errors.base import BaseError
 import os
+import uuid
 
 router = APIRouter()
 tools = CalendarTools()
@@ -57,4 +58,4 @@ async def get_feed_by_token(request: Request, type: str, token: str) -> Response
         if not feed:
             raise BaseError
 
-    return Response(content=feed, media_type="text/calendar")
+    return Response(content=feed, media_type="text/calendar", headers={"Content-Disposition": f"attachment; filename={type.value}.ics", "Cache-Control": "no-cache"})

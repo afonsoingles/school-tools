@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from decorators.auth import require_auth
 from utils.database import Database
 from jobs.generate_ics import generate_pending_feeds
-from main import scheduler
+from utils.scheduler import scheduler
 
 router = APIRouter()
 db = Database()
@@ -23,6 +23,6 @@ async def clear_user_cache(request: Request) -> JSONResponse:
 @router.post("/v1/admin/force_generate_pending_feeds")
 @require_auth(require_admin=True)
 async def force_generate_pending_feeds(request: Request) -> JSONResponse:
-    scheduler.add_job(generate_pending_feeds, id="calendar.generate_pending_feeds")
+    scheduler.add_job(generate_pending_feeds, id="calendar.generate_pending_feeds.force", replace_existing=True)
 
     return JSONResponse({"success": True, "message": "done! triggered the job to generate pending feeds."})
