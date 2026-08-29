@@ -7,7 +7,7 @@ from tools.calendar import CalendarTools
 from tools.evaluations import EvaluationTools
 from tools.calendar import CalendarTools
 from models.calendar import CalendarFeedType
-from sentry_sdk import metrics
+import sentry_sdk
 
 def generate_and_publish_ics_feed(user: uuid.UUID):
 
@@ -93,12 +93,18 @@ def generate_pending_feeds() -> None:
     calendar_tools = CalendarTools()
     dirty_users = calendar_tools.get_dirty_users()
     for user in dirty_users:
-        print(f"[FEED GENERATOR] Generating feed for user {user}")
-        count_before = calendar_tools.get_user_dirty_count(user)
-        generate_and_publish_ics_feed(user)
-        count_after = calendar_tools.get_user_dirty_count(user)
+        try:
+            print(f"[FEED GENERATOR] Generating feed for user {user}")
+            count_before = calendar_tools.get_user_dirty_count(user)
+            generate_and_publish_ics_feed(user)
+            count_after = calendar_tools.get_user_dirty_count(user)
 
-        if count_after == count_before:
-            calendar_tools.clear_user_dirty(user)
+            if count_after == count_before:
+                calendar_tools.clear_user_dirty(user)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            calendar_tools.clear_user_dirty(user) # We do not need broken users to be stuck as dirty forever. Doing so does not benefit the user, and will clog sentry.
+            sentry_sdk.metrics.count("calendar.feeds.failed", 1, attributes={"user_id": str(user)})
+            continue
             
-        metrics.count("calendar.feeds.generated", 1, attributes={"user_id": str(user)})
+        sentry_sdk.metrics.count("calendar.feeds.generated", 1, attributes={"user_id": str(user)})
