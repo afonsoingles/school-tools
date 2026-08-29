@@ -19,7 +19,7 @@ async def authenticate(request: Request) -> JSONResponse:
     email = request.state.json["email"]
     password = request.state.json["password"]
 
-    user = user_tools.get_user_by_email(email)
+    user = user_tools.get_user_by_email(email, raise_credentials_error_on_not_found=True)
 
     stored_pwd = user.password.get_secret_value()
     

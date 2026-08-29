@@ -70,7 +70,7 @@ class UserTools:
         self.db.redis.set(f"users.lookup.email:{user.email}", id, ex=10800)
         return user
 
-    def get_user_by_email(self, email) -> User:
+    def get_user_by_email(self, email, raise_credentials_error_on_not_found: bool = False) -> User:
         
         redis_id = self.db.redis.get(f"users.lookup.email:{email}")
         if redis_id:
@@ -78,6 +78,8 @@ class UserTools:
         
         raw = self.db.mongo.users.find_one({"email": email})
         if not raw:
+            if raise_credentials_error_on_not_found:
+                raise UserPasswordIncorrectError
             raise UserNotFoundError
         
         user = User.model_validate(raw)
