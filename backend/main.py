@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from utils.scheduler import scheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 from errors.base import BaseError
 
@@ -35,10 +35,10 @@ sentry_sdk.init(
 
 scheduler.add_job(
     generate_pending_feeds,
-    trigger=IntervalTrigger(minutes=5),
+    trigger=CronTrigger(minute="*/5", second=0, timezone="Europe/London"),
     id="calendar.generate_pending_feeds",
     replace_existing=True,
-    coalesce=True,
+    misfire_grace_time=60,
 )
 
 @asynccontextmanager
