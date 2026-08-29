@@ -2,7 +2,9 @@ from models.subject import Subject, SafeSubject
 from utils.database import Database
 import uuid
 from pymongo import ReturnDocument
-import json
+from tools.calendar import CalendarTools
+
+calendar_tools = CalendarTools()
 
 class SubjectTools:
     def __init__(self) -> None:
@@ -60,6 +62,9 @@ class SubjectTools:
             return None
 
         self.db.redis.hdel(f"users.subjects:{str(user_id)}", str(subject_id))
+
+        calendar_tools.mark_feed_dirty(user_id)
+
         return SafeSubject.model_validate(subject)
 
     def rename_subject(self, user_id: uuid.UUID, subject_id: uuid.UUID, new_name: str) -> SafeSubject | None:
@@ -72,4 +77,7 @@ class SubjectTools:
         if not subject:
             return None
         self.db.redis.hset(f"users.subjects:{str(user_id)}", str(subject_id), new_name)
+
+        calendar_tools.mark_feed_dirty(user_id)
+        
         return SafeSubject.model_validate(subject)

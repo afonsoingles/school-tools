@@ -6,6 +6,9 @@ import uuid
 from pymongo import ReturnDocument
 import json
 import datetime
+from tools.calendar import CalendarTools
+
+calendar_tools = CalendarTools()
 
 class EvaluationTools:
     def __init__(self) -> None:
@@ -22,6 +25,8 @@ class EvaluationTools:
         self.db.redis.expire(f"users.evaluations:{str(user_id)}", 7200)
         if self.db.redis.get(f"users.evaluations.is_empty:{str(user_id)}"):
             self.db.redis.delete(f"users.evaluations.is_empty:{str(user_id)}")
+
+        calendar_tools.mark_feed_dirty(user_id)
 
         return Evaluation.model_validate(evaluation_dict)
 
@@ -52,8 +57,10 @@ class EvaluationTools:
             return_document=ReturnDocument.BEFORE
         )
         if not evaluation:
-            print(evaluation)
             raise EvaluationNotFound
 
         self.db.redis.hdel(f"users.evaluations:{str(user_id)}", str(evaluation_id))
+
+        calendar_tools.mark_feed_dirty(user_id)
+
         return Evaluation.model_validate(evaluation)

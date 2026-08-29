@@ -4,8 +4,11 @@ from models.time_field import HHMM
 from utils.database import Database
 import uuid
 from pymongo import ReturnDocument
+from tools.calendar import CalendarTools
 import json
 import datetime
+
+calendar_tools = CalendarTools()
 
 class ClassTools:
     def __init__(self) -> None:
@@ -22,6 +25,8 @@ class ClassTools:
         self.db.redis.expire(f"users.classes:{str(user_id)}", 7200)
         if self.db.redis.get(f"users.classes.is_empty:{str(user_id)}"):
             self.db.redis.delete(f"users.classes.is_empty:{str(user_id)}")
+
+        calendar_tools.mark_feed_dirty(user_id)
 
         return ClassEvent.model_validate(class_dict)
 
@@ -55,6 +60,9 @@ class ClassTools:
             raise ClassNotFound
 
         self.db.redis.hdel(f"users.classes:{str(user_id)}", str(class_id))
+
+        calendar_tools.mark_feed_dirty(user_id)
+
         return ClassEvent.model_validate(class_event)
 
     def cancel_class(self, user_id: uuid.UUID, class_id: uuid.UUID, date: datetime.datetime, reason: CancellationReason) -> CancelledClassEvent:
@@ -71,6 +79,8 @@ class ClassTools:
         if self.db.redis.get(f"users.class_cancellations.is_empty:{str(user_id)}"):
             self.db.redis.delete(f"users.class_cancellations.is_empty:{str(user_id)}")
 
+        calendar_tools.mark_feed_dirty(user_id)
+
         return canceled_class
 
     def uncancel_class(self, cancellation_id: uuid.UUID) -> None:
@@ -83,6 +93,8 @@ class ClassTools:
         
         self.db.redis.hdel(f"users.class_cancellations:{str(canceled_class['user_id'])}", str(cancellation_id))
 
+        calendar_tools.mark_feed_dirty(canceled_class['user_id'])
+        
         return
 
     def get_user_canceled_classes(self, user_id: uuid.UUID)-> list[CancelledClassEvent]:
