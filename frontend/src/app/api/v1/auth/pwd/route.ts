@@ -2,11 +2,15 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { setSessionCookie } from "@/lib/auth/session"
 import { SERVER_API_BASE } from "@/lib/api/server-client"
+import { setForwardedClientIp } from "@/lib/net/client-ip"
 
 export async function POST(request: NextRequest) {
+  const headers = new Headers({ "Content-Type": "application/json" })
+  setForwardedClientIp(headers, request)
+
   const res = await fetch(`${SERVER_API_BASE}/v1/auth/pwd`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: await request.text(),
     redirect: "manual",
   })

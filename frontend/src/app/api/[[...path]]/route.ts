@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { getSessionToken } from "@/lib/auth/session"
 import { SERVER_API_BASE } from "@/lib/api/server-client"
+import { setForwardedClientIp } from "@/lib/net/client-ip"
 
 const HOP_BY_HOP_HEADERS = [
   "connection",
@@ -24,6 +25,7 @@ async function proxy(request: NextRequest) {
   for (const name of HOP_BY_HOP_HEADERS) {
     headers.delete(name)
   }
+  setForwardedClientIp(headers, request)
 
   const token = await getSessionToken()
   if (token && !headers.has("authorization")) {

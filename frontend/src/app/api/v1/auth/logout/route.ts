@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 import { clearSessionCookie, getSessionToken } from "@/lib/auth/session"
 import { SERVER_API_BASE } from "@/lib/api/server-client"
+import { setForwardedClientIp } from "@/lib/net/client-ip"
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const token = await getSessionToken()
+
+  const headers = new Headers(token ? { Authorization: `Bearer ${token}` } : {})
+  setForwardedClientIp(headers, request)
 
   const res = await fetch(`${SERVER_API_BASE}/v1/auth/logout`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers,
     redirect: "manual",
   })
 

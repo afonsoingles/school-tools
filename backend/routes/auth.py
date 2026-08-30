@@ -7,6 +7,7 @@ from models.user import SafeUser
 from decorators.auth import require_auth
 from decorators.valid_json import valid_json
 from sentry_sdk import metrics
+from utils.limiter import limiter
 
 router = APIRouter()
 user_tools = UserTools()
@@ -14,6 +15,7 @@ session_tools = SessionTools()
 
 @router.post("/v1/auth/pwd")
 @valid_json(["email", "password"])
+@limiter.limit("5/minute")
 async def authenticate(request: Request) -> JSONResponse:
     
     email = request.state.json["email"]

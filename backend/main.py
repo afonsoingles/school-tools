@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,9 +7,12 @@ import os
 import sentry_sdk
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from contextlib import asynccontextmanager
 from utils.scheduler import scheduler
 from apscheduler.triggers.cron import CronTrigger
+from utils.limiter import limiter
 
 from errors.base import BaseError
 
@@ -49,6 +52,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,6 +70,7 @@ app.include_router(classes_router)
 app.include_router(evaluations_router)
 app.include_router(calendar_router)
 
+app.add_middleware(SlowAPIMiddleware)
 
 @app.exception_handler(BaseError)
 async def handle_errors(request, err: BaseError) -> JSONResponse:
@@ -85,6 +90,18 @@ async def handle_err(request, err: Exception) -> JSONResponse:
             "message": "Something went wrong. This error has been reported.",
         },
     )
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={
+            "success": False,
+            "code": "rate_limit_exceeded",
+            "message": "You have exceeded the rate limit. Please try again later.",
+        },
+    )
+
 
 @app.get("/")
 async def root() -> RedirectResponse:

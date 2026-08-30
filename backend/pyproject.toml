@@ -17,5 +17,6 @@ dependencies = [
     "redis>=8.1.0",
     "requests>=2.34.2",
     "sentry-sdk>=2.66.1",
+    "slowapi>=0.1.10",
     "uvicorn>=0.52.1",
 ]
