@@ -40,3 +40,8 @@ class EmailAlreadyVerified(BaseError):
     status_code = 409
     code = "already_verified"
     message = "Your email is already verified"
+
+class PasswordTooWeakError(BaseError):
+    status_code = 400
+    code = "password_too_weak"
+    message = "The provided password is too weak. Please choose a stronger password with at least 8 characters."

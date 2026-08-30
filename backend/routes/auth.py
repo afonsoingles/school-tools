@@ -40,12 +40,16 @@ async def authenticate(request: Request) -> JSONResponse:
 
 @router.post("/v1/auth/signup")
 @valid_json(["name", "email", "password"])
+@limiter.limit("20/hour")
 async def signup(request: Request) -> JSONResponse:
 
     name = request.state.json["name"]
     email = request.state.json["email"]
     password = request.state.json["password"]
 
+    if len(password) < 8:
+        raise PasswordTooWeakError
+    
     user = user_tools.create_user(name, email, password)
 
     user_tools.send_verification_link(user.id, user.name, user.email)
