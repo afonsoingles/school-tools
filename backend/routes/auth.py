@@ -17,7 +17,7 @@ session_tools = SessionTools()
 
 @router.post("/v1/auth/pwd")
 @valid_json(["email", "password"])
-@limiter.limit("5/minute")
+@limiter.limit("60/minute")
 async def authenticate(request: Request) -> JSONResponse:
     
     email = request.state.json["email"]
@@ -42,7 +42,7 @@ async def authenticate(request: Request) -> JSONResponse:
 
 @router.post("/v1/auth/signup")
 @valid_json(["name", "email", "password"])
-@limiter.limit("20/hour")
+@limiter.limit("40/hour")
 async def signup(request: Request) -> JSONResponse:
 
     name = request.state.json["name"]
@@ -71,7 +71,7 @@ async def signup(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "message": "User created successfully. Please check your email to verify your account"})
 
 @router.post("/v1/auth/verify")
-@limiter.limit("10/hour")
+@limiter.limit("10/minute")
 async def verify_email(request: Request) -> JSONResponse:
 
     token = request.query_params.get("token")
