@@ -32,7 +32,12 @@ export function SignupForm() {
           const res = await fetch("/api/v1/auth/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password }),
+            body: JSON.stringify({
+              name,
+              email,
+              password,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "Etc/Universal",
+            }),
           })
 
           if (!res.ok) {

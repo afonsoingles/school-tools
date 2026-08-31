@@ -4,6 +4,7 @@ from errors.user import *
 from pydantic import SecretStr
 from utils.jwt import JWT
 from utils.mailer import Mailer
+from pydantic_extra_types.timezone_name import TimeZoneName
 import uuid
 import bcrypt
 import datetime
@@ -25,7 +26,7 @@ class UserTools:
     def verify_password_hash(self, password, hashed) -> bool:
         return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
     
-    def create_user(self, name, email, password) -> User:
+    def create_user(self, name, email, password, timezone: TimeZoneName) -> User:
         
         exists_redis = self.db.redis.get(f"users.lookup.email:{email}")
         if exists_redis:
@@ -41,6 +42,7 @@ class UserTools:
             name=name,
             email=email,
             password=SecretStr(hashed_password),
+            timezone=timezone
         )
 
         user_dict = user.model_dump()

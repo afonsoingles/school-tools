@@ -28,7 +28,7 @@ async def add_evaluation(request: Request) -> JSONResponse:
         raise InvalidEvaluationType
     
     try:
-        date_obj = datetime.datetime.fromisoformat(request.state.json["date"]).replace(hour=0, minute=0, second=0, microsecond=0)
+        date_obj = datetime.datetime.fromisoformat(request.state.json["date"]).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(request.state.user.timezone)
         date_weekday = date_obj.weekday()
     except:
         raise InvalidDate

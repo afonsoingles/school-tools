@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, SecretStr, AwareDatetime, Field, PlainSerializer, ConfigDict, field_serializer
+from pydantic_extra_types.timezone_name import TimeZoneName
 from typing_extensions import Annotated
 import datetime
 import uuid
@@ -15,6 +16,7 @@ class SafeUser(BaseModel):
     active: bool = Field(default=True)
     admin: bool = Field(default=False)
     superadmin: bool = Field(default=False) 
+    timezone: TimeZoneName = Field(default_factory=lambda: TimeZoneName("Etc/Universal"))
     created_at: Annotated[AwareDatetime, PlainSerializer(lambda v: v.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z"), return_type=str)] = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
     updated_at: Annotated[AwareDatetime, PlainSerializer(lambda v: v.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z"), return_type=str)] = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 

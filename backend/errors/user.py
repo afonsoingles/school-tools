@@ -55,3 +55,8 @@ class InvalidNameError(BaseError):
     status_code = 400
     code = "invalid_name"
     message = "The provided name is invalid. Please provide a valid name between 2 and 50 characters."
+
+class InvalidTimeZoneError(BaseError):
+    status_code = 400
+    code = "invalid_timezone"
+    message = "The provided timezone is invalid. Please provide a valid timezone in the IANA format."

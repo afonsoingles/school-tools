@@ -6,6 +6,7 @@ export interface User {
   active: boolean
   admin: boolean
   superadmin: boolean
+  timezone: string
   created_at: string
   updated_at: string
 }
@@ -17,6 +18,7 @@ export interface LoginCredentials {
 
 export interface SignupPayload extends LoginCredentials {
   name: string
+  timezone: string
 }
 
 export interface ApiErrorBody {

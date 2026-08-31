@@ -1,10 +1,12 @@
 import uuid
 import datetime
+from zoneinfo import ZoneInfo
 from utils.ics import CalendarGenerator, ICAL_PRODID_CLASSES, ICAL_PRODID_EVENTS
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
 from tools.calendar import CalendarTools
 from tools.evaluations import EvaluationTools
+from tools.users import UserTools
 from models.calendar import CalendarFeedType
 import sentry_sdk
 
@@ -14,9 +16,19 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     class_tools = ClassTools()
     evaluation_tools = EvaluationTools()
     calendar_tools = CalendarTools()
+    user_tools = UserTools()
+
+    user_tz_raw = user_tools.get_user_by_id(user).timezone
     
-    classes_calendar = CalendarGenerator(ICAL_PRODID_CLASSES, "School Tools - Classes")
-    evaluations_calendar = CalendarGenerator(ICAL_PRODID_EVENTS, "School Tools - Evaluations")
+    classes_calendar = CalendarGenerator(ICAL_PRODID_CLASSES, "School Tools - Classes", tz=user_tz_raw)
+    evaluations_calendar = CalendarGenerator(ICAL_PRODID_EVENTS, "School Tools - Evaluations", tz=user_tz_raw)
+
+   
+    # Ensure we have a tzinfo-compatible object (ZoneInfo or similar)
+    if isinstance(user_tz_raw, str):
+        user_tz = ZoneInfo(user_tz_raw)
+    else:
+        user_tz = user_tz_raw
 
     # Evaluations
     eval_by_class: dict[uuid.UUID, list[datetime.datetime]] = {}
@@ -34,8 +46,8 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         if evaluation_class is None:
             continue
         evaluation_date = evaluation.date
-        start = datetime.datetime.combine(evaluation_date, evaluation_class.start_time)
-        end = datetime.datetime.combine(evaluation_date, evaluation_class.end_time)
+        start = datetime.datetime.combine(evaluation_date, evaluation_class.start_time, tzinfo=user_tz)
+        end = datetime.datetime.combine(evaluation_date, evaluation_class.end_time, tzinfo=user_tz)
         evaluations_calendar.build_event(
             uid=str(evaluation.id),
             summary=f"{evaluations_map[evaluation.type]} - {subject_map[evaluation_class.subject_id]}",
@@ -50,14 +62,14 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
 
     # Classes
     
-    START_GENERATING_FROM = datetime.datetime(2026, 9, 1)
-    END_GENERATING_AT = datetime.datetime(2027, 6, 30)
+    START_GENERATING_FROM = datetime.datetime(2026, 9, 1, tzinfo=user_tz)
+    END_GENERATING_AT = datetime.datetime(2027, 6, 30, tzinfo=user_tz)
     #TODO: ^ the above are temp values. It shall use user settings later.
 
     def _first_occurrence(start_from: datetime.datetime, weekday: int, time_value: datetime.time) -> datetime.datetime:
         days_ahead = (weekday - start_from.weekday()) % 7
         first_date = start_from.date() + datetime.timedelta(days=days_ahead)
-        first_occurrence = datetime.datetime.combine(first_date, time_value)
+        first_occurrence = datetime.datetime.combine(first_date, time_value, tzinfo=user_tz)
         if first_occurrence < start_from:
             first_occurrence += datetime.timedelta(days=7)
         return first_occurrence
@@ -66,9 +78,9 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         weekday = cls.weekday.value - 1 
 
         first_start = _first_occurrence(START_GENERATING_FROM, int(weekday), cls.start_time)
-        first_end = datetime.datetime.combine(first_start.date(), cls.end_time)
+        first_end = datetime.datetime.combine(first_start.date(), cls.end_time, tzinfo=user_tz)
         exdates = [
-            datetime.datetime.combine(d, cls.start_time)
+            datetime.datetime.combine(d, cls.start_time, tzinfo=user_tz)
             for d in sorted(
                 set(eval_by_class.get(cls.id, []) + [c.date for c in cancellations if c.class_id == cls.id])
             )

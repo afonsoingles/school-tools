@@ -10,6 +10,7 @@ dependencies = [
     "fastapi>=0.141.1",
     "icalendar>=7.3.0",
     "markdown>=3.10.3",
+    "pydantic-extra-types>=2.11.1",
     "pydantic[email]>=2.13.4",
     "pyjwt>=2.13.0",
     "pymongo>=4.17.0",

@@ -10,6 +10,7 @@ from decorators.auth import require_auth
 from decorators.valid_json import valid_json
 from sentry_sdk import metrics
 from utils.limiter import limiter
+from zoneinfo import ZoneInfo
 
 router = APIRouter()
 user_tools = UserTools()
@@ -41,13 +42,14 @@ async def authenticate(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "message": "Authentication was successful!", "token": token})
 
 @router.post("/v1/auth/signup")
-@valid_json(["name", "email", "password"])
+@valid_json(["name", "email", "password", "timezone"])
 @limiter.limit("40/hour")
 async def signup(request: Request) -> JSONResponse:
 
     name = request.state.json["name"]
     email = request.state.json["email"]
     password = request.state.json["password"]
+    timezone = request.state.json["timezone"]
 
     PASSWORD_REGEX = re.compile(
         r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,50}$"
@@ -63,8 +65,13 @@ async def signup(request: Request) -> JSONResponse:
         validate_email(email, check_deliverability=False)
     except EmailNotValidError:
         raise EmailSyntaxError
+
+    try:
+        ZoneInfo(timezone)
+    except:
+        raise InvalidTimeZoneError
     
-    user = user_tools.create_user(name, email, password)
+    user = user_tools.create_user(name, email, password, timezone)
 
     user_tools.send_verification_link(user.id, user.name, user.email)
     metrics.count("user.signup", 1, attributes={"user_id": user.id})
@@ -85,7 +92,17 @@ async def verify_email(request: Request) -> JSONResponse:
 @router.get("/v1/auth/me")
 @require_auth(allow_unverified_email=True)
 async def me(request: Request) -> JSONResponse:
-    
+
+    header_timezone = request.headers.get("X-Timezone")
+    print(request.state.user.timezone)
+    if header_timezone and request.state.user.timezone == "Etc/Universal":
+        try:
+            ZoneInfo(header_timezone)
+            request.state.user.timezone = header_timezone
+            user_tools.update_user(request.state.user.id, timezone=header_timezone)
+        except:
+            raise InvalidTimeZoneError
+
     user = SafeUser.model_validate(request.state.user)
     
     return JSONResponse({"success": True, "user": user.model_dump(mode="json")})

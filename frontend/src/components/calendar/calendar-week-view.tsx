@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Plus, Loader2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTimezone } from "@/components/layout/timezone-provider"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -55,12 +56,29 @@ function formatHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`
 }
 
-function getWeekStart(offset: number): Date {
-  const now = new Date()
-  const dayOfWeek = now.getDay()
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + mondayOffset + offset * 7)
+const WEEKDAY_MAP: Record<string, number> = { sun: 7, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+
+function getTzCurrentDate(tz: string): { y: number; m: number; d: number; weekdayIndex: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).formatToParts(new Date())
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ""
+  return {
+    y: Number(get("year")),
+    m: Number(get("month")),
+    d: Number(get("day")),
+    weekdayIndex: WEEKDAY_MAP[get("weekday").toLowerCase()] ?? 1,
+  }
+}
+
+function getWeekStart(offset: number, tz: string): Date {
+  const now = getTzCurrentDate(tz)
+  const mondayDelta = now.weekdayIndex - 1 + offset * 7
+  const monday = new Date(now.y, now.m - 1, now.d - mondayDelta)
   monday.setHours(0, 0, 0, 0)
   return monday
 }
@@ -76,11 +94,13 @@ function toDateString(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-function isToday(date: Date): boolean {
-  const today = new Date()
-  return date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
+function isToday(date: Date, tz: string): boolean {
+  const today = getTzCurrentDate(tz)
+  return (
+    date.getFullYear() === today.y &&
+    date.getMonth() === today.m - 1 &&
+    date.getDate() === today.d
+  )
 }
 
 export function CalendarWeekView() {
@@ -99,7 +119,9 @@ export function CalendarWeekView() {
   const [uncancelingId, setUncancelingId] = useState<string | null>(null)
   const [deletingEvalId, setDeletingEvalId] = useState<string | null>(null)
 
-  const weekStart = getWeekStart(weekOffset)
+  const timezone = useTimezone()
+
+  const weekStart = getWeekStart(weekOffset, timezone)
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart)
     date.setDate(weekStart.getDate() + i)
@@ -110,7 +132,7 @@ export function CalendarWeekView() {
       name: DAY_NAMES[i],
       full: DAY_FULL[i],
       dayNum: date.getDate(),
-      today: isToday(date),
+      today: isToday(date, timezone),
     }
   })
 
