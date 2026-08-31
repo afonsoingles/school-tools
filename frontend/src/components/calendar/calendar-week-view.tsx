@@ -35,6 +35,16 @@ const REASON_LABELS: Record<string, string> = {
   public_holiday: "Public holiday",
   other: "Other",
 }
+const CLASS_COLORS = [
+  "bg-blue-600 text-white hover:bg-blue-500",
+  "bg-emerald-600 text-white hover:bg-emerald-500",
+  "bg-violet-600 text-white hover:bg-violet-500",
+  "bg-amber-500 text-white hover:bg-amber-400",
+  "bg-cyan-600 text-white hover:bg-cyan-500",
+  "bg-fuchsia-600 text-white hover:bg-fuchsia-500",
+  "bg-indigo-600 text-white hover:bg-indigo-500",
+  "bg-teal-600 text-white hover:bg-teal-500",
+]
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number)
@@ -137,6 +147,65 @@ export function CalendarWeekView() {
 
   function classesForDay(weekday: number): ClassEvent[] {
     return classes.filter((c) => c.weekday === weekday)
+  }
+
+  function dayClassLayout(dayClasses: ClassEvent[]): Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }> {
+    const sorted = [...dayClasses].sort((a, b) => {
+      const sa = timeToMinutes(a.start_time)
+      const sb = timeToMinutes(b.start_time)
+      if (sa !== sb) return sa - sb
+      return timeToMinutes(b.end_time) - timeToMinutes(a.end_time)
+    })
+
+    const clusters: ClassEvent[][] = []
+    for (const cls of sorted) {
+      const start = timeToMinutes(cls.start_time)
+      const last = clusters[clusters.length - 1]
+      const lastMaxEnd = last
+        ? Math.max(...last.map((c) => timeToMinutes(c.end_time)))
+        : -1
+      if (last && start < lastMaxEnd) {
+        last.push(cls)
+      } else {
+        clusters.push([cls])
+      }
+    }
+
+    const layout = new Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }>()
+    for (const cluster of clusters) {
+      const sortedCluster = [...cluster].sort(
+        (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
+      )
+
+      const columnEnds: number[] = []
+      const perClass: { cls: ClassEvent; col: number }[] = []
+      for (const cls of sortedCluster) {
+        const start = timeToMinutes(cls.start_time)
+        let col = columnEnds.findIndex((endMin) => endMin <= start)
+        if (col === -1) {
+          col = columnEnds.length
+          columnEnds.push(0)
+        }
+        columnEnds[col] = Math.max(columnEnds[col], timeToMinutes(cls.end_time))
+        perClass.push({ cls, col })
+      }
+      const total = columnEnds.length
+
+      let colorIndex = 0
+      for (const { cls, col } of perClass) {
+        const start = timeToMinutes(cls.start_time)
+        const end = timeToMinutes(cls.end_time)
+        const nextSameCol = perClass
+          .filter((p) => p.col === col && timeToMinutes(p.cls.start_time) > start)
+          .map((p) => timeToMinutes(p.cls.start_time))
+          .sort((a, b) => a - b)[0]
+        const topMin = start
+        const endMin = Math.max(topMin, Math.min(end, nextSameCol ?? end))
+        layout.set(cls.id, { topMin, endMin, col, total, colorIndex })
+        colorIndex++
+      }
+    }
+    return layout
   }
 
   function canceledForDay(classId: string, dateStr: string): CanceledClassEvent | undefined {
@@ -274,27 +343,34 @@ export function CalendarWeekView() {
                   </div>
                 ))}
 
-                {classesForDay(day.weekday).map((cls) => {
+                {(() => {
+                  const dayClasses = classesForDay(day.weekday)
+                  const layout = dayClassLayout(dayClasses)
+
+                  return dayClasses.map((cls) => {
                   const cancel = canceledForDay(cls.id, day.dateStr)
                   const evaluation = evaluationForDay(cls.id, day.dateStr)
-                  const top = (timeToMinutes(cls.start_time) / 15) * SLOT_HEIGHT
-                  const height = Math.max(((timeToMinutes(cls.end_time) - timeToMinutes(cls.start_time)) / 15) * SLOT_HEIGHT, 20)
                   const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
                   const isCancelled = !!cancel
                   const hasEvaluation = !!evaluation
+                  const band = layout.get(cls.id) ?? { topMin: 0, endMin: 60, col: 0, total: 1, colorIndex: 0 }
+                  const top = (band.topMin / 15) * SLOT_HEIGHT
+                  const height = Math.max(((band.endMin - band.topMin) / 15) * SLOT_HEIGHT, 20)
+                  const widthPct = 100 / band.total
+                  const leftPct = band.col * widthPct
 
                   return (
                     <Popover key={cls.id}>
                       <PopoverTrigger
                         className={cn(
-                          "absolute left-0.5 right-0.5 flex flex-col justify-start rounded px-2.5 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
+                          "absolute flex flex-col justify-start rounded px-2 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
                           hasEvaluation
                             ? "bg-red-500 text-white hover:bg-red-400"
                             : isCancelled
                               ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                              : "bg-blue-600 text-white hover:bg-blue-500",
+                              : CLASS_COLORS[band.colorIndex % CLASS_COLORS.length],
                         )}
-                        style={{ top: `${top}px`, height: `${height}px` }}
+                        style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
                       >
                         <span className="font-semibold text-sm leading-tight truncate text-left">{subjectName}</span>
                         {height >= 40 && (
@@ -383,7 +459,8 @@ export function CalendarWeekView() {
                       </PopoverContent>
                     </Popover>
                   )
-                })}
+                })
+                })()}
               </div>
             ))}
           </div>
