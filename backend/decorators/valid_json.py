@@ -1,7 +1,7 @@
 import os
 from functools import wraps
-from fastapi import Request, HTTPException
-import json
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 def valid_json(required_fields=None):
 
@@ -25,11 +25,11 @@ def valid_json(required_fields=None):
             try:
                 data = await request.json()
             except Exception:
-                raise HTTPException(status_code=400, detail="Invalid JSON")
+                return JSONResponse({"success": False, "code": "invalid_json", "message": "Invalid JSON"}, status_code=400)
 
             missing = [f for f in required_fields if f not in data]
             if missing:
-                raise HTTPException(status_code=422, detail=f"Missing required fields: {missing}")
+                return JSONResponse({"success": False, "code": "missing_fields", "message": "Missing required JSON fields.", "fields": missing}, status_code=400)
 
             request.state.json = data
             return await func(*args, **kwargs)
