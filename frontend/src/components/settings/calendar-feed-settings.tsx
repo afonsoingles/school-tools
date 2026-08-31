@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CalendarPlus, Check, Copy, Loader2, RefreshCcw, TriangleAlert } from "lucide-react"
+import { CalendarPlus, Check, CircleHelp, Copy, Loader2, RefreshCcw, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { FaApple } from "react-icons/fa6"
 import { FcGoogle } from "react-icons/fc"
@@ -224,6 +224,15 @@ export function CalendarFeedSettings() {
           so don&apos;t share it.
         </AlertDescription>
       </Alert>
+
+      <div className="flex flex-col gap-1 text-sm">
+        <p className="flex items-center gap-2 text-foreground">
+          <CircleHelp className="size-4 shrink-0 text-muted-foreground" />
+          Why is my calendar feed not updated?
+        </p>
+        <p className="pl-6 text-muted-foreground">The system regenerates your calendar feed every 5 minutes, so it may take a few minutes for changes to appear in your calendar app.</p>
+        <p className="pl-6 text-muted-foreground"> Aditionally, some calendar apps cache the feed for a longer period of time (Google Calendar caches can last up to 24 hours, for example). Some have the option to manually refresh the feed, so check your app&apos;s settings.</p>
+      </div>
 
       <Dialog
         open={confirmOpen}
