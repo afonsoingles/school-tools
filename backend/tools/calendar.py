@@ -17,7 +17,6 @@ class CalendarTools:
             ics_content=ics_content
         )
         calendar_dict = calendar.model_dump()
-        calendar_dict["_id"] = calendar_dict["id"]
         self.db.mongo.calendar_feeds.update_one({"user_id": user_id, "calendar_type": calendar_type}, {"$set": calendar_dict}, upsert=True)
 
         self.db.redis.set(f"users.calendar.feeds.{calendar_type.value}:{user_id}", ics_content, ex=21600)
