@@ -44,7 +44,7 @@ async def delete_subject(request: Request, subject_id: str) -> JSONResponse:
 @require_auth
 @valid_json(["new_name"])
 async def rename_subject(request: Request, subject_id: str) -> JSONResponse:
-    new_name = request.state.json["new_name"]
+    new_name = str(request.state.json["new_name"]).strip()
     if len(new_name) < 3 or len(new_name) > 50:
         raise InvalidSubjectName
 

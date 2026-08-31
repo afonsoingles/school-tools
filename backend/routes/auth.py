@@ -50,12 +50,15 @@ async def signup(request: Request) -> JSONResponse:
     password = request.state.json["password"]
 
     PASSWORD_REGEX = re.compile(
-        r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$"
+        r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,50}$"
     )
 
     if not PASSWORD_REGEX.match(password):
         raise PasswordTooWeakError
 
+    if len(str(name).strip()) < 2 or len(str(name).strip()) > 50:
+        raise InvalidNameError
+    
     try:
         validate_email(email, check_deliverability=False)
     except EmailNotValidError:
