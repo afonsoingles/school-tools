@@ -67,8 +67,6 @@ export function SignupForm() {
     >
       <AuthTitle>Create account</AuthTitle>
 
-      <AuthError message={error} />
-
       <AuthField
         id="name"
         label="Name"
@@ -102,6 +100,8 @@ export function SignupForm() {
       />
 
       <AuthSubmit loading={isSubmitting}>Create account</AuthSubmit>
+
+      <AuthError message={error} />
 
       <AuthFooterLink>
         Already have an account?{" "}

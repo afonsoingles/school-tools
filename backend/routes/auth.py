@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+import re
+from email_validator import validate_email, EmailNotValidError
 from tools.users import UserTools
 from tools.sessions import SessionTools
 from errors.user import *
@@ -47,8 +49,17 @@ async def signup(request: Request) -> JSONResponse:
     email = request.state.json["email"]
     password = request.state.json["password"]
 
-    if len(password) < 8:
+    PASSWORD_REGEX = re.compile(
+        r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$"
+    )
+
+    if not PASSWORD_REGEX.match(password):
         raise PasswordTooWeakError
+
+    try:
+        validate_email(email, check_deliverability=False)
+    except EmailNotValidError:
+        raise EmailSyntaxError
     
     user = user_tools.create_user(name, email, password)
 

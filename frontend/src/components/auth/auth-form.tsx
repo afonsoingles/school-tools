@@ -23,11 +23,10 @@ export function AuthField({ id, label, ...props }: AuthFieldProps) {
 }
 
 export function AuthError({ message }: { message?: string | null }) {
-  if (!message) return null
   return (
-    <p className="px-3 py-2 text-sm text-center rounded-md bg-destructive/10 text-destructive">
+    <div className="h-10 -mx-30 text-sm text-center text-destructive">
       {message}
-    </p>
+    </div>
   )
 }
 

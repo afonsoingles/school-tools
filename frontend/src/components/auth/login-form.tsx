@@ -55,8 +55,6 @@ export function LoginForm() {
     >
       <AuthTitle>Login</AuthTitle>
 
-      <AuthError message={error} />
-
       <AuthField
         id="email"
         label="Email"
@@ -80,6 +78,8 @@ export function LoginForm() {
       />
 
       <AuthSubmit loading={isSubmitting}>Login</AuthSubmit>
+
+      <AuthError message={error} />
 
       <AuthFooterLink>
         Need an account?{" "}
