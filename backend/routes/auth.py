@@ -94,7 +94,6 @@ async def verify_email(request: Request) -> JSONResponse:
 async def me(request: Request) -> JSONResponse:
 
     header_timezone = request.headers.get("X-Timezone")
-    print(request.state.user.timezone)
     if header_timezone and request.state.user.timezone == "Etc/Universal":
         try:
             ZoneInfo(header_timezone)
