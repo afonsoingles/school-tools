@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from utils.scheduler import scheduler
 from apscheduler.triggers.cron import CronTrigger
 from utils.limiter import limiter
+from utils.migrations import run_migrations
 
 from errors.base import BaseError
 
@@ -49,6 +50,8 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     yield
     scheduler.shutdown()
+
+run_migrations() 
 
 app = FastAPI(lifespan=lifespan)
 
