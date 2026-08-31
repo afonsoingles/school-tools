@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -114,7 +115,17 @@ export function SubjectsManager() {
       setSubjects((prev) => prev.filter((s) => s.id !== deleteTarget.id))
       setDeleteOpen(false)
     } catch (err) {
-      setError(errorMessage(err))
+      const code =
+        err instanceof ApiError && (err.body as { code?: string } | null)?.code
+
+      if (code === "subject_used_by_classes") {
+        setDeleteOpen(false)
+        toast.error(
+          `"${deleteTarget.name}" is used by one or more classes and can't be deleted.`
+        )
+      } else {
+        setError(errorMessage(err))
+      }
     } finally {
       setDeletingBusy(false)
     }

@@ -10,3 +10,8 @@ class SubjectNotFound(BaseError):
     status_code = 404
     code = "subject_not_found"
     message = "The requested subject was not found."
+
+class SubjectUsedByClasses(BaseError):
+    status_code = 400
+    code = "subject_used_by_classes"
+    message = "The subject is being used by classes and cannot be deleted."
