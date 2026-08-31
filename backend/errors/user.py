@@ -29,7 +29,7 @@ class InvalidOrExpiredTokenError(BaseError):
 class UserNotVerifiedError(BaseError):
     status_code = 403
     code = "user_not_verified"
-    message = "Please verify your email address first."
+    message = "Your email is not verified. Please verify your email to access this resource."
 
 class UserNotAdmin(BaseError):
     status_code = 403

@@ -57,6 +57,7 @@ async def signup(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "message": "User created successfully. Please check your email to verify your account"})
 
 @router.post("/v1/auth/verify")
+@limiter.limit("10/hour")
 async def verify_email(request: Request) -> JSONResponse:
 
     token = request.query_params.get("token")
@@ -68,7 +69,7 @@ async def verify_email(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "message": "Email verified successfully!"})
 
 @router.get("/v1/auth/me")
-@require_auth
+@require_auth(allow_unverified_email=True)
 async def me(request: Request) -> JSONResponse:
     
     user = SafeUser.model_validate(request.state.user)
@@ -76,7 +77,7 @@ async def me(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "user": user.model_dump(mode="json")})
 
 @router.post("/v1/auth/logout")
-@require_auth
+@require_auth(allow_unverified_email=True)
 async def logout(request: Request) -> JSONResponse:
 
     session_tools.revoke_session(request.state.token)
