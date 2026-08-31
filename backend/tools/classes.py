@@ -5,10 +5,12 @@ from utils.database import Database
 import uuid
 from pymongo import ReturnDocument
 from tools.calendar import CalendarTools
+from tools.evaluations import EvaluationTools
 import json
 import datetime
 
 calendar_tools = CalendarTools()
+evaluation_tools = EvaluationTools()
 
 class ClassTools:
     def __init__(self) -> None:
@@ -52,6 +54,11 @@ class ClassTools:
         return class_list
 
     def delete_class(self, user_id: uuid.UUID, class_id: uuid.UUID) -> ClassEvent | None:
+
+        for evaluation in evaluation_tools.get_user_evaluations(user_id):
+            if evaluation.class_id == class_id:
+                raise ClassUsedByEvaluation
+            
         class_event = self.db.mongo.classes.find_one_and_delete(
             {"id": class_id, "user_id": user_id},
             return_document=ReturnDocument.BEFORE

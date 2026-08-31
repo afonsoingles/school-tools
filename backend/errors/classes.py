@@ -50,3 +50,8 @@ class ClassCancelled(BaseError):
     status_code = 400
     code = "class_cancelled"
     message = "This class has been canceled for the specified date."
+
+class ClassUsedByEvaluation(BaseError):
+    status_code = 400
+    code = "class_used_by_evaluation"
+    message = "This class is being used by an evaluation and cannot be deleted or cancelled."
