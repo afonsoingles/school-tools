@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
   PopoverTitle,
 } from "@/components/ui/popover"
-import type { CanceledClassEvent } from "@/types"
+import type { CancelledClassEvent } from "@/types"
 import { uncancelClass } from "@/lib/api/calendar"
 
 const REASON_LABELS: Record<string, string> = {
@@ -21,11 +21,11 @@ const REASON_LABELS: Record<string, string> = {
 
 const SLOT_HEIGHT = 20
 
-interface CanceledOverlayProps {
-  cancellation: CanceledClassEvent
+interface CancelledOverlayProps {
+  cancellation: CancelledClassEvent
   startTime: string
   endTime: string
-  onUncanceled: () => void
+  onUncancelled: () => void
 }
 
 function timeToMinutes(time: string): number {
@@ -33,7 +33,7 @@ function timeToMinutes(time: string): number {
   return h * 60 + m
 }
 
-export function CanceledOverlay({ cancellation, startTime, endTime, onUncanceled }: CanceledOverlayProps) {
+export function CancelledOverlay({ cancellation, startTime, endTime, onUncancelled }: CancelledOverlayProps) {
   const [uncanceling, setUncanceling] = useState(false)
 
   const top = (timeToMinutes(startTime) / 15) * SLOT_HEIGHT
@@ -43,7 +43,7 @@ export function CanceledOverlay({ cancellation, startTime, endTime, onUncanceled
     setUncanceling(true)
     try {
       await uncancelClass(cancellation.id)
-      onUncanceled()
+      onUncancelled()
     } finally {
       setUncanceling(false)
     }
@@ -56,11 +56,11 @@ export function CanceledOverlay({ cancellation, startTime, endTime, onUncanceled
         style={{ top: `${top}px`, height: `${height}px` }}
       >
         <AlertTriangle className="size-3 shrink-0" />
-        <span className="text-[10px] font-medium leading-tight truncate">Canceled</span>
+        <span className="text-[10px] font-medium leading-tight truncate">Cancelled</span>
       </PopoverTrigger>
       <PopoverContent>
         <div className="flex flex-col gap-3">
-          <PopoverTitle className="text-destructive">Canceled class</PopoverTitle>
+          <PopoverTitle className="text-destructive">Cancelled class</PopoverTitle>
           <p className="text-sm text-muted-foreground">
             Reason: {REASON_LABELS[cancellation.reason] ?? cancellation.reason}
           </p>

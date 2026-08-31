@@ -93,12 +93,12 @@ async def cancel_class(request: Request, class_id: str) -> JSONResponse:
     except:
         raise InvalidDate
 
-    for class_event in class_tools.get_user_canceled_classes(request.state.user.id):
+    for class_event in class_tools.get_user_cancelled_classes(request.state.user.id):
         if class_event.class_id == class_uuid and class_event.date == cancel_date:
-            raise ClassAlreadyCanceled
+            raise ClassAlreadyCancelled
     
-    canceled_class = class_tools.cancel_class(user_id=request.state.user.id, class_id=class_uuid, date=cancel_date, reason=reason)
-    safe_class = SafeCancelledClassEvent(**canceled_class.model_dump())
+    cancelled_class = class_tools.cancel_class(user_id=request.state.user.id, class_id=class_uuid, date=cancel_date, reason=reason)
+    safe_class = SafeCancelledClassEvent(**cancelled_class.model_dump())
 
     return JSONResponse(jsonable_encoder({"success": True, "cancellation": safe_class.model_dump()}))
 
@@ -113,12 +113,12 @@ async def uncancel_class(request: Request) -> JSONResponse:
 
     class_tools.uncancel_class(request.state.user.id, cancellation_uuid)
     
-    return JSONResponse({"success": True, "message": "Class uncanceled successfully."})
+    return JSONResponse({"success": True, "message": "Class uncancelled successfully."})
 
 @router.get("/v1/classes/cancellations")
 @require_auth
-async def get_canceled_classes(request: Request) -> JSONResponse:
-    canceled = class_tools.get_user_canceled_classes(request.state.user.id)
-    canceled = [SafeCancelledClassEvent(**cls.model_dump()) for cls in canceled]
+async def get_cancelled_classes(request: Request) -> JSONResponse:
+    cancelled = class_tools.get_user_cancelled_classes(request.state.user.id)
+    cancelled = [SafeCancelledClassEvent(**cls.model_dump()) for cls in cancelled]
 
-    return JSONResponse(jsonable_encoder({"success": True, "cancellations": [cls.model_dump() for cls in canceled]}))
+    return JSONResponse(jsonable_encoder({"success": True, "cancellations": [cls.model_dump() for cls in cancelled]}))

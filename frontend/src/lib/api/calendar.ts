@@ -1,5 +1,5 @@
 import { apiFetch, mockResolve } from "@/lib/api/client"
-import type { AppSettings, ClassEvent, CanceledClassEvent, Subject } from "@/types"
+import type { AppSettings, ClassEvent, CancelledClassEvent, Subject } from "@/types"
 
 export async function getSettings(): Promise<AppSettings> {
   return mockResolve({
@@ -45,8 +45,8 @@ function normalizeDate(d: string): string {
   return d.includes("T") ? d.split("T")[0] : d
 }
 
-export async function getCancellations(): Promise<CanceledClassEvent[]> {
-  const res = await apiFetch<{ success: boolean; cancellations: CanceledClassEvent[] }>("/v1/classes/cancellations")
+export async function getCancellations(): Promise<CancelledClassEvent[]> {
+  const res = await apiFetch<{ success: boolean; cancellations: CancelledClassEvent[] }>("/v1/classes/cancellations")
   return res.cancellations.map((c) => ({ ...c, date: normalizeDate(c.date) }))
 }
 
@@ -76,8 +76,8 @@ export async function deleteClass(classId: string): Promise<void> {
   })
 }
 
-export async function cancelClass(classId: string, date: string, reason: string): Promise<CanceledClassEvent> {
-  const res = await apiFetch<{ success: boolean; cancellation: CanceledClassEvent }>(
+export async function cancelClass(classId: string, date: string, reason: string): Promise<CancelledClassEvent> {
+  const res = await apiFetch<{ success: boolean; cancellation: CancelledClassEvent }>(
     `/v1/classes/${classId}/cancel`,
     {
       method: "POST",

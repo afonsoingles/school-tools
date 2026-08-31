@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { getClasses, getCancellations, uncancelClass } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
-import type { ClassEvent, CanceledClassEvent, Subject, Evaluation } from "@/types"
+import type { ClassEvent, CancelledClassEvent, Subject, Evaluation } from "@/types"
 import { CancelClassDialog } from "./cancel-class-dialog"
 import { DeleteClassDialog } from "./delete-class-dialog"
 import { CreateClassDialog } from "./create-class-dialog"
@@ -87,7 +87,7 @@ export function CalendarWeekView() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
-  const [cancellations, setCancellations] = useState<CanceledClassEvent[]>([])
+  const [cancellations, setCancellations] = useState<CancelledClassEvent[]>([])
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -208,7 +208,7 @@ export function CalendarWeekView() {
     return layout
   }
 
-  function canceledForDay(classId: string, dateStr: string): CanceledClassEvent | undefined {
+  function cancelledForDay(classId: string, dateStr: string): CancelledClassEvent | undefined {
     return cancellations.find((c) => c.class_id === classId && c.date === dateStr)
   }
 
@@ -348,7 +348,7 @@ export function CalendarWeekView() {
                   const layout = dayClassLayout(dayClasses)
 
                   return dayClasses.map((cls) => {
-                  const cancel = canceledForDay(cls.id, day.dateStr)
+                  const cancel = cancelledForDay(cls.id, day.dateStr)
                   const evaluation = evaluationForDay(cls.id, day.dateStr)
                   const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
                   const isCancelled = !!cancel

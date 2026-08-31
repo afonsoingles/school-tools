@@ -36,7 +36,7 @@ async def add_evaluation(request: Request) -> JSONResponse:
     try:
         class_id = uuid.UUID(request.state.json["class_id"])
         user_classes = class_tools.get_user_class_schedule(request.state.user.id)
-        cancellations = class_tools.get_user_canceled_classes(request.state.user.id)
+        cancellations = class_tools.get_user_cancelled_classes(request.state.user.id)
         if not any(
             cls.id == class_id and int(getattr(cls.weekday, "value", cls.weekday)) == date_weekday + 1
             for cls in user_classes

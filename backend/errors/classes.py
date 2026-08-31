@@ -36,10 +36,10 @@ class InvalidDate(BaseError):
     code = "invalid_date"
     message = "The date you provided is invalid. It must be in the format DD/MM/YYYY."
 
-class ClassAlreadyCanceled(BaseError):
+class ClassAlreadyCancelled(BaseError):
     status_code = 400
-    code = "class_already_canceled"
-    message = "This class has already been canceled for the specified date."
+    code = "class_already_cancelled"
+    message = "This class has already been cancelled for the specified date."
 
 class CancellationNotFound(BaseError):
     status_code = 400
@@ -49,7 +49,7 @@ class CancellationNotFound(BaseError):
 class ClassCancelled(BaseError):
     status_code = 400
     code = "class_cancelled"
-    message = "This class has been canceled for the specified date."
+    message = "This class has been cancelled for the specified date."
 
 class ClassUsedByEvaluation(BaseError):
     status_code = 400

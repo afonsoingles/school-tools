@@ -70,7 +70,7 @@ export interface ClassEvent {
   end_time: string  // "HH:MM"
 }
 
-export interface CanceledClassEvent {
+export interface CancelledClassEvent {
   id: string
   class_id: string
   date: string  // "YYYY-MM-DD"

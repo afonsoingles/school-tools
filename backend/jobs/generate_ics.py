@@ -22,7 +22,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     eval_by_class: dict[uuid.UUID, list[datetime.datetime]] = {}
     evaluations = evaluation_tools.get_user_evaluations(user)
     classes = class_tools.get_user_class_schedule(user)
-    cancellations = class_tools.get_user_canceled_classes(user)
+    cancellations = class_tools.get_user_cancelled_classes(user)
     subject_map = {subject.id: subject.name for subject in subject_tools.get_user_subjects(user)}
     evaluations_map = {
         "exam": "Exam",

@@ -73,38 +73,38 @@ class ClassTools:
         return ClassEvent.model_validate(class_event)
 
     def cancel_class(self, user_id: uuid.UUID, class_id: uuid.UUID, date: datetime.datetime, reason: CancellationReason) -> CancelledClassEvent:
-        canceled_class = CancelledClassEvent(
+        cancelled_class = CancelledClassEvent(
             user_id=user_id,
             class_id=class_id,
             date=date,
             reason=reason
         )
 
-        self.db.mongo.class_cancellations.insert_one(canceled_class.model_dump())
-        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", str(canceled_class.id), canceled_class.model_dump_json())
+        self.db.mongo.class_cancellations.insert_one(cancelled_class.model_dump())
+        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", str(cancelled_class.id), cancelled_class.model_dump_json())
         self.db.redis.expire(f"users.class_cancellations:{str(user_id)}", 7200)
         if self.db.redis.get(f"users.class_cancellations.is_empty:{str(user_id)}"):
             self.db.redis.delete(f"users.class_cancellations.is_empty:{str(user_id)}")
 
         calendar_tools.mark_feed_dirty(user_id)
 
-        return canceled_class
+        return cancelled_class
 
     def uncancel_class(self, user_id: uuid.UUID, cancellation_id: uuid.UUID) -> None:
-        canceled_class = self.db.mongo.class_cancellations.find_one_and_delete(
+        cancelled_class = self.db.mongo.class_cancellations.find_one_and_delete(
             {"id": cancellation_id, "user_id": user_id},
             return_document=ReturnDocument.BEFORE
         )
-        if not canceled_class:
+        if not cancelled_class:
             raise CancellationNotFound
         
-        self.db.redis.hdel(f"users.class_cancellations:{str(canceled_class['user_id'])}", str(cancellation_id))
+        self.db.redis.hdel(f"users.class_cancellations:{str(cancelled_class['user_id'])}", str(cancellation_id))
 
-        calendar_tools.mark_feed_dirty(canceled_class['user_id'])
+        calendar_tools.mark_feed_dirty(cancelled_class['user_id'])
         
         return
 
-    def get_user_canceled_classes(self, user_id: uuid.UUID)-> list[CancelledClassEvent]:
+    def get_user_cancelled_classes(self, user_id: uuid.UUID)-> list[CancelledClassEvent]:
         if self.db.redis.get(f"users.class_cancellations.is_empty:{str(user_id)}"):
             return []
 
@@ -112,14 +112,14 @@ class ClassTools:
         if cached:
             return [CancelledClassEvent.model_validate(json.loads(cached[key])) for key in cached]
 
-        canceled_classes = self.db.mongo.class_cancellations.find({"user_id": user_id})
-        canceled_class_list = [CancelledClassEvent.model_validate(canceled_class) for canceled_class in canceled_classes]
-        if not canceled_class_list:
+        cancelled_classes = self.db.mongo.class_cancellations.find({"user_id": user_id})
+        cancelled_class_list = [CancelledClassEvent.model_validate(cancelled_class) for cancelled_class in cancelled_classes]
+        if not cancelled_class_list:
             self.db.redis.set(f"users.class_cancellations.is_empty:{str(user_id)}", "1", ex=7200)
             return []
 
-        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", mapping={str(canceled_class.id): canceled_class.model_dump_json() for canceled_class in canceled_class_list})
+        self.db.redis.hset(f"users.class_cancellations:{str(user_id)}", mapping={str(cancelled_class.id): cancelled_class.model_dump_json() for cancelled_class in cancelled_class_list})
         self.db.redis.expire(f"users.class_cancellations:{str(user_id)}", 7200)
 
-        return canceled_class_list
+        return cancelled_class_list
         

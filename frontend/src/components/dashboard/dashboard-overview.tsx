@@ -16,7 +16,7 @@ import { getClasses, getCancellations } from "@/lib/api/calendar"
 import { getEvaluations } from "@/lib/api/evaluations"
 import { getSubjects } from "@/lib/api/settings"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
-import type { ClassEvent, CanceledClassEvent, Evaluation, Subject } from "@/types"
+import type { ClassEvent, CancelledClassEvent, Evaluation, Subject } from "@/types"
 import { cn } from "@/lib/utils"
 
 const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -56,7 +56,7 @@ function SummaryChip({ icon, children }: { icon: React.ReactNode; children: Reac
 
 export function DashboardOverview() {
   const [classes, setClasses] = useState<ClassEvent[]>([])
-  const [cancellations, setCancellations] = useState<CanceledClassEvent[]>([])
+  const [cancellations, setCancellations] = useState<CancelledClassEvent[]>([])
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
