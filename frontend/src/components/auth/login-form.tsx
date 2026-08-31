@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { safeNextPath } from "@/lib/utils"
 
 import {
   AuthError,
@@ -15,7 +16,7 @@ import {
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const next = searchParams.get("next") ?? "/dashboard"
+  const next = safeNextPath(searchParams.get("next") ?? "/dashboard")
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
