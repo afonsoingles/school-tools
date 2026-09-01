@@ -109,6 +109,10 @@ class UserTools:
     def send_verification_link(self, id, name, email) -> None:
         now = datetime.datetime.now(datetime.timezone.utc).timestamp()
 
+        ttl = self.db.redis.ttl(f"users.verification:{id}")
+        if self.db.redis.get(f"users.verification:{id}") and ttl > 0 and (86400 - ttl) < 21600:
+            raise VerificationRateLimitedError
+        
         payload = {
             "iss": "school-tools.backend.verification",
             "sub": str(id),

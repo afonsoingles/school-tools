@@ -60,3 +60,8 @@ class InvalidTimeZoneError(BaseError):
     status_code = 400
     code = "invalid_timezone"
     message = "The provided timezone is invalid. Please provide a valid timezone in the IANA format."
+
+class VerificationRateLimitedError(BaseError):
+    status_code = 429
+    code = "verification_rate_limited"
+    message = "You already request a verification email less than 6 hours ago. Please wait before requesting another verification email."
