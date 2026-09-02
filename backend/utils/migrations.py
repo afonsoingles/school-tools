@@ -11,11 +11,30 @@ MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "jobs" / "migrations"
 
 def _discover_migrations() -> list[Path]:
     files = []
-    for path in sorted(MIGRATIONS_DIR.glob("*.py")):
+    for path in MIGRATIONS_DIR.glob("*.py"):
         if path.name.startswith("_"):
             continue
         files.append(path)
-    return files
+
+    def migration_sort_key(path: Path):
+        parts = path.stem.split("_", 2)
+        date_part = parts[0] if parts else ""
+        number_part = parts[1] if len(parts) > 1 else ""
+
+        try:
+            date_value = datetime.datetime.strptime(date_part, "%Y%m%d").date()
+        except ValueError:
+            date_value = datetime.date.min
+
+        try:
+            number_value = int(number_part)
+        except ValueError:
+            number_value = 0
+
+        return (date_value, number_value, path.name)
+
+    # Oldest first (chronological): YYYYMMDD + sequence number.
+    return sorted(files, key=migration_sort_key, reverse=True)
 
 
 def _load_migration(path: Path):
