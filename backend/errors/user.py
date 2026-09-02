@@ -44,7 +44,7 @@ class EmailAlreadyVerified(BaseError):
 class PasswordTooWeakError(BaseError):
     status_code = 400
     code = "password_too_weak"
-    message = "The provided password is too weak. Please choose a stronger password between 8 and 50 characters, including uppercase, lowercase, numbers, and special characters."
+    message = "The provided password is too weak. Please choose a stronger password between 8 and 50 characters that includes uppercase and lowercase letters."
 
 class EmailSyntaxError(BaseError):
     status_code = 400

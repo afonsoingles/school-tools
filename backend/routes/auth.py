@@ -52,7 +52,7 @@ async def signup(request: Request) -> JSONResponse:
     timezone = request.state.json["timezone"]
 
     PASSWORD_REGEX = re.compile(
-        r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,50}$"
+        r"^(?=.*[a-z])(?=.*[A-Z]).{8,50}$"
     )
 
     if not PASSWORD_REGEX.match(password):
@@ -120,3 +120,23 @@ async def logout(request: Request) -> JSONResponse:
     session_tools.revoke_session(request.state.token)
 
     return JSONResponse({"success": True, "message": "Logged out and session revoked!"})
+
+@router.post("/v1/auth/settings/change_name")
+@require_auth
+@valid_json(["name"])
+async def change_name(request: Request) -> JSONResponse:
+    
+    name = request.state.json["name"]
+
+    if len(str(name).strip()) < 2 or len(str(name).strip()) > 50:
+        raise InvalidNameError
+    
+    user_tools.update_user(request.state.user.id, name=name)
+
+    return JSONResponse({"success": True, "message": "Your name as updated successfully!"})
+
+@router.post("/v1/auth/settings/change_password")
+@require_auth
+@valid_json(["old_password", "new_password"])
+async def change_password(request: Request) -> JSONResponse:
+    old_password = request.state.json["old_password"]
