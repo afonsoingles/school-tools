@@ -89,6 +89,13 @@ async def verify_email(request: Request) -> JSONResponse:
     metrics.count("user.email_verified", 1)
     return JSONResponse({"success": True, "message": "Email verified successfully!"})
 
+@router.post("/v1/auth/verify/resend")
+@require_auth(allow_unverified_email=True)
+async def resend_verification_email(request: Request) -> JSONResponse:
+    user_tools.send_verification_link(request.state.user.id, request.state.user.name, request.state.user.email)
+    
+    return JSONResponse({"success": True, "message": "Verification email sent successfully!"})
+
 @router.get("/v1/auth/me")
 @require_auth(allow_unverified_email=True)
 async def me(request: Request) -> JSONResponse:
