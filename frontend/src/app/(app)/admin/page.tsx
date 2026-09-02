@@ -16,12 +16,12 @@ export default async function AdminPage() {
   if (!user.admin) redirect("/dashboard")
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <PageHeader title="Admin options" subtitle="bits and bobs for admins. use with responsibility" />
       <div className="flex flex-col gap-8 px-8 py-6">
         <UsersManager />
         {isDev && <DevTools />}
       </div>
-    </>
+    </div>
   )
 }
