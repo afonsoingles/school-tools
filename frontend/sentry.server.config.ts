@@ -3,6 +3,32 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import type { ErrorEvent, TransactionEvent } from "@sentry/core";
+
+const STRIPPED_COOKIE = "school_tools_session";
+
+function stripCookie(cookie: string): string {
+  return cookie.replace(
+    new RegExp(`(^|;\\s*)${STRIPPED_COOKIE}\\s*=\\s*[^;]*`, "g"),
+    `$1${STRIPPED_COOKIE}=[REDACTED]`
+  );
+}
+
+function stripSessionCookie(event: ErrorEvent | TransactionEvent) {
+  const headers = event.request?.headers;
+  if (headers && headers.Cookie) {
+    headers.Cookie = stripCookie(headers.Cookie);
+  }
+  return event;
+}
+
+function stripErrorSessionCookie(event: ErrorEvent): ErrorEvent {
+  return stripSessionCookie(event) as ErrorEvent;
+}
+
+function stripTransactionSessionCookie(event: TransactionEvent): TransactionEvent {
+  return stripSessionCookie(event) as TransactionEvent;
+}
 
 Sentry.init({
   dsn: process.env.NODE_ENV === "production" ? process.env.NEXT_PUBLIC_SENTRY_DSN : undefined,
@@ -12,6 +38,9 @@ Sentry.init({
 
   // Enable logs to be sent to Sentry
   enableLogs: true,
+
+  beforeSend: stripErrorSessionCookie,
+  beforeSendTransaction: stripTransactionSessionCookie,
 
   dataCollection: {
     // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
