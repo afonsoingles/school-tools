@@ -1,9 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import * as Sentry from "@sentry/nextjs"
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react"
+import { ChevronsUpDown, Loader2, LogOut, Settings } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -31,8 +32,10 @@ function getInitials(name: string) {
 
 export function UserMenu({ user }: { user: User }) {
   const router = useRouter()
+  const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
+    setLoggingOut(true)
     try {
       await fetch("/api/v1/auth/logout", { method: "POST" })
     } finally {
@@ -74,8 +77,8 @@ export function UserMenu({ user }: { user: User }) {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="size-4" />
+            <DropdownMenuItem onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
