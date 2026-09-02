@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/api/auth/clear-session")
   }
 
-  if (!user.email_verified) {
+  if (!user.email_verified && !user.admin) {
     redirect("/auth/verify/pending")
   }
 

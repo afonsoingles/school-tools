@@ -24,7 +24,7 @@ export function AuthField({ id, label, ...props }: AuthFieldProps) {
 
 export function AuthError({ message }: { message?: string | null }) {
   return (
-    <div className="h-10 -mx-30 text-sm text-center text-destructive">
+    <div className="flex min-h-10 items-center justify-center px-2 text-sm text-center text-destructive">
       {message}
     </div>
   )

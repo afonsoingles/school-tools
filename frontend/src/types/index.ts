@@ -95,3 +95,10 @@ export interface CalendarFeeds {
   classes: string
   evaluations: string
 }
+
+export interface AdminUserDetail extends User {
+  classes: ClassEvent[]
+  cancelled_classes: CancelledClassEvent[]
+  evaluations: Evaluation[]
+  subjects: Subject[]
+}
