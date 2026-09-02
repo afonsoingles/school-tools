@@ -92,10 +92,35 @@ class UserTools:
       
         return user
 
+    def get_users(self, limit: int = 100, offset: int = 0) -> list[User]:
+        raw = self.db.mongo.users.find().skip(offset).limit(limit)
+        users = [User.model_validate(user) for user in raw]
+        
+        for user in users:
+            self.db.redis.set(f"users.user:{str(user.id)}", user.model_dump_json(), ex=10800)
+            self.db.redis.set(f"users.lookup.email:{user.email}", str(user.id), ex=10800)
+
+        return users
+
     def update_user(self, id, **kwargs) -> User:
         user = self.get_user_by_id(id)
+        old_email = None
 
         for key, value in kwargs.items():
+            if key == "password":
+                value = self._hash_password(value)
+                setattr(user, key, SecretStr(value))
+                continue
+            if key == "email":
+                exists_redis = self.db.redis.get(f"users.lookup.email:{value}")
+                if exists_redis and exists_redis != str(user.id):
+                    raise EmailAlreadyRegisteredError
+                
+                exists_mongo = self.db.mongo.users.find_one({"email": value})
+                if exists_mongo and str(exists_mongo["id"]) != str(user.id):
+                    raise EmailAlreadyRegisteredError
+                old_email = user.email
+                setattr(user, key, value)
             if hasattr(user, key):
                 setattr(user, key, value)
 
@@ -103,6 +128,8 @@ class UserTools:
 
         self.db.redis.set(f"users.user:{id}", user.model_dump_json(), ex=10800)
         self.db.redis.set(f"users.lookup.email:{user.email}", str(user.id), ex=10800)
+        if old_email:
+            self.db.redis.delete(f"users.lookup.email:{old_email}")
 
         return user
     

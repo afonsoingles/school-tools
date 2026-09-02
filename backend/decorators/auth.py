@@ -50,7 +50,7 @@ def require_auth(func: Callable[P, Awaitable[R]] | None = None, *, require_admin
             if not user.admin and require_admin:
                 raise UserNotAdmin
             
-            if not user.email_verified and not allow_unverified_email:
+            if not user.email_verified and not allow_unverified_email and not user.admin:
                 raise UserNotVerifiedError
             
             if request is not None:

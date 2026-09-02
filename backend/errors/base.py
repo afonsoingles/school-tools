@@ -16,3 +16,8 @@ class BaseError(Exception):
             "code": self.code,
             "message": self.message,
         }
+
+class NotFound(BaseError):
+    status_code = 404
+    code = "not_found"
+    message = "The requested resource was not found"
