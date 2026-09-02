@@ -39,6 +39,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
+import { SubjectIcon } from "@/components/ui/subject-icon"
 import { ApiError } from "@/lib/api/client"
 import { resendVerificationEmail, updateAdminUser } from "@/lib/api/admin"
 import type { AdminUserDetail, CancelledClassEvent } from "@/types"
@@ -207,11 +208,23 @@ export function UserDetails({ initial }: { initial: AdminUserDetail }) {
     return map
   }, [detail.subjects])
 
+  const subjectIcons = useMemo(() => {
+    const map = new Map<string, string>()
+    detail.subjects.forEach((subject) => map.set(subject.id, subject.icon))
+    return map
+  }, [detail.subjects])
+
   const evaluationSubjects = useMemo(() => {
     const map = new Map<string, string>()
     detail.classes.forEach((cls) => map.set(cls.id, subjectNames.get(cls.subject_id) ?? ""))
     return map
   }, [detail.classes, subjectNames])
+
+  const evaluationSubjectIcons = useMemo(() => {
+    const map = new Map<string, string>()
+    detail.classes.forEach((cls) => map.set(cls.id, subjectIcons.get(cls.subject_id) ?? ""))
+    return map
+  }, [detail.classes, subjectIcons])
 
   function startEdit() {
     setDraft({
@@ -466,7 +479,12 @@ export function UserDetails({ initial }: { initial: AdminUserDetail }) {
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((subject) => (
                     <TableRow key={subject.id}>
-                      <TableCell>{subject.name}</TableCell>
+                      <TableCell>
+                          <span className="flex items-center gap-1.5">
+                            <SubjectIcon icon={subject.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+                            {subject.name}
+                          </span>
+                        </TableCell>
                     </TableRow>
                   ))}
               </TableBody>
@@ -486,7 +504,11 @@ export function UserDetails({ initial }: { initial: AdminUserDetail }) {
             <Card key={cls.id}>
               <CardContent className="flex flex-col gap-3 py-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <SubjectIcon
+                      icon={subjectIcons.get(cls.subject_id) ?? ""}
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
                     {subjectNames.get(cls.subject_id) ?? "Unknown subject"}
                   </span>
                   <Badge variant="outline">{WEEKDAY_NAMES[cls.weekday]}</Badge>
@@ -527,8 +549,14 @@ export function UserDetails({ initial }: { initial: AdminUserDetail }) {
                   .map((evaluation) => (
                     <TableRow key={evaluation.id}>
                       <TableCell className="font-medium">
-                        {evaluationSubjects.get(evaluation.class_id) ?? "Unknown subject"}
-                      </TableCell>
+                          <span className="flex items-center gap-1.5">
+                            <SubjectIcon
+                              icon={evaluationSubjectIcons.get(evaluation.class_id) ?? ""}
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                            />
+                            {evaluationSubjects.get(evaluation.class_id) ?? "Unknown subject"}
+                          </span>
+                        </TableCell>
                       <TableCell>
                         {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
                       </TableCell>

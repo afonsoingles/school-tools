@@ -6,6 +6,13 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,7 +29,19 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ApiError } from "@/lib/api/client"
-import { createSubject, deleteSubject, getSubjects, renameSubject } from "@/lib/api/settings"
+import { cn } from "@/lib/utils"
+import {
+  createSubject,
+  deleteSubject,
+  getSubjects,
+  renameSubject,
+  updateSubjectIcon,
+} from "@/lib/api/settings"
+import {
+  DEFAULT_SUBJECT_ICON,
+  SUBJECT_ICONS,
+  getSubjectIcons,
+} from "@/lib/icons"
 import type { Subject } from "@/types"
 
 function errorMessage(err: unknown): string {
@@ -40,11 +59,13 @@ export function SubjectsManager() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState("")
+  const [createIcon, setCreateIcon] = useState(DEFAULT_SUBJECT_ICON)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
+  const [editIcon, setEditIcon] = useState(DEFAULT_SUBJECT_ICON)
   const [savingId, setSavingId] = useState<string | null>(null)
 
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -64,9 +85,10 @@ export function SubjectsManager() {
     setCreating(true)
 
     try {
-      const subject = await createSubject(name.trim())
+      const subject = await createSubject(name.trim(), createIcon)
       setSubjects((prev) => [...prev, subject])
       setName("")
+      setCreateIcon(DEFAULT_SUBJECT_ICON)
       setCreateOpen(false)
     } catch (err) {
       setError(errorMessage(err))
@@ -78,6 +100,7 @@ export function SubjectsManager() {
   function startEditing(subject: Subject) {
     setEditingId(subject.id)
     setEditValue(subject.name)
+    setEditIcon(subject.icon)
   }
 
   function stopEditing() {
@@ -85,9 +108,9 @@ export function SubjectsManager() {
     setEditValue("")
   }
 
-  async function handleRename(subject: Subject) {
+  async function handleSave(subject: Subject) {
     const trimmed = editValue.trim()
-    if (!trimmed || trimmed === subject.name) {
+    if (!trimmed || (trimmed === subject.name && editIcon === subject.icon)) {
       stopEditing()
       return
     }
@@ -95,7 +118,13 @@ export function SubjectsManager() {
     setSavingId(subject.id)
 
     try {
-      const updated = await renameSubject(subject.id, trimmed)
+      let updated = subject
+      if (trimmed && trimmed !== subject.name) {
+        updated = await renameSubject(subject.id, trimmed)
+      }
+      if (editIcon !== subject.icon) {
+        updated = await updateSubjectIcon(subject.id, editIcon)
+      }
       setSubjects((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
       stopEditing()
     } catch (err) {
@@ -163,6 +192,8 @@ export function SubjectsManager() {
           onOpenChange={setCreateOpen}
           name={name}
           onNameChange={setName}
+          icon={createIcon}
+          onIconChange={setCreateIcon}
           creating={creating}
           error={error}
           onErrorChange={setError}
@@ -195,21 +226,32 @@ export function SubjectsManager() {
               .map((subject) => (
                 <TableRow key={subject.id}>
                   <TableCell>
-                    {editingId === subject.id ? (
-                      <Input
-                        autoFocus
-                        value={editValue}
-                        onChange={(event) => setEditValue(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") handleRename(subject)
-                          if (event.key === "Escape") stopEditing()
-                        }}
-                        maxLength={50}
-                        className="h-7 max-w-xs rounded-sm"
-                      />
-                    ) : (
-                      <span>{subject.name}</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {editingId === subject.id ? (
+                        <IconPicker
+                          value={editIcon}
+                          onChange={setEditIcon}
+                          disabled={savingId === subject.id}
+                        />
+                      ) : (
+                        <IconButton icon={subject.icon} />
+                      )}
+                      {editingId === subject.id ? (
+                        <Input
+                          autoFocus
+                          value={editValue}
+                          onChange={(event) => setEditValue(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") handleSave(subject)
+                            if (event.key === "Escape") stopEditing()
+                          }}
+                          maxLength={50}
+                          className="h-7 max-w-xs rounded-sm"
+                        />
+                      ) : (
+                        <span>{subject.name}</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex items-center gap-1">
@@ -218,10 +260,10 @@ export function SubjectsManager() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            onClick={() => handleRename(subject)}
+                            onClick={() => handleSave(subject)}
                             disabled={savingId === subject.id}
                             className="hover:bg-foreground/10!"
-                            aria-label={`Save rename to ${subject.name}`}
+                            aria-label={`Save changes to ${subject.name}`}
                           >
                             {savingId === subject.id ? (
                               <Loader2 className="size-3.5 animate-spin" />
@@ -235,7 +277,7 @@ export function SubjectsManager() {
                             onClick={stopEditing}
                             disabled={savingId === subject.id}
                             className="hover:bg-foreground/10!"
-                            aria-label="Cancel renaming"
+                            aria-label="Cancel editing"
                           >
                             <X className="size-3.5" />
                           </Button>
@@ -284,6 +326,8 @@ export function SubjectsManager() {
         onOpenChange={setCreateOpen}
         name={name}
         onNameChange={setName}
+        icon={createIcon}
+        onIconChange={setCreateIcon}
         creating={creating}
         error={error}
         onErrorChange={setError}
@@ -319,6 +363,8 @@ interface CreateSubjectDialogProps {
   onOpenChange: (open: boolean) => void
   name: string
   onNameChange: (name: string) => void
+  icon: string
+  onIconChange: (icon: string) => void
   creating: boolean
   error: string | null
   onErrorChange: (error: string | null) => void
@@ -330,6 +376,8 @@ function CreateSubjectDialog({
   onOpenChange,
   name,
   onNameChange,
+  icon,
+  onIconChange,
   creating,
   error,
   onErrorChange,
@@ -360,6 +408,11 @@ function CreateSubjectDialog({
             minLength={3}
           />
 
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Icon</span>
+            <IconPicker value={icon} onChange={onIconChange} />
+          </div>
+
           {error && (
             <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
               {error}
@@ -376,5 +429,65 @@ function CreateSubjectDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function SubjectIcon({ icon, className }: { icon: string; className?: string }) {
+  const Icon = SUBJECT_ICONS[icon] ?? SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
+  return <Icon className={className} />
+}
+
+function IconButton({ icon, className }: { icon: string; className?: string }) {
+  return <SubjectIcon icon={icon} className={cn("size-4 shrink-0 text-muted-foreground", className)} />
+}
+
+function IconPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (icon: string) => void
+  disabled?: boolean
+}) {
+  const icons = getSubjectIcons()
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={disabled}
+            className="hover:bg-foreground/10!"
+            aria-label="Choose icon"
+          />
+        }
+      >
+        <SubjectIcon icon={value} className="size-3.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-80 w-64 overflow-y-auto pr-2">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Icon</DropdownMenuLabel>
+          <div className="grid grid-cols-4 gap-3 p-2.5">
+            {icons.map(({ name, Icon }) => (
+              <Button
+                key={name}
+                variant="ghost"
+                onClick={() => onChange(name)}
+                className={cn(
+                  "size-10 p-0! rounded-lg",
+                  name === value ? "bg-foreground/10!" : "hover:bg-foreground/10!"
+                )}
+                aria-label={`Select ${name} icon`}
+              >
+                <Icon className="size-5" />
+              </Button>
+            ))}
+          </div>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

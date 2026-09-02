@@ -16,6 +16,7 @@ import { getClasses, getCancellations } from "@/lib/api/calendar"
 import { getEvaluations } from "@/lib/api/evaluations"
 import { getSubjects } from "@/lib/api/settings"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
+import { SubjectIcon } from "@/components/ui/subject-icon"
 import type { ClassEvent, CancelledClassEvent, Evaluation, Subject } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -80,6 +81,7 @@ export function DashboardOverview() {
 
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
   const classSubjectMap = new Map(classes.map((c) => [c.id, c.subject_id]))
+  const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
 
   const todaysClasses = classes
     .filter((c) => c.weekday === backendWeekday)
@@ -214,7 +216,11 @@ export function DashboardOverview() {
 
                       <div className="flex flex-1 items-center justify-between gap-2 pb-5">
                         <div className="flex flex-col">
-                          <span className={cn("text-sm font-medium", cancellation && "text-muted-foreground line-through")}>
+                          <span className={cn("flex items-center gap-1.5 text-sm font-medium", cancellation && "text-muted-foreground line-through")}>
+                            <SubjectIcon
+                              icon={subjectIconMap.get(cls.subject_id) ?? ""}
+                              className="size-3.5 shrink-0"
+                            />
                             {subjectName}
                           </span>
                           <span className="text-xs text-muted-foreground">
@@ -258,7 +264,13 @@ export function DashboardOverview() {
                       key={evaluation.id}
                       className="flex items-center gap-3 border-t border-border py-3 first:border-t-0"
                     >
-                      <span className="flex-1 truncate text-sm font-medium">{subjectName}</span>
+                      <span className="flex flex-1 items-center gap-1.5 truncate text-sm font-medium">
+                          <SubjectIcon
+                            icon={(subjectId && subjectIconMap.get(subjectId)) ?? ""}
+                            className="size-3.5 shrink-0"
+                          />
+                          <span className="truncate">{subjectName}</span>
+                        </span>
                       <span className="hidden w-28 text-right text-sm text-muted-foreground sm:block">
                         {formatEvalDate(datePart(evaluation.date))}
                       </span>

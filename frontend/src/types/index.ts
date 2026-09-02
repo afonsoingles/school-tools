@@ -62,6 +62,7 @@ export interface Evaluation {
 export interface Subject {
   id: string
   name: string
+  icon: string
 }
 
 export interface ClassEvent {

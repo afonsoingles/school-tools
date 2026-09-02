@@ -17,6 +17,7 @@ import { getClasses, getCancellations, uncancelClass } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
 import type { ClassEvent, CancelledClassEvent, Subject, Evaluation } from "@/types"
+import { SubjectIcon } from "@/components/ui/subject-icon"
 import { CancelClassDialog } from "./cancel-class-dialog"
 import { DeleteClassDialog } from "./delete-class-dialog"
 import { CreateClassDialog } from "./create-class-dialog"
@@ -137,6 +138,7 @@ export function CalendarWeekView() {
   })
 
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
+  const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
 
   const fetchData = useCallback(() => {
     Promise.all([getClasses(), getCancellations(), getEvaluations(), getSubjects()])
@@ -394,7 +396,13 @@ export function CalendarWeekView() {
                         )}
                         style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
                       >
-                        <span className="font-semibold text-sm leading-tight truncate text-left">{subjectName}</span>
+                        <span className="flex items-center gap-1 font-semibold text-sm leading-tight truncate text-left">
+                          <SubjectIcon
+                            icon={subjectIconMap.get(cls.subject_id) ?? ""}
+                            className="size-3.5 shrink-0"
+                          />
+                          <span className="truncate">{subjectName}</span>
+                        </span>
                         {height >= 40 && (
                           <span className="text-xs leading-tight opacity-90 text-left">
                             {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : `${cls.start_time} – ${cls.end_time}`}

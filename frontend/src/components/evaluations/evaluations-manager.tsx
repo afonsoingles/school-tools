@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table"
 import { ApiError } from "@/lib/api/client"
 import { cn } from "@/lib/utils"
+import { SubjectIcon } from "@/components/ui/subject-icon"
 import { getClasses } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
 import { getEvaluations } from "@/lib/api/evaluations"
@@ -83,6 +84,10 @@ export function EvaluationsManager() {
     return new Map(subjects.map((s) => [s.id, s.name]))
   }, [subjects])
 
+  const subjectIconMap = useMemo(() => {
+    return new Map(subjects.map((s) => [s.id, s.icon]))
+  }, [subjects])
+
   const rows = useMemo(() => {
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
@@ -92,7 +97,13 @@ export function EvaluationsManager() {
         const subjectId = classSubjectMap.get(e.class_id)
         const subjectName = (subjectId && subjectNameMap.get(subjectId)) ?? "Unknown"
         const upcoming = datePart(e.date) >= todayStr
-        return { evaluation: e, subjectId, subjectName, upcoming }
+        return {
+          evaluation: e,
+          subjectId,
+          subjectName,
+          subjectIcon: (subjectId && subjectIconMap.get(subjectId)) ?? "",
+          upcoming,
+        }
       })
       .filter((row) => {
         if (showFilter === "upcoming" && !row.upcoming) return false
@@ -107,7 +118,7 @@ export function EvaluationsManager() {
       })
 
     return mapped
-  }, [evaluations, showFilter, typeFilter, subjectFilter, classSubjectMap, subjectNameMap])
+  }, [evaluations, showFilter, typeFilter, subjectFilter, classSubjectMap, subjectNameMap, subjectIconMap])
 
   if (loading) {
     return (
@@ -215,9 +226,14 @@ export function EvaluationsManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map(({ evaluation, subjectName }) => (
+              {rows.map(({ evaluation, subjectName, subjectIcon }) => (
                 <TableRow key={evaluation.id}>
-                  <TableCell>{subjectName}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5">
+                      <SubjectIcon icon={subjectIcon} className="size-3.5 shrink-0 text-muted-foreground" />
+                      {subjectName}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <span
                       className={cn(
