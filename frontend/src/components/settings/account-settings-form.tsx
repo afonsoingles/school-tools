@@ -8,6 +8,7 @@ import { AlertTriangle, KeyRound, Loader2, Mail, Pencil, User } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -52,14 +53,15 @@ function AccountCard({
   value: string
   onEdit: () => void
 }) {
-  return (
+return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Icon className="size-4 text-muted-foreground" />
-            <CardTitle>{title}</CardTitle>
-          </div>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="size-4 text-muted-foreground" />
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+        <CardAction>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -69,11 +71,10 @@ function AccountCard({
           >
             <Pencil className="size-3.5" />
           </Button>
-        </div>
-        <CardDescription>{description}</CardDescription>
+        </CardAction>
       </CardHeader>
       <CardContent>
-        <p className="text-sm font-medium truncate">{value}</p>
+        <p className="truncate text-sm font-medium">{value}</p>
       </CardContent>
     </Card>
   )
