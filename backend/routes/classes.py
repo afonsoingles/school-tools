@@ -37,9 +37,7 @@ async def add_class(request: Request) -> JSONResponse:
     if not is_valid_hhmm_string(request.state.json["end_time"]):
         raise InvalidTimeFormat
 
-    user_subjects = subject_tools.get_user_subjects(request.state.user.id)
-    subject_exists = any(str(subject.id) == request.state.json["subject_id"] for subject in user_subjects)
-    if not subject_exists:
+    if not subject_tools.does_subject_exist(user_id=request.state.user.id, subject_id=request.state.json["subject_id"]):
         raise SubjectNotFoundForClass
 
     class_event = class_tools.create_class(

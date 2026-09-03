@@ -87,3 +87,7 @@ class SubjectTools:
 
         calendar_tools.mark_feed_dirty(user_id)
         return SafeSubject.model_validate(subject)
+
+    def does_subject_exist(self, user_id: uuid.UUID, subject_id: uuid.UUID) -> bool:
+        user_subjects = self.get_user_subjects(user_id)
+        return any(str(subject.id) == str(subject_id) for subject in user_subjects)
