@@ -121,6 +121,7 @@ class UserTools:
                     raise EmailAlreadyRegisteredError
                 old_email = user.email
                 setattr(user, key, value)
+                continue
             if hasattr(user, key):
                 setattr(user, key, value)
 

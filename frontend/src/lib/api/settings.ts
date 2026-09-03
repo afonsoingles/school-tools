@@ -53,3 +53,35 @@ export async function deleteSubject(subjectId: string): Promise<void> {
     method: "DELETE",
   })
 }
+
+interface MessageResponse {
+  success: boolean
+  message: string
+}
+
+export async function changeAccountName(name: string): Promise<string> {
+  const res = await apiFetch<MessageResponse>("/v1/auth/settings/change_name", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  })
+  return res.message
+}
+
+export async function changeUserPassword(
+  oldPassword: string,
+  newPassword: string
+): Promise<string> {
+  const res = await apiFetch<MessageResponse>("/v1/auth/settings/change_password", {
+    method: "POST",
+    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+  })
+  return res.message
+}
+
+export async function changeUserEmail(newEmail: string, password: string): Promise<string> {
+  const res = await apiFetch<MessageResponse>("/v1/auth/settings/change_email", {
+    method: "POST",
+    body: JSON.stringify({ new_email: newEmail, password }),
+  })
+  return res.message
+}

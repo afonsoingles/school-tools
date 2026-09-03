@@ -65,3 +65,8 @@ class VerificationRateLimitedError(BaseError):
     status_code = 429
     code = "verification_rate_limited"
     message = "You already request a verification email less than 6 hours ago. Please wait before requesting another verification email."
+
+class PasswordChangeIncorrectError(BaseError):
+    status_code = 401
+    code = "password_change_incorrect"
+    message = "The provided current password is incorrect. Please provide the correct current password to change this resource."

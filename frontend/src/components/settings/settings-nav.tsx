@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookOpen, CalendarDays } from "lucide-react"
+import { BookOpen, CalendarDays, CircleUser } from "lucide-react"
 
 const settingsTabs = [
+  { href: "/settings/account", label: "Account", icon: CircleUser },
   { href: "/settings/subjects", label: "Subjects", icon: BookOpen },
   { href: "/settings/calendar", label: "Calendar", icon: CalendarDays },
 ]
@@ -14,7 +15,7 @@ export function SettingsNav() {
 
   return (
     <nav className="px-8 pb-2">
-      <div className="flex items-center gap-1 border-b border-border pb-2">
+      <div className="flex items-center gap-1 pb-2 border-b border-border">
         {settingsTabs.map((tab) => {
           const isActive = pathname === tab.href
 

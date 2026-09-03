@@ -140,3 +140,45 @@ async def change_name(request: Request) -> JSONResponse:
 @valid_json(["old_password", "new_password"])
 async def change_password(request: Request) -> JSONResponse:
     old_password = request.state.json["old_password"]
+    new_password = request.state.json["new_password"]
+
+    PASSWORD_REGEX = re.compile(
+        r"^(?=.*[a-z])(?=.*[A-Z]).{8,50}$"
+    )
+
+    if not PASSWORD_REGEX.match(new_password):
+        raise PasswordTooWeakError
+
+    user = user_tools.get_user_by_id(request.state.user.id)
+    pwd = user.password.get_secret_value()
+
+    if not user_tools.verify_password_hash(old_password, pwd):
+        raise PasswordChangeIncorrectError
+
+    user_tools.update_user(request.state.user.id, password=new_password)
+    session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
+    
+    return JSONResponse({"success": True, "message": "Your password has been updated successfully!"})
+
+@router.post("/v1/auth/settings/change_email")
+@require_auth
+@valid_json(["new_email", "password"])
+async def change_email(request: Request) -> JSONResponse:
+    new_email = request.state.json["new_email"]
+    pwd = request.state.json["password"]
+
+    try:
+        validate_email(new_email, check_deliverability=False)
+    except EmailNotValidError:
+        raise EmailSyntaxError
+
+    user = user_tools.get_user_by_id(request.state.user.id)
+    stored_pwd = user.password.get_secret_value()
+    if not user_tools.verify_password_hash(pwd, stored_pwd):
+        raise PasswordChangeIncorrectError
+    
+    user_tools.update_user(request.state.user.id, email=new_email, email_verified=False)
+    user_tools.send_verification_link(request.state.user.id, request.state.user.name, new_email)
+    session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
+
+    return JSONResponse({"success": True, "message": "Your email has been updated successfully! Please check your new email to verify it and regain access."})
