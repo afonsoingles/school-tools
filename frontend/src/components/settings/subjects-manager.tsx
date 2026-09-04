@@ -147,10 +147,10 @@ export function SubjectsManager() {
       const code =
         err instanceof ApiError && (err.body as { code?: string } | null)?.code
 
-      if (code === "subject_used_by_classes") {
+      if (code === "subject_in_use") {
         setDeleteOpen(false)
         toast.error(
-          `"${deleteTarget.name}" is used by one or more classes and can't be deleted.`
+          `"${deleteTarget.name}" is used by one or more resources (such as classes or homework) and can't be deleted.`
         )
       } else {
         setError(errorMessage(err))
@@ -170,7 +170,7 @@ export function SubjectsManager() {
 
   if (loadError) {
     return (
-      <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
+      <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
         {loadError}
       </p>
     )
@@ -179,7 +179,7 @@ export function SubjectsManager() {
   if (subjects.length === 0) {
     return (
       <>
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg py-24 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center rounded-lg">
           <p className="text-sm text-muted-foreground">No subjects yet.</p>
           <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-4" />
@@ -212,7 +212,7 @@ export function SubjectsManager() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-background">
+      <div className="border rounded-lg border-border bg-background">
         <Table>
           <TableHeader>
             <TableRow>
@@ -246,7 +246,7 @@ export function SubjectsManager() {
                             if (event.key === "Escape") stopEditing()
                           }}
                           maxLength={50}
-                          className="h-7 max-w-xs rounded-sm"
+                          className="max-w-xs rounded-sm h-7"
                         />
                       ) : (
                         <span>{subject.name}</span>
@@ -316,7 +316,7 @@ export function SubjectsManager() {
       </div>
 
       {error && (
-        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
+        <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
           {error}
         </p>
       )}
@@ -414,7 +414,7 @@ function CreateSubjectDialog({
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
+            <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
               {error}
             </p>
           )}
@@ -467,7 +467,7 @@ function IconPicker({
       >
         <SubjectIcon icon={value} className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-80 w-64 overflow-y-auto pr-2">
+      <DropdownMenuContent align="start" className="w-64 pr-2 overflow-y-auto max-h-80">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Icon</DropdownMenuLabel>
           <div className="grid grid-cols-4 gap-3 p-2.5">

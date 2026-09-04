@@ -11,10 +11,10 @@ class SubjectNotFound(BaseError):
     code = "subject_not_found"
     message = "The requested subject was not found."
 
-class SubjectUsedByClasses(BaseError):
+class SubjectInUse(BaseError):
     status_code = 400
-    code = "subject_used_by_classes"
-    message = "The subject is being used by classes and cannot be deleted."
+    code = "subject_in_use"
+    message = "This subject is being used by another resource and can't be deleted."
 
 class InvalidSubjectIcon(BaseError):
     status_code = 400

@@ -3,7 +3,7 @@ from utils.database import Database
 import uuid
 from pymongo import ReturnDocument
 from tools.calendar import CalendarTools
-from errors.subject import SubjectUsedByClasses
+from errors.subject import SubjectInUse
 
 calendar_tools = CalendarTools()
 
@@ -59,8 +59,9 @@ class SubjectTools:
     def delete_subject(self, user_id: uuid.UUID, subject_id: str) -> SafeSubject | None:
 
         is_used_by_classes = self.db.mongo.classes.find_one({"subject_id": uuid.UUID(subject_id), "user_id": user_id})
-        if is_used_by_classes:
-            raise SubjectUsedByClasses
+        is_used_by_homework = self.db.mongo.homework.find_one({"subject_id": uuid.UUID(subject_id), "user_id": user_id})
+        if is_used_by_classes or is_used_by_homework:
+            raise SubjectInUse
         subject = self.db.mongo.subjects.find_one_and_delete(
             {"id": uuid.UUID(subject_id), "user_id": user_id},
             return_document=ReturnDocument.BEFORE
