@@ -25,6 +25,7 @@ from routes.subjects import router as subjects_router
 from routes.classes import router as classes_router
 from routes.evaluations import router as evaluations_router
 from routes.calendar import router as calendar_router
+from routes.homework import router as homework_router
 
 sentry_sdk.init(
     dsn=os.environ.get("BACKEND_SENTRY_DSN", ""),
@@ -72,6 +73,7 @@ app.include_router(subjects_router)
 app.include_router(classes_router)
 app.include_router(evaluations_router)
 app.include_router(calendar_router)
+app.include_router(homework_router)
 
 app.add_middleware(SlowAPIMiddleware)
 

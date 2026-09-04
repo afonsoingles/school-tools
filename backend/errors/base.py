@@ -21,3 +21,8 @@ class NotFound(BaseError):
     status_code = 404
     code = "not_found"
     message = "The requested resource was not found"
+
+class ImmutableField(BaseError):
+    status_code = 400
+    code = "immutable_field"
+    message = "Attempted to modify an immutable field"
