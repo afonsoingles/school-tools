@@ -349,6 +349,7 @@ export function SubjectsManager() {
               className="gap-1.5"
             >
               {deletingBusy && <Loader2 className="size-4 animate-spin" />}
+              {!deletingBusy && <Trash2 className="size-4" />}
               Delete
             </Button>
           
