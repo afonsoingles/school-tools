@@ -195,7 +195,7 @@ export function HomeworkManager() {
           open={createOpen}
           onOpenChange={setCreateOpen}
           subjects={subjects}
-          onCreated={fetchData}
+          onCreated={() => { toast.success("Homework created successfully."); fetchData() }}
         />
       </div>
     )
@@ -389,7 +389,7 @@ export function HomeworkManager() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         subjects={subjects}
-        onCreated={fetchData}
+        onCreated={() => { toast.success("Homework created successfully."); fetchData() }}
       />
 
       <DeleteHomeworkDialog
