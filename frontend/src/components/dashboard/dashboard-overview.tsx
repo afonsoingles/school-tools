@@ -189,10 +189,6 @@ export function DashboardOverview() {
     .filter((hw) => datePart(hw.due_date) === todayStr)
     .sort((a, b) => dueMinutes(a.due_date, timezone) - dueMinutes(b.due_date, timezone))
 
-  const hwFuture = homeworks
-    .filter((hw) => datePart(hw.due_date) > todayStr)
-    .sort((a, b) => a.due_date.localeCompare(b.due_date))
-
   const classRows = todaysClasses.map((cls) => {
     const cancellation = cancelledToday.get(cls.id)
     const evaluation = evaluations.find((e) => {
@@ -222,16 +218,7 @@ export function DashboardOverview() {
 
   const timedRows = [...classRows, ...todaysHwRows].sort((a, b) => a.minute - b.minute)
 
-  const futureHwRows = hwFuture.map((hw) => ({
-    key: `hw-${hw.id}`,
-    kind: "homework" as const,
-    hw,
-    minute: dueMinutes(hw.due_date, timezone),
-    isToday: false,
-    overdue: false,
-  }))
-
-  const scheduleRows = [...timedRows, ...futureHwRows]
+  const scheduleRows = timedRows
 
   const nowParts = getTzParts(timezone, now)
   const currentMinute = nowParts.h * 60 + nowParts.min
