@@ -36,6 +36,7 @@ import { getSubjects } from "@/lib/api/settings"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { HOMEWORK_STATUS_LABELS } from "@/components/homework/constants"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { useTimezone } from "@/components/layout/timezone-provider"
 import type { ClassEvent, CancelledClassEvent, Evaluation, Homework, Subject } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -51,11 +52,36 @@ function datePart(iso: string): string {
   return iso.includes("T") ? iso.split("T")[0] : iso
 }
 
-function toDateString(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, "0")
-  const d = String(date.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
+const TZ_WEEKDAY_MAP: Record<string, number> = { sun: 7, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+
+function getTzParts(
+  tz: string,
+  date: Date
+): { y: number; m: number; d: number; h: number; min: number; weekday: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    weekday: "short",
+  }).formatToParts(date)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ""
+  return {
+    y: Number(get("year")),
+    m: Number(get("month")),
+    d: Number(get("day")),
+    h: Number(get("hour")),
+    min: Number(get("minute")),
+    weekday: TZ_WEEKDAY_MAP[get("weekday").toLowerCase()] ?? 1,
+  }
+}
+
+function toDateString(tz: string, date: Date): string {
+  const { y, m, d } = getTzParts(tz, date)
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
 }
 
 function formatEvalDate(dateStr: string): string {
@@ -64,11 +90,12 @@ function formatEvalDate(dateStr: string): string {
   return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
 }
 
-function daysUntil(dateStr: string, today: Date): number {
-  const [y, m, d] = dateStr.split("-")
-  const target = new Date(Number(y), Number(m) - 1, Number(d))
-  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  return Math.round((target.getTime() - todayMidnight.getTime()) / 86400000)
+function daysUntil(dateStr: string, todayStr: string): number {
+  const parse = (s: string) => {
+    const [y, m, d] = s.split("-").map(Number)
+    return Date.UTC(y, m - 1, d)
+  }
+  return Math.round((parse(dateStr) - parse(todayStr)) / 86400000)
 }
 
 function isOverdueHomework(hw: Homework, now: Date): boolean {
@@ -76,10 +103,10 @@ function isOverdueHomework(hw: Homework, now: Date): boolean {
   return new Date(hw.due_date).getTime() < now.getTime()
 }
 
-function dueTimeLabel(iso: string): string {
+function dueTimeLabel(iso: string, tz: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  return d.toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" })
 }
 
 function timeToMinutes(t: string): number {
@@ -88,10 +115,11 @@ function timeToMinutes(t: string): number {
   return h * 60 + m
 }
 
-function dueMinutes(iso: string): number {
+function dueMinutes(iso: string, tz: string): number {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return 0
-  return d.getHours() * 60 + d.getMinutes()
+  const { h, min } = getTzParts(tz, d)
+  return h * 60 + min
 }
 
 function shortDate(iso: string): string {
@@ -134,10 +162,11 @@ export function DashboardOverview() {
       .finally(() => setLoading(false))
   }, [])
 
+  const timezone = useTimezone()
+
   const now = new Date()
-  const todayStr = toDateString(now)
-  const jsDay = now.getDay()
-  const backendWeekday = ((jsDay + 6) % 7) + 1
+  const todayStr = toDateString(timezone, now)
+  const backendWeekday = getTzParts(timezone, now).weekday
 
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
   const classSubjectMap = new Map(classes.map((c) => [c.id, c.subject_id]))
@@ -158,7 +187,7 @@ export function DashboardOverview() {
 
   const hwToday = homeworks
     .filter((hw) => datePart(hw.due_date) === todayStr)
-    .sort((a, b) => dueMinutes(a.due_date) - dueMinutes(b.due_date))
+    .sort((a, b) => dueMinutes(a.due_date, timezone) - dueMinutes(b.due_date, timezone))
 
   const hwFuture = homeworks
     .filter((hw) => datePart(hw.due_date) > todayStr)
@@ -186,7 +215,7 @@ export function DashboardOverview() {
     key: `hw-${hw.id}`,
     kind: "homework" as const,
     hw,
-    minute: dueMinutes(hw.due_date),
+    minute: dueMinutes(hw.due_date, timezone),
     isToday: true,
     overdue: isOverdueHomework(hw, now),
   }))
@@ -197,14 +226,15 @@ export function DashboardOverview() {
     key: `hw-${hw.id}`,
     kind: "homework" as const,
     hw,
-    minute: dueMinutes(hw.due_date),
+    minute: dueMinutes(hw.due_date, timezone),
     isToday: false,
     overdue: false,
   }))
 
   const scheduleRows = [...timedRows, ...futureHwRows]
 
-  const currentMinute = now.getHours() * 60 + now.getMinutes()
+  const nowParts = getTzParts(timezone, now)
+  const currentMinute = nowParts.h * 60 + nowParts.min
   const currentRowKey = (() => {
     const timed = scheduleRows.filter((row) => row.isToday)
     for (const row of timed) {
@@ -234,7 +264,8 @@ export function DashboardOverview() {
     const el = scheduleScrollRef.current
     if (!el || !scheduleOverflow) return
     const nowAnim = new Date()
-    const nowMin = nowAnim.getHours() * 60 + nowAnim.getMinutes()
+    const nowTz = getTzParts(timezone, nowAnim)
+    const nowMin = nowTz.h * 60 + nowTz.min
     const rowEls = Array.from(el.querySelectorAll<HTMLElement>("[data-min]"))
     let target: HTMLElement | undefined
     for (const r of rowEls) {
@@ -244,7 +275,7 @@ export function DashboardOverview() {
     if (!target) return
     const top = target.offsetTop - el.clientHeight / 2
     el.scrollTop = Math.max(0, top)
-  }, [scheduleOverflow, homeworks, classes, evaluations, cancellations, subjects])
+  }, [scheduleOverflow, homeworks, classes, evaluations, cancellations, subjects, timezone])
 
   const upcoming = evaluations
     .filter((e) => datePart(e.date) >= todayStr)
@@ -262,7 +293,7 @@ export function DashboardOverview() {
   const otherCount = upcoming.filter((e) => e.type === "other").length
 
   const nextEval = upcoming[0]
-  const nextEvalDays = nextEval ? daysUntil(datePart(nextEval.date), now) : null
+  const nextEvalDays = nextEval ? daysUntil(datePart(nextEval.date), todayStr) : null
   const nextEvalSubject = nextEval
     ? (() => {
         const subjectId = classSubjectMap.get(nextEval.class_id)
@@ -341,7 +372,12 @@ export function DashboardOverview() {
           <CardHeader>
             <CardTitle>Today&apos;s schedule</CardTitle>
             <CardDescription>
-              {now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+              {now.toLocaleDateString("en-GB", {
+                timeZone: timezone,
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -357,7 +393,7 @@ export function DashboardOverview() {
                   const timeSlot = row.isToday
                     ? row.kind === "class"
                       ? row.cls.start_time
-                      : dueTimeLabel(row.hw.due_date)
+                      : dueTimeLabel(row.hw.due_date, timezone)
                     : row.kind === "homework"
                       ? ""
                       : ""

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api/client"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { useTimezone } from "@/components/layout/timezone-provider"
 import { getSubjects } from "@/lib/api/settings"
 import { getHomework, updateHomework } from "@/lib/api/homework"
 import type { Homework, HomeworkStatus, Subject } from "@/types"
@@ -45,10 +46,11 @@ function errorMessage(err: unknown): string {
   return "Something went wrong. Please try again."
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, tz: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString("en-GB", {
+    timeZone: tz,
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -64,6 +66,7 @@ interface HomeworkDetailProps {
 
 export function HomeworkDetail({ id }: HomeworkDetailProps) {
   const router = useRouter()
+  const timezone = useTimezone()
   const [homeworks, setHomeworks] = useState<Homework[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -202,7 +205,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
           </span>
           <span className={overdue ? "font-medium text-red-400" : ""}>
             <CalendarClock className="mr-1 inline size-3.5" />
-            {formatDate(homework.due_date)}
+            {formatDate(homework.due_date, timezone)}
             {overdue && <span className="ml-1.5 text-xs text-red-400">· Overdue</span>}
           </span>
 

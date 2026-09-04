@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select"
 import { ApiError } from "@/lib/api/client"
 import { createHomework } from "@/lib/api/homework"
+import { useTimezone } from "@/components/layout/timezone-provider"
+import { toDateTimeInput } from "@/lib/date-time"
 import type { Subject } from "@/types"
 import { toast } from "sonner"
 
@@ -52,9 +54,10 @@ export function CreateHomeworkDialog({
   const [datetime, setDatetime] = useState<Date | undefined>(undefined)
   const [loading, setLoading] = useState(false)
 
+  const timezone = useTimezone()
   const selectedSubj = subjects.find((s) => s.id === subjectId)
 
-  const dueDate = datetime ? toDateTimeInput(datetime) : ""
+  const dueDate = datetime ? toDateTimeInput(datetime, timezone) : ""
 
   function reset() {
     setSubjectId("")
@@ -173,13 +176,4 @@ export function CreateHomeworkDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-function toDateTimeInput(datetime: Date): string {
-  const y = datetime.getFullYear()
-  const m = String(datetime.getMonth() + 1).padStart(2, "0")
-  const d = String(datetime.getDate()).padStart(2, "0")
-  const h = String(datetime.getHours()).padStart(2, "0")
-  const min = String(datetime.getMinutes()).padStart(2, "0")
-  return `${y}-${m}-${d}T${h}:${min}`
 }

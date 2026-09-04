@@ -7,6 +7,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useTimezone } from "@/components/layout/timezone-provider"
+import { getTzParts, tzDateFromParts } from "@/lib/date-time"
 import { cn } from "@/lib/utils"
 
 interface DateTimePickerProps {
@@ -19,28 +21,38 @@ interface DateTimePickerProps {
 
 const DEFAULT_TIME = "23:59"
 
-function formatSelected(d: Date): string {
+function formatSelected(d: Date, tz: string): string {
   const date = d.toLocaleDateString("en-GB", {
+    timeZone: tz,
     weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
   })
   const time = d.toLocaleTimeString("en-GB", {
+    timeZone: tz,
     hour: "2-digit",
     minute: "2-digit",
   })
   return `${date}, ${time}`
 }
 
-function mergeTime(base: Date | undefined, time: string): Date | undefined {
-  const [h, m] = time.split(":").map((n) => parseInt(n, 10))
-  const hour = Number.isNaN(h) ? 23 : h
-  const minute = Number.isNaN(m) ? 59 : m
-  const ref = base instanceof Date && !Number.isNaN(base.getTime()) ? base : new Date()
-  const merged = new Date(ref)
-  merged.setHours(hour, minute, 0, 0)
-  return merged
+function timeParts(time: string): { h: number; min: number } {
+  const [hRaw, mRaw] = time.split(":").map((n) => parseInt(n, 10))
+  return {
+    h: Number.isNaN(hRaw) ? 23 : hRaw,
+    min: Number.isNaN(mRaw) ? 59 : mRaw,
+  }
+}
+
+function mergeTime(base: Date | undefined, time: string, tz: string): Date {
+  const { h, min } = timeParts(time)
+  if (base instanceof Date && !Number.isNaN(base.getTime())) {
+    const parts = getTzParts(tz, base)
+    return tzDateFromParts(tz, parts.y, parts.m, parts.d, h, min)
+  }
+  const today = getTzParts(tz, new Date())
+  return tzDateFromParts(tz, today.y, today.m, today.d, h, min)
 }
 
 export function DateTimePicker({
@@ -50,10 +62,12 @@ export function DateTimePicker({
   disabled,
   className,
 }: DateTimePickerProps) {
+  const timezone = useTimezone()
   const [open, setOpen] = React.useState(false)
   const [time, setTime] = React.useState(() => {
     if (value instanceof Date && !Number.isNaN(value.getTime())) {
-      return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`
+      const parts = getTzParts(timezone, value)
+      return `${String(parts.h).padStart(2, "0")}:${String(parts.min).padStart(2, "0")}`
     }
     return DEFAULT_TIME
   })
@@ -73,7 +87,7 @@ export function DateTimePicker({
           >
             <CalendarDays className="size-3.5 shrink-0" />
             {value ? (
-              formatSelected(value)
+              formatSelected(value, timezone)
             ) : (
               <span className="truncate">{placeholder}</span>
             )}
@@ -89,11 +103,14 @@ export function DateTimePicker({
               onChange(undefined)
               return
             }
-            onChange(mergeTime(d, time))
+            const { h, min } = timeParts(time)
+            onChange(tzDateFromParts(timezone, d.getFullYear(), d.getMonth() + 1, d.getDate(), h, min))
           }}
           disabled={(date) => {
             if (disabled) return disabled(date)
-            return date.getTime() < new Date(new Date().toDateString()).getTime()
+            const today = getTzParts(timezone, new Date())
+            const todayStart = tzDateFromParts(timezone, today.y, today.m, today.d, 0, 0)
+            return date.getTime() < todayStart.getTime()
           }}
         />
         <div className="flex flex-col gap-1.5 border-t p-3">
@@ -110,7 +127,7 @@ export function DateTimePicker({
               onChange={(e) => {
                 const next = e.target.value
                 setTime(next || "23:59")
-                onChange(value ? mergeTime(value, next || "23:59") : undefined)
+                onChange(value ? mergeTime(value, next || "23:59", timezone) : undefined)
               }}
               aria-label="Time"
             />
