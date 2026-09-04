@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Calendar,
   GraduationCap,
+  ClipboardList,
 } from "lucide-react";
 
 export const navigation = [
@@ -20,9 +21,9 @@ export const navigation = [
     href: "/evaluations",
     icon: GraduationCap,
   },
-  /*{
+  {
     title: "Homework",
     href: "/homework",
     icon: ClipboardList,
-  },*/
+  },
 ];

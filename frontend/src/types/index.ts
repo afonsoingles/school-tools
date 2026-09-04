@@ -44,12 +44,15 @@ export interface CalendarEvent {
   type: "class" | "test" | "personal"
 }
 
-export interface HomeworkItem {
+export type HomeworkStatus = "not_started" | "ongoing" | "finished"
+
+export interface Homework {
   id: string
+  subject_id: string
   title: string
-  subject: string
-  dueDate: string // ISO 8601
-  done: boolean
+  description: string
+  status: HomeworkStatus
+  due_date: string // ISO 8601 datetime
 }
 
 export interface Evaluation {
@@ -82,7 +85,7 @@ export interface CancelledClassEvent {
 
 export interface DashboardSummary {
   upcomingEvents: CalendarEvent[]
-  pendingHomework: HomeworkItem[]
+  pendingHomework: Homework[]
   recentEvaluations: Evaluation[]
 }
 
