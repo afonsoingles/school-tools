@@ -89,6 +89,7 @@ export function SignupForm() {
         placeholder="Email"
         autoComplete="email"
         required
+        hint="Please use a real email. You will need to verify it before using your account."
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
