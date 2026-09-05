@@ -9,6 +9,7 @@ from errors.calendar import *
 from errors.base import BaseError
 import os
 import uuid
+import asyncio
 
 router = APIRouter()
 tools = CalendarTools()
@@ -54,7 +55,7 @@ async def get_feed_by_token(request: Request, type: str, token: str) -> Response
     
     feed = tools.get_calendar_feed(user_id, type)
     if not feed:
-        generate_and_publish_ics_feed(user_id)
+        await asyncio.to_thread(generate_and_publish_ics_feed, user_id)
         feed = tools.get_calendar_feed(user_id, type)
         if not feed:
             raise BaseError
