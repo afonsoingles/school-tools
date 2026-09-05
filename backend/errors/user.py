@@ -70,3 +70,8 @@ class PasswordChangeIncorrectError(BaseError):
     status_code = 401
     code = "password_change_incorrect"
     message = "The provided current password is incorrect. Please provide the correct current password to change this resource."
+
+class EmailChangeRateLimitError(BaseError):
+    status_code = 429
+    code = "email_change_rate_limit"
+    message = "You have recently changed your email. Please wait before changing your email again."

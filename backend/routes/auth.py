@@ -176,9 +176,17 @@ async def change_email(request: Request) -> JSONResponse:
     stored_pwd = user.password.get_secret_value()
     if not user_tools.verify_password_hash(pwd, stored_pwd):
         raise PasswordChangeIncorrectError
-    
-    user_tools.update_user(request.state.user.id, email=new_email, email_verified=False)
-    user_tools.send_verification_link(request.state.user.id, request.state.user.name, new_email)
+
+    try:
+        user_tools.update_user(request.state.user.id, email=new_email, email_verified=False)
+        user_tools.send_verification_link(request.state.user.id, request.state.user.name, new_email)
+    except VerificationRateLimitedError:
+        user_tools.update_user(request.state.user.id, email=request.state.user.email, email_verified=True)
+        raise EmailChangeRateLimitError
+    except:
+        user_tools.update_user(request.state.user.id, email=request.state.user.email, email_verified=True)
+        raise
+
     session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
 
     return JSONResponse({"success": True, "message": "Your email has been updated successfully! Please check your new email to verify it and regain access."})
