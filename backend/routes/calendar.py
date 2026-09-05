@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from decorators.auth import require_auth
+from decorators.valid_json import valid_json
 from jobs.generate_ics import generate_and_publish_ics_feed
 from tools.calendar import CalendarTools
 from models.calendar import *
@@ -22,7 +23,9 @@ async def get_feed(request: Request) -> JSONResponse:
     if not feeds:
         feeds = tools.generate_calendar_tokens(request.state.user.id)
 
-
+    if not feeds.is_enabled:
+        raise FeedDisabled
+    
     return JSONResponse(jsonable_encoder({"success": True, "feeds": {
         "classes": f"{os.environ.get("BASE_URL")}/api/v1/calendar/feeds/classes/{feeds.token_classes}?user={str(request.state.user.id)}",
         "evaluations": f"{os.environ.get("BASE_URL")}/api/v1/calendar/feeds/evaluations/{feeds.token_evaluations}?user={str(request.state.user.id)}"
@@ -32,6 +35,8 @@ async def get_feed(request: Request) -> JSONResponse:
 @require_auth
 async def regenerate_feed(request: Request) -> JSONResponse:
     feeds = tools.generate_calendar_tokens(request.state.user.id)
+    if not feeds.is_enabled:
+        raise FeedDisabled
 
     return JSONResponse({"success": True, "feeds": {
         "classes": f"{os.environ.get("BASE_URL")}/api/v1/calendar/feeds/classes/{feeds.token_classes}?user={str(request.state.user.id)}",
@@ -55,9 +60,28 @@ async def get_feed_by_token(request: Request, type: str, token: str) -> Response
     
     feed = tools.get_calendar_feed(user_id, type)
     if not feed:
+        tokens = tools.get_calendar_tokens(user_id)
+        enabled = tokens.is_enabled if tokens is not None else False
+        if not enabled:
+            raise FeedDisabled
+        
         await asyncio.to_thread(generate_and_publish_ics_feed, user_id)
         feed = tools.get_calendar_feed(user_id, type)
         if not feed:
             raise BaseError
 
     return Response(content=feed, media_type="text/calendar", headers={"Content-Disposition": f"attachment; filename={type.value}.ics", "Cache-Control": "no-cache"})
+
+@router.post("/v1/calendar/feeds/status")
+@require_auth
+@valid_json(["is_enabled"])
+async def set_feed_status(request: Request) -> JSONResponse:
+
+
+    if not isinstance(request.state.json["is_enabled"], bool):
+        raise InvalidFeedStatus
+
+    tools.set_calendar_feed_status(request.state.user.id, request.state.json["is_enabled"])
+    if request.state.json["is_enabled"] == True:
+        tools.mark_feed_dirty(request.state.user.id)
+    return JSONResponse({"success": True, "is_enabled": request.state.json["is_enabled"]})

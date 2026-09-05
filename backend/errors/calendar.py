@@ -9,3 +9,13 @@ class InvalidFeedRequest(BaseError):
     status_code = 400
     code = "invalid_feed_request"
     message = "The request for the calendar feed is invalid. Please check the parameters and try again."
+
+class InvalidFeedStatus(BaseError):
+    status_code = 400
+    code = "invalid_feed_status"
+    message = "The request to change the feed status is invalid. It must be a boolean value."
+
+class FeedDisabled(BaseError):
+    status_code = 403
+    code = "feed_disabled"
+    message = "The requested calendar feed is currently disabled. Please enable it in your settings to access it."

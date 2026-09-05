@@ -34,11 +34,15 @@ class CalendarTools:
 
         return calendar_feed["ics_content"]
 
-    def generate_calendar_tokens(self, user_id: uuid.UUID) -> CalendarFeedSettings:
+    def generate_calendar_tokens(self, user_id: uuid.UUID, is_enabled: bool | None = None) -> CalendarFeedSettings:
+        if is_enabled is None:
+            existing = self.get_calendar_tokens(user_id)
+            is_enabled = existing.is_enabled if existing is not None else True
         settings = CalendarFeedSettings(
             user_id=user_id,
             token_classes=secrets.token_urlsafe(64),
-            token_evaluations=secrets.token_urlsafe(64)
+            token_evaluations=secrets.token_urlsafe(64),
+            is_enabled=is_enabled
         )
         settings_dict = settings.model_dump()
         self.db.mongo.calendar_feed_settings.update_one({"user_id": user_id}, {"$set": settings_dict}, upsert=True)
@@ -55,7 +59,10 @@ class CalendarTools:
         if not settings:
             return None
 
-        return CalendarFeedSettings.model_validate(settings)
+        settings = CalendarFeedSettings.model_validate(settings)
+        self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)
+
+        return settings
 
     def mark_feed_dirty(self, user_id: uuid.UUID) -> None:
         self.db.redis.sadd(f"users.calendar.dirty", str(user_id))
@@ -84,3 +91,14 @@ class CalendarTools:
     def clear_user_dirty(self, user_id: uuid.UUID) -> None:
         self.db.redis.srem(f"users.calendar.dirty", str(user_id))
         self.db.redis.delete(f"users.calendar.dirty.count:{str(user_id)}")
+
+    def set_calendar_feed_status(self, user_id: uuid.UUID, is_enabled: bool) -> None:
+        settings = self.get_calendar_tokens(user_id)
+        if settings is None:
+            self.generate_calendar_tokens(user_id, is_enabled=is_enabled)
+            return
+
+        settings.is_enabled = is_enabled
+        settings_dict = settings.model_dump()
+        self.db.mongo.calendar_feed_settings.update_one({"user_id": user_id}, {"$set": settings_dict}, upsert=True)
+        self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)

@@ -22,5 +22,6 @@ class CalendarFeedSettings(BaseModel):
 
     id: uuid.UUID =  Field(default_factory=uuid.uuid4)
     user_id: uuid.UUID
+    is_enabled: bool = False
     token_classes: str | None = None
     token_evaluations: str | None = None
