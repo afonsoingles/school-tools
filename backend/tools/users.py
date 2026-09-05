@@ -144,6 +144,7 @@ class UserTools:
         payload = {
             "iss": "school-tools.backend.verification",
             "sub": str(id),
+            "email": email,
             "exp": now + 86400, # 1 day
             "iat": now,
             "jti": str(uuid.uuid4())
@@ -161,7 +162,9 @@ class UserTools:
             raise InvalidOrExpiredTokenError
         
         user = self.get_user_by_id(decoded["sub"])
-
+        if not user.email == decoded["email"]:
+            raise InvalidOrExpiredTokenError
+        
         self.update_user(user.id, email_verified=True)
         self.db.redis.delete(f"users.verification:{user.id}")
         return
