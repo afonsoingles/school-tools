@@ -40,7 +40,7 @@ import { useTimezone } from "@/components/layout/timezone-provider"
 import type { ClassEvent, CancelledClassEvent, Evaluation, Homework, Subject } from "@/types"
 import { cn } from "@/lib/utils"
 
-const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 const HOMEWORK_STATUS_ICON: Record<string, LucideIcon> = {
   not_started: CalendarClock,
@@ -178,7 +178,7 @@ export function DashboardOverview() {
 
   const cancelledToday = new Map(
     cancellations
-      .filter((c) => c.date === todayStr)
+      .filter((c) => datePart(c.date) === todayStr)
       .map((c) => [c.class_id, c] as const)
   )
 
