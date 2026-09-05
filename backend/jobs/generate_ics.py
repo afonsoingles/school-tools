@@ -18,7 +18,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     calendar_tools = CalendarTools()
     user_tools = UserTools()
 
-    user_tz_raw = user_tools.get_user_by_id(user).timezone
+    user_tz_raw = user_tools.get_user_by_id(str(user)).timezone
     
     classes_calendar = CalendarGenerator(ICAL_PRODID_CLASSES, "School Tools - Classes", tz=user_tz_raw)
     evaluations_calendar = CalendarGenerator(ICAL_PRODID_EVENTS, "School Tools - Evaluations", tz=user_tz_raw)

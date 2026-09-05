@@ -59,7 +59,7 @@ async def get_user(request: Request, user_id: str) -> JSONResponse:
 @require_auth(require_admin=True)
 async def update_user(request: Request, user_id: str) -> JSONResponse:
     data = await request.json()
-    user = user_tools.update_user(uuid.UUID(user_id), **data)
+    user = user_tools.update_user(user_id, **data)
 
     safe_user = SafeUser.model_validate(user)
 
