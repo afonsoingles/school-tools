@@ -278,7 +278,7 @@ export function CalendarFeedSettings() {
           <CalendarX className="size-8 shrink-0 text-muted-foreground" />
           <p className="text-base font-medium">Calendar feeds are paused</p>
           <p className="max-w-md text-sm text-muted-foreground">
-            Your subscribed calendar apps will keep receiving the last published version, but new updates won't be synced. 
+            Your subscribed calendar apps will keep receiving the last published version, but new updates won&apos;t be synced. 
           </p>
         </div>
       )}
@@ -328,7 +328,11 @@ export function CalendarFeedSettings() {
             disabled={regenerating}
             className="gap-1.5"
           >
-            {regenerating && <Loader2 className="size-4 animate-spin" />}
+            {regenerating ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="size-4" />
+            )}
             Regenerate
           </Button>
         </DialogContent>
