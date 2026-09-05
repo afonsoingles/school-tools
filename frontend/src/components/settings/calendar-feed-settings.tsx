@@ -1,13 +1,26 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { CalendarPlus, Check, CircleHelp, Copy, Loader2, RefreshCcw, TriangleAlert } from "lucide-react"
+import { useEffect, useState, type ReactNode } from "react"
+import {
+  CalendarPlus,
+  CalendarX,
+  Check,
+  CircleHelp,
+  Copy,
+  Loader2,
+  RefreshCcw,
+  TriangleAlert,
+} from "lucide-react"
 import { toast } from "sonner"
 import { FaApple } from "react-icons/fa6"
 import { FcGoogle } from "react-icons/fc"
-
 import { ApiError } from "@/lib/api/client"
-import { getCalendarFeeds, regenerateCalendarFeeds } from "@/lib/api/calendar-feeds"
+import {
+  getCalendarFeeds,
+  isFeedDisabled,
+  regenerateCalendarFeeds,
+  setCalendarFeedStatus,
+} from "@/lib/api/calendar-feeds"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,7 +31,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
 import type { CalendarFeeds } from "@/types"
 
 function errorMessage(err: unknown): string {
@@ -27,6 +42,14 @@ function errorMessage(err: unknown): string {
     return body?.message ?? "Something went wrong. Please try again."
   }
   return "Something went wrong. Please try again."
+}
+
+function ErrorBox({ children }: { children: ReactNode }) {
+  return (
+    <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
+      {children}
+    </p>
+  )
 }
 
 function toWebcal(url: string): string {
@@ -54,6 +77,8 @@ const feedRows: { key: FeedKey; summary: string; description: string }[] = [
 
 export function CalendarFeedSettings() {
   const [feeds, setFeeds] = useState<CalendarFeeds | null>(null)
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -64,10 +89,34 @@ export function CalendarFeedSettings() {
 
   useEffect(() => {
     getCalendarFeeds()
-      .then(setFeeds)
-      .catch((err) => setLoadError(errorMessage(err)))
+      .then((next) => {
+        setFeeds(next)
+        setEnabled(true)
+      })
+      .catch((err) => {
+        if (isFeedDisabled(err)) {
+          setEnabled(false)
+        } else {
+          setLoadError(errorMessage(err))
+        }
+      })
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleToggle(next: boolean) {
+    setToggling(true)
+
+    try {
+      await setCalendarFeedStatus(next)
+      setEnabled(next)
+      setFeeds(next ? await getCalendarFeeds() : null)
+      toast.success(next ? "Calendar feeds are now enabled." : "Calendar feeds are now paused.")
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setToggling(false)
+    }
+  }
 
   async function handleCopy(key: FeedKey) {
     if (!feeds) return
@@ -108,15 +157,11 @@ export function CalendarFeedSettings() {
   }
 
   if (loadError) {
-    return (
-      <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-        {loadError}
-      </p>
-    )
+    return <ErrorBox>{loadError}</ErrorBox>
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 mt-1">
       <div className="flex flex-col gap-1">
         <h3 className="text-xl font-semibold tracking-tight">Calendar Feeds</h3>
         <p className="text-sm text-muted-foreground">
@@ -125,114 +170,142 @@ export function CalendarFeedSettings() {
         </p>
       </div>
 
-      <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-background">
-        {feedRows.map((row) => (
-          <div key={row.key} className="flex flex-col gap-2 p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">{row.summary}</span>
-                <p className="text-xs text-muted-foreground">{row.description}</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Popover>
-                  <PopoverTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        aria-label={`Add ${row.summary} to your calendar`}
-                      >
-                        <CalendarPlus className="size-3.5" />
-                        Add to calendar
-                      </Button>
-                    }
-                  />
-                  <PopoverContent align="end" className="w-44 p-1.5">
-                    <a
-                      href={toWebcal(feeds?.[row.key] ?? "")}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-foreground/5"
+      <div className="flex items-center justify-between gap-4 p-4 border rounded-lg border-border bg-background">
+        <Label htmlFor="calendar-feeds-toggle" className="text-sm font-medium text-foreground">
+          Enabled
+        </Label>
+        {toggling ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Switch
+            id="calendar-feeds-toggle"
+            checked={enabled ?? false}
+            onCheckedChange={handleToggle}
+            aria-label="Enable or disable calendar feeds"
+          />
+        )}
+      </div>
+
+      {enabled ? (
+        <>
+          <div className="flex flex-col border divide-y rounded-lg divide-border border-border bg-background">
+            {feedRows.map((row) => (
+              <div key={row.key} className="flex flex-col gap-2 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">{row.summary}</span>
+                    <p className="text-xs text-muted-foreground">{row.description}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Popover>
+                      <PopoverTrigger
+                        render={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            aria-label={`Add ${row.summary} to your calendar`}
+                          >
+                            <CalendarPlus className="size-3.5" />
+                            Add to calendar
+                          </Button>
+                        }
+                      />
+                      <PopoverContent align="end" className="w-44 p-1.5">
+                        <a
+                          href={toWebcal(feeds?.[row.key] ?? "")}
+                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-foreground/5"
+                        >
+                          <FaApple className="size-4" />
+                          Apple Calendar
+                        </a>
+                        <a
+                          href={toGoogleAdd(feeds?.[row.key] ?? "")}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-foreground/5"
+                        >
+                          <FcGoogle className="size-4" />
+                          Google Calendar
+                        </a>
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleCopy(row.key)}
+                      className="hover:bg-foreground/10!"
+                      aria-label={`Copy ${row.summary} link`}
                     >
-                      <FaApple className="size-4" />
-                      Apple Calendar
-                    </a>
-                    <a
-                      href={toGoogleAdd(feeds?.[row.key] ?? "")}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-foreground/5"
-                    >
-                      <FcGoogle className="size-4" />
-                      Google Calendar
-                    </a>
-                  </PopoverContent>
-                </Popover>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleCopy(row.key)}
-                  className="hover:bg-foreground/10!"
-                  aria-label={`Copy ${row.summary} link`}
-                >
-                  {copiedKey === row.key ? (
-                    <Check className="size-3.5" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                </Button>
+                      {copiedKey === row.key ? (
+                        <Check className="size-3.5" />
+                      ) : (
+                        <Copy className="size-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <Input
+                  readOnly
+                  value={feeds?.[row.key] ?? ""}
+                  className="font-mono text-xs rounded-sm h-7"
+                />
               </div>
-            </div>
-            <Input
-              readOnly
-              value={feeds?.[row.key] ?? ""}
-              className="h-7 rounded-sm font-mono text-xs"
-            />
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setError(null)
-            setConfirmOpen(true)
-          }}
-          className="gap-1.5"
-          disabled={regenerating}
-        >
-          {regenerating ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <RefreshCcw className="size-4" />
-          )}
-          Regenerate links
-        </Button>
-      </div>
-
-      {error && (
-        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-          {error}
-        </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError(null)
+                setConfirmOpen(true)
+              }}
+              className="gap-1.5"
+              disabled={regenerating}
+            >
+              {regenerating ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCcw className="size-4" />
+              )}
+              Regenerate links
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center gap-2 p-8 text-center bg-background">
+          <CalendarX className="size-8 shrink-0 text-muted-foreground" />
+          <p className="text-base font-medium">Calendar feeds are paused</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Your subscribed calendar apps will keep receiving the last published version, but new updates won't be synced. 
+          </p>
+        </div>
       )}
 
-      <Alert>
-        <TriangleAlert />
-        <AlertTitle>Keep your links private</AlertTitle>
-        <AlertDescription>
-          Calendar feeds authenticate by URL alone. This means thatanyone who has the link can view all your events,
-          so don&apos;t share it.
-        </AlertDescription>
-      </Alert>
+      {error && <ErrorBox>{error}</ErrorBox>}
 
-      <div className="flex flex-col gap-1 text-sm">
-        <p className="flex items-center gap-2 text-foreground">
-          <CircleHelp className="size-4 shrink-0 text-muted-foreground" />
-          Why is my calendar feed not updated?
-        </p>
-        <p className="pl-6 text-muted-foreground">The system regenerates your calendar feed every 5 minutes, so it may take a few minutes for changes to appear in your calendar app.</p>
-        <p className="pl-6 text-muted-foreground"> Aditionally, some calendar apps cache the feed for a longer period of time (Google Calendar caches can last up to 24 hours, for example). Some have the option to manually refresh the feed, so check your app&apos;s settings.</p>
-      </div>
+{enabled && (
+        <>
+          <Alert>
+            <TriangleAlert />
+            <AlertTitle>Keep your links private</AlertTitle>
+            <AlertDescription>
+              Calendar feeds authenticate by URL alone. This means that anyone who has the link can view all your events,
+              so don&apos;t share it.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex flex-col gap-1 text-sm">
+          <p className="flex items-center gap-2 text-foreground">
+            <CircleHelp className="size-4 shrink-0 text-muted-foreground" />
+            Why is my calendar feed not updated?
+          </p>
+          <p className="pl-6 text-muted-foreground">The system regenerates your calendar feed every 5 minutes, so it may take a few minutes for changes to appear in your calendar app.</p>
+          <p className="pl-6 text-muted-foreground"> Aditionally, some calendar apps cache the feed for a longer period of time (Google Calendar caches can last up to 24 hours, for example). Some have the option to manually refresh the feed, so check your app&apos;s settings.</p>
+        </div>
+      </>
+      )}
 
       <Dialog
         open={confirmOpen}
