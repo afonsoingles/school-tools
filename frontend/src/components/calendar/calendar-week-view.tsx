@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Plus, Loader2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatInTz, getTzParts, tzDateFromParts } from "@/lib/date-time"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { Button } from "@/components/ui/button"
 import {
@@ -76,32 +77,25 @@ function getTzCurrentDate(tz: string): { y: number; m: number; d: number; weekda
   }
 }
 
+function addDaysTz(tz: string, date: Date, days: number): Date {
+  const p = getTzParts(tz, date)
+  const base = new Date(Date.UTC(p.y, p.m - 1, p.d + days))
+  return tzDateFromParts(tz, base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate(), 0, 0)
+}
+
 function getWeekStart(offset: number, tz: string): Date {
   const now = getTzCurrentDate(tz)
   const mondayDelta = now.weekdayIndex - 1 + offset * 7
-  const monday = new Date(now.y, now.m - 1, now.d - mondayDelta)
-  monday.setHours(0, 0, 0, 0)
-  return monday
+  const today = tzDateFromParts(tz, now.y, now.m, now.d, 0, 0)
+  return addDaysTz(tz, today, -mondayDelta)
 }
 
-function formatDateShort(date: Date): string {
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+function formatDateShort(date: Date, tz: string): string {
+  return formatInTz(date, tz, { day: "numeric", month: "short" })
 }
 
-function toDateString(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, "0")
-  const d = String(date.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
-}
-
-function isToday(date: Date, tz: string): boolean {
-  const today = getTzCurrentDate(tz)
-  return (
-    date.getFullYear() === today.y &&
-    date.getMonth() === today.m - 1 &&
-    date.getDate() === today.d
-  )
+function tzDateString(p: { y: number; m: number; d: number }): string {
+  return `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`
 }
 
 export function CalendarWeekView() {
@@ -123,17 +117,18 @@ export function CalendarWeekView() {
   const timezone = useTimezone()
 
   const weekStart = getWeekStart(weekOffset, timezone)
+  const todayTz = getTzCurrentDate(timezone)
   const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(weekStart)
-    date.setDate(weekStart.getDate() + i)
+    const date = addDaysTz(timezone, weekStart, i)
+    const p = getTzParts(timezone, date)
     return {
       weekday: i + 1,
       date,
-      dateStr: toDateString(date),
+      dateStr: tzDateString(p),
       name: DAY_NAMES[i],
       full: DAY_FULL[i],
-      dayNum: date.getDate(),
-      today: isToday(date, timezone),
+      dayNum: p.d,
+      today: p.y === todayTz.y && p.m === todayTz.m && p.d === todayTz.d,
     }
   })
 
@@ -233,7 +228,10 @@ export function CalendarWeekView() {
   }
 
   function cancelledForDay(classId: string, dateStr: string): CancelledClassEvent | undefined {
-    return cancellations.find((c) => c.class_id === classId && c.date === dateStr)
+    return cancellations.find((c) => {
+      const cDate = c.date.includes("T") ? c.date.split("T")[0] : c.date
+      return c.class_id === classId && cDate === dateStr
+    })
   }
 
   function evaluationForDay(classId: string, dateStr: string): Evaluation | undefined {
@@ -264,12 +262,13 @@ export function CalendarWeekView() {
   }
 
   function weekLabel(): string {
-    const end = new Date(weekStart)
-    end.setDate(weekStart.getDate() + 6)
-    if (weekStart.getMonth() === end.getMonth()) {
-      return `${formatDateShort(weekStart)} – ${end.getDate()} ${end.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`
+    const end = addDaysTz(timezone, weekStart, 6)
+    const s = getTzParts(timezone, weekStart)
+    const e = getTzParts(timezone, end)
+    if (s.m === e.m && s.y === e.y) {
+      return `${formatDateShort(weekStart, timezone)} – ${e.d} ${formatInTz(end, timezone, { month: "short", year: "numeric" })}`
     }
-    return `${formatDateShort(weekStart)} – ${formatDateShort(end)} ${end.getFullYear()}`
+    return `${formatDateShort(weekStart, timezone)} – ${formatDateShort(end, timezone)} ${e.y}`
   }
 
   function handleGridClick(e: React.MouseEvent<HTMLDivElement>, weekday: number) {
