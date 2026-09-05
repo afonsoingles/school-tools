@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SubjectIcon } from "@/components/ui/subject-icon"
 
 const WEEKDAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -115,12 +116,27 @@ export function CreateClassDialog({
             <Select value={subjectId} onValueChange={(v) => setSubjectId(String(v))}>
               <SelectTrigger>
                 {subjectId
-                  ? subjects.find((s) => s.id === subjectId)?.name ?? "Select a subject"
+                  ? (() => {
+                      const selected = subjects.find((s) => s.id === subjectId)
+                      return selected ? (
+                        <span className="flex items-center gap-1.5">
+                          <SubjectIcon icon={selected.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+                          {selected.name}
+                        </span>
+                      ) : (
+                        "Select a subject"
+                      )
+                    })()
                   : <span className="text-muted-foreground">Select a subject</span>}
               </SelectTrigger>
               <SelectContent>
                 {subjects.map((s) => (
-                  <SelectItem key={s.id} value={s.id} label={s.name}>{s.name}</SelectItem>
+                  <SelectItem key={s.id} value={s.id} label={s.name}>
+                    <span className="flex items-center gap-1.5">
+                      <SubjectIcon icon={s.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+                      {s.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

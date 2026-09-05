@@ -254,12 +254,27 @@ export function HomeworkManager() {
           <label className="text-xs font-medium text-muted-foreground">Subject</label>
           <Select value={subjectFilter} onValueChange={(v) => setSubjectFilter(String(v))}>
             <SelectTrigger className="w-40">
-              {subjectFilter === "all" ? "All subjects" : subjectNameMap.get(subjectFilter) ?? "Unknown"}
+              {subjectFilter !== "all" ? (
+                <span className="flex items-center gap-1.5">
+                  <SubjectIcon
+                    icon={subjectIconMap.get(subjectFilter) ?? ""}
+                    className="size-3.5 shrink-0 text-muted-foreground"
+                  />
+                  {subjectNameMap.get(subjectFilter) ?? "Unknown"}
+                </span>
+              ) : (
+                "All subjects"
+              )}
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" label="All subjects">All subjects</SelectItem>
               {subjects.map((s) => (
-                <SelectItem key={s.id} value={s.id} label={s.name}>{s.name}</SelectItem>
+                <SelectItem key={s.id} value={s.id} label={s.name}>
+                  <span className="flex items-center gap-1.5">
+                    <SubjectIcon icon={s.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+                    {s.name}
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

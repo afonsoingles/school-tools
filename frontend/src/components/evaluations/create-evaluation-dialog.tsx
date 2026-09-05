@@ -21,6 +21,7 @@ import {
 import { ApiError } from "@/lib/api/client"
 import { createEvaluation } from "@/lib/api/evaluations"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
+import { SubjectIcon } from "@/components/ui/subject-icon"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { getTzParts, toDateTimeInput } from "@/lib/date-time"
 import type { ClassEvent, Subject } from "@/types"
@@ -62,6 +63,7 @@ export function CreateEvaluationDialog({
 
   const weekday = date ? backendWeekdayFromDate(date, timezone) : null
   const classSubjectMap = new Map(subjects.map((s) => [s.id, s.name]))
+  const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
   const subjectIds = new Set(subjects.map((s) => s.id))
 
   const availableClasses = weekday
@@ -69,6 +71,7 @@ export function CreateEvaluationDialog({
     : []
 
   const selectedClass = classes.find((c) => c.id === classId)
+  const selectedIcon = selectedClass ? subjectIconMap.get(selectedClass.subject_id) ?? "" : ""
   const selectedLabel = selectedClass
     ? `${classSubjectMap.get(selectedClass.subject_id) ?? "Unknown"} · ${selectedClass.start_time} – ${selectedClass.end_time}`
     : null
@@ -136,14 +139,25 @@ export function CreateEvaluationDialog({
             ) : (
               <Select value={classId} onValueChange={(v) => setClassId(String(v))}>
                 <SelectTrigger>
-                  {classId
-                    ? selectedLabel
-                    : <span className="text-muted-foreground">Select a class</span>}
+                  {classId ? (
+                    <span className="flex items-center gap-1.5">
+                      <SubjectIcon icon={selectedIcon} className="size-3.5 shrink-0 text-muted-foreground" />
+                      {selectedLabel}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Select a class</span>
+                  )}
                 </SelectTrigger>
                 <SelectContent>
                   {availableClasses.map((c) => (
                     <SelectItem key={c.id} value={c.id} label={classSubjectMap.get(c.subject_id) ?? "Unknown"}>
-                      {classSubjectMap.get(c.subject_id) ?? "Unknown"} · {c.start_time} – {c.end_time}
+                      <span className="flex items-center gap-1.5">
+                        <SubjectIcon
+                          icon={subjectIconMap.get(c.subject_id) ?? ""}
+                          className="size-3.5 shrink-0 text-muted-foreground"
+                        />
+                        {classSubjectMap.get(c.subject_id) ?? "Unknown"} · {c.start_time} – {c.end_time}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
