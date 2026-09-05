@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from enum import Enum
 import datetime
 import uuid
@@ -18,6 +18,11 @@ class SafeHomework(BaseModel):
     description: str
     status: HomeworkStatus = HomeworkStatus.NOT_STARTED 
     due_date: datetime.datetime
+
+    @field_serializer("due_date")
+    def _ser_due_date(self, v: datetime.datetime) -> str:
+        v = v if v.tzinfo else v.replace(tzinfo=datetime.timezone.utc)
+        return v.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
 
 class Homework(SafeHomework):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
