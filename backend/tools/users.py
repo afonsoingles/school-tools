@@ -56,20 +56,21 @@ class UserTools:
         return User.model_validate(user_dict)
 
     def get_user_by_id(self, id) -> User:
+        user_id = id if isinstance(id, uuid.UUID) else uuid.UUID(str(id))
 
-        redis_user = self.db.redis.get(f"users.user:{id}")
+        redis_user = self.db.redis.get(f"users.user:{user_id}")
         if redis_user:
             return User.model_validate_json(redis_user)
         
-        raw = self.db.mongo.users.find_one({"id": uuid.UUID(id)})
+        raw = self.db.mongo.users.find_one({"id": user_id})
 
         if not raw:
             raise UserNotFoundError
         
         user = User.model_validate(raw)
 
-        self.db.redis.set(f"users.user:{id}", user.model_dump_json(), ex=10800)
-        self.db.redis.set(f"users.lookup.email:{user.email}", id, ex=10800)
+        self.db.redis.set(f"users.user:{user_id}", user.model_dump_json(), ex=10800)
+        self.db.redis.set(f"users.lookup.email:{user.email}", str(user_id), ex=10800)
         return user
 
     def get_user_by_email(self, email, raise_credentials_error_on_not_found: bool = False) -> User:
@@ -103,7 +104,8 @@ class UserTools:
         return users
 
     def update_user(self, id, **kwargs) -> User:
-        user = self.get_user_by_id(id)
+        user_id = id if isinstance(id, uuid.UUID) else uuid.UUID(str(id))
+        user = self.get_user_by_id(user_id)
         old_email = None
 
         for key, value in kwargs.items():
@@ -113,11 +115,11 @@ class UserTools:
                 continue
             if key == "email":
                 exists_redis = self.db.redis.get(f"users.lookup.email:{value}")
-                if exists_redis and exists_redis != str(user.id):
+                if exists_redis and exists_redis != str(user_id):
                     raise EmailAlreadyRegisteredError
                 
                 exists_mongo = self.db.mongo.users.find_one({"email": value})
-                if exists_mongo and str(exists_mongo["id"]) != str(user.id):
+                if exists_mongo and str(exists_mongo["id"]) != str(user_id):
                     raise EmailAlreadyRegisteredError
                 old_email = user.email
                 setattr(user, key, value)
@@ -125,10 +127,10 @@ class UserTools:
             if hasattr(user, key):
                 setattr(user, key, value)
 
-        self.db.mongo.users.update_one({"id": id}, {"$set": user.model_dump()})
+        self.db.mongo.users.update_one({"id": user_id}, {"$set": user.model_dump()})
 
-        self.db.redis.set(f"users.user:{id}", user.model_dump_json(), ex=10800)
-        self.db.redis.set(f"users.lookup.email:{user.email}", str(user.id), ex=10800)
+        self.db.redis.set(f"users.user:{user_id}", user.model_dump_json(), ex=10800)
+        self.db.redis.set(f"users.lookup.email:{user.email}", str(user_id), ex=10800)
         if old_email:
             self.db.redis.delete(f"users.lookup.email:{old_email}")
 
