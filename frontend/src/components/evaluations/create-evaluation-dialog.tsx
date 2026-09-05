@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -21,6 +20,9 @@ import {
 } from "@/components/ui/select"
 import { ApiError } from "@/lib/api/client"
 import { createEvaluation } from "@/lib/api/evaluations"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
+import { useTimezone } from "@/components/layout/timezone-provider"
+import { getTzParts, toDateTimeInput } from "@/lib/date-time"
 import type { ClassEvent, Subject } from "@/types"
 import { EVALUATION_TYPE_LABELS } from "./constants"
 
@@ -32,10 +34,8 @@ interface CreateEvaluationDialogProps {
   onCreated: () => void
 }
 
-function backendWeekdayFromDate(dateStr: string): number | null {
-  if (!dateStr) return null
-  const jsDay = new Date(`${dateStr}T00:00:00`).getDay()
-  return ((jsDay + 6) % 7) + 1
+function backendWeekdayFromDate(date: Date, tz: string): number | null {
+  return getTzParts(tz, date).weekday
 }
 
 function errorMessage(err: unknown): string {
@@ -53,13 +53,14 @@ export function CreateEvaluationDialog({
   subjects,
   onCreated,
 }: CreateEvaluationDialogProps) {
-  const [date, setDate] = useState("")
+  const timezone = useTimezone()
+  const [date, setDate] = useState<Date | undefined>(undefined)
   const [classId, setClassId] = useState("")
   const [type, setType] = useState("exam")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const weekday = backendWeekdayFromDate(date)
+  const weekday = date ? backendWeekdayFromDate(date, timezone) : null
   const classSubjectMap = new Map(subjects.map((s) => [s.id, s.name]))
   const subjectIds = new Set(subjects.map((s) => s.id))
 
@@ -73,7 +74,7 @@ export function CreateEvaluationDialog({
     : null
 
   function reset() {
-    setDate("")
+    setDate(undefined)
     setClassId("")
     setType("exam")
     setError(null)
@@ -92,7 +93,7 @@ export function CreateEvaluationDialog({
     setError(null)
 
     try {
-      await createEvaluation({ class_id: classId, date, type })
+      await createEvaluation({ class_id: classId, date: toDateTimeInput(date, timezone), type })
       onCreated()
       handleOpenChange(false)
     } catch (err) {
@@ -113,14 +114,14 @@ export function CreateEvaluationDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label>Date</Label>
-            <Input
-              type="date"
+            <DateTimePicker
               value={date}
-              onChange={(e) => {
-                setDate(e.target.value)
+              onChange={(next) => {
+                setDate(next)
                 setClassId("")
               }}
-              required
+              dateOnly
+              disabled={() => false}
             />
           </div>
 

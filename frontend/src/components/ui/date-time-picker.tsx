@@ -16,12 +16,13 @@ interface DateTimePickerProps {
   onChange: (date: Date | undefined) => void
   placeholder?: string
   disabled?: (date: Date) => boolean
+  dateOnly?: boolean
   className?: string
 }
 
 const DEFAULT_TIME = "23:59"
 
-function formatSelected(d: Date, tz: string): string {
+function formatSelected(d: Date, tz: string, dateOnly?: boolean): string {
   const date = d.toLocaleDateString("en-GB", {
     timeZone: tz,
     weekday: "short",
@@ -29,6 +30,7 @@ function formatSelected(d: Date, tz: string): string {
     month: "short",
     year: "numeric",
   })
+  if (dateOnly) return date
   const time = d.toLocaleTimeString("en-GB", {
     timeZone: tz,
     hour: "2-digit",
@@ -60,6 +62,7 @@ export function DateTimePicker({
   onChange,
   placeholder = "Pick a date & time",
   disabled,
+  dateOnly = false,
   className,
 }: DateTimePickerProps) {
   const timezone = useTimezone()
@@ -71,6 +74,11 @@ export function DateTimePicker({
     }
     return DEFAULT_TIME
   })
+
+  const buildDate = (d: Date): Date => {
+    const { h, min } = dateOnly ? { h: 0, min: 0 } : timeParts(time)
+    return tzDateFromParts(timezone, d.getFullYear(), d.getMonth() + 1, d.getDate(), h, min)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -87,7 +95,7 @@ export function DateTimePicker({
           >
             <CalendarDays className="size-3.5 shrink-0" />
             {value ? (
-              formatSelected(value, timezone)
+              formatSelected(value, timezone, dateOnly)
             ) : (
               <span className="truncate">{placeholder}</span>
             )}
@@ -103,8 +111,7 @@ export function DateTimePicker({
               onChange(undefined)
               return
             }
-            const { h, min } = timeParts(time)
-            onChange(tzDateFromParts(timezone, d.getFullYear(), d.getMonth() + 1, d.getDate(), h, min))
+            onChange(buildDate(d))
           }}
           disabled={(date) => {
             if (disabled) return disabled(date)
@@ -113,26 +120,28 @@ export function DateTimePicker({
             return date.getTime() < todayStart.getTime()
           }}
         />
-        <div className="flex flex-col gap-1.5 border-t p-3">
-          <Label htmlFor="dtp-time" className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock3 className="size-3.5" />
-            Time
-          </Label>
-          <div className="relative">
-            <Input
-              id="dtp-time"
-              type="time"
-              step="60"
-              value={time}
-              onChange={(e) => {
-                const next = e.target.value
-                setTime(next || "23:59")
-                onChange(value ? mergeTime(value, next || "23:59", timezone) : undefined)
-              }}
-              aria-label="Time"
-            />
+        {!dateOnly && (
+          <div className="flex flex-col gap-1.5 border-t p-3">
+            <Label htmlFor="dtp-time" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock3 className="size-3.5" />
+              Time
+            </Label>
+            <div className="relative">
+              <Input
+                id="dtp-time"
+                type="time"
+                step="60"
+                value={time}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setTime(next || "23:59")
+                  onChange(value ? mergeTime(value, next || "23:59", timezone) : undefined)
+                }}
+                aria-label="Time"
+              />
+            </div>
           </div>
-        </div>
+        )}
       </PopoverContent>
     </Popover>
   )

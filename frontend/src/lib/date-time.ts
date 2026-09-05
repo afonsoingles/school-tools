@@ -2,12 +2,15 @@ function pad(n: number): string {
   return String(n).padStart(2, "0")
 }
 
+const WEEKDAY_MAP: Record<string, number> = { sun: 7, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+
 export interface TzParts {
   y: number
   m: number
   d: number
   h: number
   min: number
+  weekday: number
 }
 
 export function getTzParts(tz: string, date: Date): TzParts {
@@ -19,6 +22,7 @@ export function getTzParts(tz: string, date: Date): TzParts {
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
+    weekday: "short",
   }).formatToParts(date)
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ""
   return {
@@ -27,6 +31,7 @@ export function getTzParts(tz: string, date: Date): TzParts {
     d: Number(get("day")),
     h: Number(get("hour")),
     min: Number(get("minute")),
+    weekday: WEEKDAY_MAP[get("weekday").toLowerCase()] ?? 1,
   }
 }
 
