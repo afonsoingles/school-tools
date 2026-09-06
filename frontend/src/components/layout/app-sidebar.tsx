@@ -83,7 +83,7 @@ export function AppSidebar({ user }: { user: User }) {
         </SidebarMenu>
       )}
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border max-md:pb-[env(safe-area-inset-bottom)]">
         <UserMenu user={user}/>
       </SidebarFooter>
     </Sidebar>

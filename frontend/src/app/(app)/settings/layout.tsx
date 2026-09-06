@@ -11,7 +11,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           subtitle="Manage your settings"
         />
         <SettingsNav />
-        <div className="flex flex-col px-4 pb-4 md:px-8 md:pb-6">{children}</div>
+        <div className="flex flex-col px-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:px-8 md:pb-6">{children}</div>
       </div>
     </div>
   )

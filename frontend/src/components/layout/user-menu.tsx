@@ -52,8 +52,8 @@ export function UserMenu({ user }: { user: User }) {
       >
         <UserAvatar
           user={user}
-          className="w-8 h-8 rounded-md after:hidden!"
-          fallbackClassName="text-xs rounded-md bg-sidebar-accent"
+          className="after:hidden!"
+          fallbackClassName="text-xs bg-sidebar-accent"
         />
         <div className="grid flex-1 text-sm leading-tight text-left">
           <span className="font-medium truncate">{user.name}</span>

@@ -504,7 +504,7 @@ export function CalendarWeekView() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 px-4 pb-4 md:px-8 md:pb-6">
+    <div className="flex flex-col flex-1 min-h-0 px-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:px-8 md:pb-6">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         <div className="flex flex-wrap items-center gap-1">
           <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o - 1)}>
