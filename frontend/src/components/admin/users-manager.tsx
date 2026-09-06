@@ -23,7 +23,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ApiError } from "@/lib/api/client"
+import { LoadingState } from "@/components/ui/loading"
+import { ErrorBox } from "@/components/ui/error-box"
+import { errorMessage } from "@/lib/errors"
+import { formatDateDmy } from "@/lib/date-time"
+import { cn } from "@/lib/utils"
 import { getUsers } from "@/lib/api/admin"
 import type { User } from "@/types"
 
@@ -51,18 +55,42 @@ function clearUsersCache() {
   delete (globalThis as { __adminUsersCache?: CachedUsers }).__adminUsersCache
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+function UsersPagination({
+  page,
+  totalPages,
+  onPageChange,
+  className,
+}: {
+  page: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  className?: string
+}) {
+  return (
+    <div className={cn("flex items-center gap-1", className)}>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        onClick={() => onPageChange(Math.max(1, page - 1))}
+        disabled={page <= 1}
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="size-3.5" />
+      </Button>
+      <span className="px-2 text-sm text-muted-foreground tabular-nums">
+        {page} / {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+        disabled={page >= totalPages}
+        aria-label="Next page"
+      >
+        <ChevronRight className="size-3.5" />
+      </Button>
+    </div>
+  )
 }
 
 export function UsersManager() {
@@ -180,40 +208,14 @@ export function UsersManager() {
         </div>
 
         {!loading && filtered.length > PAGE_SIZE && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={safePage <= 1}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="size-3.5" />
-            </Button>
-            <span className="px-2 text-sm text-muted-foreground tabular-nums">
-              {safePage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage >= totalPages}
-              aria-label="Next page"
-            >
-              <ChevronRight className="size-3.5" />
-            </Button>
-          </div>
+          <UsersPagination page={safePage} totalPages={totalPages} onPageChange={setPage} />
         )}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center rounded-lg border border-border py-16 text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-        </div>
+        <LoadingState className="rounded-lg border border-border py-16" />
       ) : loadError ? (
-        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-          {loadError}
-        </p>
+        <ErrorBox>{loadError}</ErrorBox>
       ) : (
         <div className="rounded-lg border border-border bg-background">
           <Table>
@@ -260,7 +262,7 @@ export function UsersManager() {
   </Badge>
 </TableCell>
 <TableCell className="text-right text-muted-foreground">
-  {formatDate(user.created_at)}
+  {formatDateDmy(user.created_at)}
 </TableCell>
                   </TableRow>
                 ))
@@ -271,29 +273,12 @@ export function UsersManager() {
       )}
 
       {!loading && filtered.length > PAGE_SIZE && (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={safePage <= 1}
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="size-3.5" />
-          </Button>
-          <span className="px-2 text-sm text-muted-foreground tabular-nums">
-            {safePage} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={safePage >= totalPages}
-            aria-label="Next page"
-          >
-            <ChevronRight className="size-3.5" />
-          </Button>
-        </div>
+        <UsersPagination
+          page={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="justify-end"
+        />
       )}
     </section>
   )

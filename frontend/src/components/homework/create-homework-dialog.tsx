@@ -13,14 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
-import { SubjectIcon } from "@/components/ui/subject-icon"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
-import { ApiError } from "@/lib/api/client"
+import { SubjectSelect } from "@/components/ui/subject-select"
+import { errorMessage } from "@/lib/errors"
 import { createHomework } from "@/lib/api/homework"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { toDateTimeInput } from "@/lib/date-time"
@@ -32,14 +26,6 @@ interface CreateHomeworkDialogProps {
   onOpenChange: (open: boolean) => void
   subjects: Subject[]
   onCreated: () => void
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
 }
 
 export function CreateHomeworkDialog({
@@ -55,7 +41,6 @@ export function CreateHomeworkDialog({
   const [loading, setLoading] = useState(false)
 
   const timezone = useTimezone()
-  const selectedSubj = subjects.find((s) => s.id === subjectId)
 
   const dueDate = datetime ? toDateTimeInput(datetime, timezone) : ""
 
@@ -106,31 +91,7 @@ export function CreateHomeworkDialog({
           </DialogHeader>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label>Subject</Label>
-              <Select value={subjectId} onValueChange={(v) => setSubjectId(String(v))}>
-                <SelectTrigger>
-                  {selectedSubj ? (
-                    <span className="flex items-center gap-1.5">
-                      <SubjectIcon icon={selectedSubj.icon} className="size-3.5 shrink-0 text-muted-foreground" />
-                      {selectedSubj.name}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Select a subject</span>
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.map((s) => (
-                    <SelectItem key={s.id} value={s.id} label={s.name}>
-                      <span className="flex items-center gap-1.5">
-                        <SubjectIcon icon={s.icon} className="size-3.5 shrink-0 text-muted-foreground" />
-                        {s.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} />
 
             <div className="flex flex-col gap-1.5">
               <Label>Due date</Label>

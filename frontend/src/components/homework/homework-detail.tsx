@@ -6,25 +6,28 @@ import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   CalendarClock,
-  CheckCircle2,
   ChevronDown,
-  CircleDashed,
   Loader2,
   Pencil,
   Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { ApiError } from "@/lib/api/client"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { ErrorBox } from "@/components/ui/error-box"
+import { LoadingState } from "@/components/ui/loading"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { errorMessage } from "@/lib/errors"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { getSubjects } from "@/lib/api/settings"
 import { getHomework, updateHomework } from "@/lib/api/homework"
 import type { Homework, HomeworkStatus, Subject } from "@/types"
 import {
   HOMEWORK_STATUS_BADGE,
+  HOMEWORK_STATUS_ICON,
   HOMEWORK_STATUS_LABELS,
   HOMEWORK_STATUS_ORDER,
+  isOverdueHomework,
 } from "./constants"
 import {
   DropdownMenu,
@@ -37,14 +40,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DeleteHomeworkDialog } from "./delete-homework-dialog"
 import { EditHomeworkDialog } from "./edit-homework-dialog"
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
 
 function formatDate(iso: string, tz: string): string {
   const d = new Date(iso)
@@ -102,8 +97,8 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
   )
 
   const overdue = useMemo(() => {
-    if (homework === null || homework.status === "finished") return false
-    return new Date(homework.due_date).getTime() < new Date().getTime()
+    if (homework === null) return false
+    return isOverdueHomework(homework, new Date())
   }, [homework])
 
   async function changeStatus(status: HomeworkStatus) {
@@ -172,9 +167,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
     return (
       <>
         {control}
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-        </div>
+        <LoadingState />
       </>
     )
   }
@@ -183,9 +176,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
     return (
       <>
         {control}
-        <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-          {loadError ?? "This homework could not be found."}
-        </p>
+        <ErrorBox>{loadError ?? "This homework could not be found."}</ErrorBox>
       </>
     )
   }
@@ -215,17 +206,14 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
             <DropdownMenuTrigger
               render={
                 <Button size="sm" variant="outline" className="gap-1.5 h-7 rounded-full px-2.5">
-                  {homework.status === "finished" ? (
-                    <CheckCircle2 className="size-3.5" />
-                  ) : homework.status === "ongoing" ? (
-                    <CircleDashed className="size-3.5" />
-                  ) : (
-                    <CalendarClock className="size-3.5" />
-                  )}
-                  <span className={BadgeStyled(homework.status)}>
+                  {(() => {
+                    const StatusIcon = HOMEWORK_STATUS_ICON[homework.status]
+                    return <StatusIcon className="size-3.5" />
+                  })()}
+                  <StatusBadge className={HOMEWORK_STATUS_BADGE[homework.status]}>
                     {changing && <Loader2 className="size-3 animate-spin" />}
                     {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
-                  </span>
+                  </StatusBadge>
                   <ChevronDown className="size-3.5 text-muted-foreground" />
                 </Button>
               }
@@ -259,9 +247,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
       </div>
 
       {statusError && (
-        <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-          {statusError}
-        </p>
+        <ErrorBox>{statusError}</ErrorBox>
       )}
 
       <DeleteHomeworkDialog
@@ -282,8 +268,4 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
       )}
     </div>
   )
-}
-
-function BadgeStyled(status: HomeworkStatus): string {
-  return `inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${HOMEWORK_STATUS_BADGE[status]}`
 }

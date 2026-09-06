@@ -12,25 +12,14 @@ import {
 } from "@/components/ui/popover"
 import type { CancelledClassEvent } from "@/types"
 import { uncancelClass } from "@/lib/api/calendar"
-
-const REASON_LABELS: Record<string, string> = {
-  break: "Break",
-  public_holiday: "Public holiday",
-  other: "Other",
-}
-
-const SLOT_HEIGHT = 20
+import { timeToMinutes } from "@/lib/date-time"
+import { REASON_LABELS, SLOT_HEIGHT } from "./constants"
 
 interface CancelledOverlayProps {
   cancellation: CancelledClassEvent
   startTime: string
   endTime: string
   onUncancelled: () => void
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number)
-  return h * 60 + m
 }
 
 export function CancelledOverlay({ cancellation, startTime, endTime, onUncancelled }: CancelledOverlayProps) {

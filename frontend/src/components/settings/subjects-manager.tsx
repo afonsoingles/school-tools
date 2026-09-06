@@ -30,6 +30,9 @@ import {
 } from "@/components/ui/table"
 import { ApiError } from "@/lib/api/client"
 import { cn } from "@/lib/utils"
+import { ErrorBox } from "@/components/ui/error-box"
+import { LoadingState } from "@/components/ui/loading"
+import { errorMessage } from "@/lib/errors"
 import {
   createSubject,
   deleteSubject,
@@ -43,14 +46,6 @@ import {
   getSubjectIcons,
 } from "@/lib/icons"
 import type { Subject } from "@/types"
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
 
 export function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -162,17 +157,13 @@ export function SubjectsManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-      </div>
+      <LoadingState />
     )
   }
 
   if (loadError) {
     return (
-      <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-        {loadError}
-      </p>
+      <ErrorBox>{loadError}</ErrorBox>
     )
   }
 
@@ -316,9 +307,7 @@ export function SubjectsManager() {
       </div>
 
       {error && (
-        <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-          {error}
-        </p>
+        <ErrorBox>{error}</ErrorBox>
       )}
 
       <CreateSubjectDialog
@@ -415,9 +404,7 @@ function CreateSubjectDialog({
           </div>
 
           {error && (
-            <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-              {error}
-            </p>
+            <ErrorBox>{error}</ErrorBox>
           )}
 
           

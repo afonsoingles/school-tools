@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ApiError } from "@/lib/api/client"
+import { ErrorBox } from "@/components/ui/error-box"
+import { errorMessage } from "@/lib/errors"
 import { deleteHomework } from "@/lib/api/homework"
 import type { Homework } from "@/types"
 
@@ -19,14 +20,6 @@ interface DeleteHomeworkDialogProps {
   onOpenChange: (open: boolean) => void
   homework: Homework | null
   onDeleted: () => void
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
 }
 
 export function DeleteHomeworkDialog({
@@ -66,9 +59,7 @@ export function DeleteHomeworkDialog({
         </DialogHeader>
 
         {error && (
-          <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-            {error}
-          </p>
+          <ErrorBox>{error}</ErrorBox>
         )}
 
         <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-1.5">

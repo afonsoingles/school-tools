@@ -4,6 +4,10 @@ function pad(n: number): string {
 
 const WEEKDAY_MAP: Record<string, number> = { sun: 7, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
+export const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+export const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+export const WEEKDAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
 export interface TzParts {
   y: number
   m: number
@@ -53,4 +57,31 @@ export function tzDateFromParts(tz: string, y: number, m: number, d: number, h: 
     guess = new Date(Date.UTC(y, m - 1, d, h, min) - offset)
   }
   return guess
+}
+
+export function datePart(iso: string): string {
+  return iso.includes("T") ? iso.split("T")[0] : iso
+}
+
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0
+  return h * 60 + m
+}
+
+export function formatDateDdMmYyyy(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-")
+  return `${d}/${m}/${y}`
+}
+
+export function formatDateDmy(value: string): string {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+}
+
+export function formatDateWeekday(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-")
+  const date = new Date(Number(y), Number(m) - 1, Number(d))
+  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
 }

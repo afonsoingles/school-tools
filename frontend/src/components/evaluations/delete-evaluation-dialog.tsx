@@ -11,7 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ApiError } from "@/lib/api/client"
+import { ErrorBox } from "@/components/ui/error-box"
+import { errorMessage } from "@/lib/errors"
 import { deleteEvaluation } from "@/lib/api/evaluations"
 import type { Evaluation } from "@/types"
 import { EVALUATION_TYPE_LABELS } from "./constants"
@@ -22,14 +23,6 @@ interface DeleteEvaluationDialogProps {
   evaluation: Evaluation | null
   subjectName: string
   onDeleted: () => void
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
 }
 
 export function DeleteEvaluationDialog({
@@ -76,9 +69,7 @@ export function DeleteEvaluationDialog({
         </DialogHeader>
 
         {error && (
-          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-            {error}
-          </p>
+          <ErrorBox>{error}</ErrorBox>
         )}
 
           <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-1.5">

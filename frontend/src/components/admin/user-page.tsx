@@ -40,16 +40,13 @@ import {
 } from "@/components/ui/tooltip"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { SubjectIcon } from "@/components/ui/subject-icon"
-import { ApiError } from "@/lib/api/client"
+import { ErrorBox } from "@/components/ui/error-box"
+import { errorMessage } from "@/lib/errors"
+import { WEEKDAY_NAMES, formatDateDmy } from "@/lib/date-time"
+import { REASON_LABELS } from "@/components/calendar/constants"
 import { resendVerificationEmail, updateAdminUser } from "@/lib/api/admin"
 import type { AdminUserDetail, CancelledClassEvent } from "@/types"
 
-const WEEKDAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-const CANCELLATION_REASON_LABELS: Record<string, string> = {
-  break: "Break",
-  public_holiday: "Public holiday",
-  other: "Other",
-}
 const FALLBACK_TIMEZONES = [
   "Etc/Universal",
   "UTC",
@@ -73,14 +70,6 @@ interface Draft {
   email_verified: boolean
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
-
 function getIanaTimezones(): string[] {
   try {
     const zones = Intl.supportedValuesOf?.("timeZone")
@@ -89,12 +78,6 @@ function getIanaTimezones(): string[] {
     // fall through
   }
   return FALLBACK_TIMEZONES
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
 }
 
 function formatISODate(value: string): string {
@@ -154,17 +137,14 @@ function StatusMessage({
   message: { ok: boolean; text: string } | null
 }) {
   if (!message) return null
-  return (
-    <p
-      className={
-        message.ok
-          ? "text-sm text-green-400 bg-green-500/10 border border-green-500/25 rounded-md px-3 py-2"
-          : "text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2"
-      }
-    >
-      {message.text}
-    </p>
-  )
+  if (message.ok) {
+    return (
+      <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/25 rounded-md px-3 py-2">
+        {message.text}
+      </p>
+    )
+  }
+  return <ErrorBox>{message.text}</ErrorBox>
 }
 
 function CancellationsList({ cancellations }: { cancellations: CancelledClassEvent[] }) {
@@ -182,7 +162,7 @@ function CancellationsList({ cancellations }: { cancellations: CancelledClassEve
           >
             <span>{formatISODate(cancellation.date)}</span>
             <span className="text-muted-foreground">
-              — {CANCELLATION_REASON_LABELS[cancellation.reason] ?? cancellation.reason}
+              — {REASON_LABELS[cancellation.reason] ?? cancellation.reason}
             </span>
           </li>
         ))}
@@ -317,8 +297,8 @@ export function UserDetails({ initial }: { initial: AdminUserDetail }) {
               <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
                 <Detail label="Email">{detail.email}</Detail>
                 <Detail label="Timezone">{detail.timezone}</Detail>
-                <Detail label="Created">{formatDate(detail.created_at)}</Detail>
-                <Detail label="Updated">{formatDate(detail.updated_at)}</Detail>
+                <Detail label="Created">{formatDateDmy(detail.created_at)}</Detail>
+                <Detail label="Updated">{formatDateDmy(detail.updated_at)}</Detail>
                 <Detail label="Role">
                   <span className="flex flex-wrap items-center gap-1.5">
                     {roleBadge}

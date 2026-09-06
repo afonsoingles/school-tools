@@ -13,17 +13,11 @@ import {
 } from "@/components/ui/dialog"
 import type { Subject } from "@/types"
 import { createClass } from "@/lib/api/calendar"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SubjectIcon } from "@/components/ui/subject-icon"
-
-const WEEKDAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+import { ErrorBox } from "@/components/ui/error-box"
+import { SubjectSelect } from "@/components/ui/subject-select"
+import { DAY_NAMES } from "@/lib/date-time"
 
 interface CreateClassDialogProps {
   open: boolean
@@ -111,36 +105,7 @@ export function CreateClassDialog({
             </div>
           ) : (
           <>
-          <div className="flex flex-col gap-1.5">
-            <Label>Subject</Label>
-            <Select value={subjectId} onValueChange={(v) => setSubjectId(String(v))}>
-              <SelectTrigger>
-                {subjectId
-                  ? (() => {
-                      const selected = subjects.find((s) => s.id === subjectId)
-                      return selected ? (
-                        <span className="flex items-center gap-1.5">
-                          <SubjectIcon icon={selected.icon} className="size-3.5 shrink-0 text-muted-foreground" />
-                          {selected.name}
-                        </span>
-                      ) : (
-                        "Select a subject"
-                      )
-                    })()
-                  : <span className="text-muted-foreground">Select a subject</span>}
-              </SelectTrigger>
-              <SelectContent>
-                {subjects.map((s) => (
-                  <SelectItem key={s.id} value={s.id} label={s.name}>
-                    <span className="flex items-center gap-1.5">
-                      <SubjectIcon icon={s.icon} className="size-3.5 shrink-0 text-muted-foreground" />
-                      {s.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} placeholder="Select a subject" />
 
           <div className="flex flex-col gap-1.5">
             <Label>Day</Label>
@@ -154,7 +119,7 @@ export function CreateClassDialog({
                   className="flex-1 text-xs"
                   onClick={() => setWeekday(String(d))}
                 >
-                  {WEEKDAY_NAMES[d]}
+                  {DAY_NAMES[d - 1]}
                 </Button>
               ))}
             </div>
@@ -184,9 +149,7 @@ export function CreateClassDialog({
           </div>
 
           {error && (
-            <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-              {error}
-            </p>
+            <ErrorBox>{error}</ErrorBox>
           )}
 
           <Button type="submit" disabled={loading || !subjectId || !weekday} className="gap-1.5">

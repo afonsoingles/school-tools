@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useState } from "react"
 import {
   CalendarPlus,
   CalendarX,
@@ -14,7 +14,6 @@ import {
 import { toast } from "sonner"
 import { FaApple } from "react-icons/fa6"
 import { FcGoogle } from "react-icons/fc"
-import { ApiError } from "@/lib/api/client"
 import {
   getCalendarFeeds,
   isFeedDisabled,
@@ -30,27 +29,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ErrorBox } from "@/components/ui/error-box"
+import { LoadingState } from "@/components/ui/loading"
+import { errorMessage } from "@/lib/errors"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import type { CalendarFeeds } from "@/types"
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
-
-function ErrorBox({ children }: { children: ReactNode }) {
-  return (
-    <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-      {children}
-    </p>
-  )
-}
 
 function toWebcal(url: string): string {
   return url.replace(/^https?:\/\//i, "webcal://")
@@ -150,9 +136,7 @@ export function CalendarFeedSettings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-      </div>
+      <LoadingState />
     )
   }
 

@@ -18,10 +18,12 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select"
-import { ApiError } from "@/lib/api/client"
+import { ErrorBox } from "@/components/ui/error-box"
+import { errorMessage } from "@/lib/errors"
 import { createEvaluation } from "@/lib/api/evaluations"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { subjectIconMap, subjectNameMap } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { getTzParts, toDateTimeInput } from "@/lib/date-time"
 import type { ClassEvent, Subject } from "@/types"
@@ -33,18 +35,6 @@ interface CreateEvaluationDialogProps {
   classes: ClassEvent[]
   subjects: Subject[]
   onCreated: () => void
-}
-
-function backendWeekdayFromDate(date: Date, tz: string): number | null {
-  return getTzParts(tz, date).weekday
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
 }
 
 export function CreateEvaluationDialog({
@@ -61,9 +51,9 @@ export function CreateEvaluationDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const weekday = date ? backendWeekdayFromDate(date, timezone) : null
-  const classSubjectMap = new Map(subjects.map((s) => [s.id, s.name]))
-  const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
+  const weekday = date ? getTzParts(timezone, date).weekday : null
+  const classSubjectMap = subjectNameMap(subjects)
+  const subjectIcon = subjectIconMap(subjects)
   const subjectIds = new Set(subjects.map((s) => s.id))
 
   const availableClasses = weekday
@@ -71,7 +61,7 @@ export function CreateEvaluationDialog({
     : []
 
   const selectedClass = classes.find((c) => c.id === classId)
-  const selectedIcon = selectedClass ? subjectIconMap.get(selectedClass.subject_id) ?? "" : ""
+  const selectedIcon = selectedClass ? subjectIcon.get(selectedClass.subject_id) ?? "" : ""
   const selectedLabel = selectedClass
     ? `${classSubjectMap.get(selectedClass.subject_id) ?? "Unknown"} · ${selectedClass.start_time} – ${selectedClass.end_time}`
     : null
@@ -153,7 +143,7 @@ export function CreateEvaluationDialog({
                     <SelectItem key={c.id} value={c.id} label={classSubjectMap.get(c.subject_id) ?? "Unknown"}>
                       <span className="flex items-center gap-1.5">
                         <SubjectIcon
-                          icon={subjectIconMap.get(c.subject_id) ?? ""}
+                          icon={subjectIcon.get(c.subject_id) ?? ""}
                           className="size-3.5 shrink-0 text-muted-foreground"
                         />
                         {classSubjectMap.get(c.subject_id) ?? "Unknown"} · {c.start_time} – {c.end_time}
@@ -180,9 +170,7 @@ export function CreateEvaluationDialog({
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-              {error}
-            </p>
+            <ErrorBox>{error}</ErrorBox>
           )}
 
           <Button type="submit" disabled={loading || !classId || !date} className="gap-1.5">

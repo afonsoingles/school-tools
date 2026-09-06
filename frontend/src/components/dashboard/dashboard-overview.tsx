@@ -3,17 +3,13 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-  CalendarClock,
   CalendarDays,
-  CheckCircle2,
-  CircleDashed,
   ClipboardList,
   FileText,
   Flame,
   Timer,
   TriangleAlert,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -34,65 +30,24 @@ import { getEvaluations } from "@/lib/api/evaluations"
 import { getHomework } from "@/lib/api/homework"
 import { getSubjects } from "@/lib/api/settings"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
-import { HOMEWORK_STATUS_LABELS } from "@/components/homework/constants"
+import { HOMEWORK_STATUS_ICON, HOMEWORK_STATUS_LABELS, isOverdueHomework } from "@/components/homework/constants"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
+import {
+  DAY_FULL,
+  datePart,
+  formatDateDdMmYyyy,
+  formatDateWeekday,
+  getTzParts,
+  timeToMinutes,
+} from "@/lib/date-time"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import type { ClassEvent, CancelledClassEvent, Evaluation, Homework, Subject } from "@/types"
 import { cn } from "@/lib/utils"
 
-const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-const HOMEWORK_STATUS_ICON: Record<string, LucideIcon> = {
-  not_started: CalendarClock,
-  ongoing: CircleDashed,
-  finished: CheckCircle2,
-}
-
-function datePart(iso: string): string {
-  return iso.includes("T") ? iso.split("T")[0] : iso
-}
-
-const TZ_WEEKDAY_MAP: Record<string, number> = { sun: 7, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
-
-function getTzParts(
-  tz: string,
-  date: Date
-): { y: number; m: number; d: number; h: number; min: number; weekday: number } {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    weekday: "short",
-  }).formatToParts(date)
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ""
-  return {
-    y: Number(get("year")),
-    m: Number(get("month")),
-    d: Number(get("day")),
-    h: Number(get("hour")),
-    min: Number(get("minute")),
-    weekday: TZ_WEEKDAY_MAP[get("weekday").toLowerCase()] ?? 1,
-  }
-}
-
 function toDateString(tz: string, date: Date): string {
   const { y, m, d } = getTzParts(tz, date)
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
-}
-
-function formatEvalDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-")
-  const date = new Date(Number(y), Number(m) - 1, Number(d))
-  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
-}
-
-function formatDueDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-")
-  return `${d}/${m}/${y}`
 }
 
 function daysUntil(dateStr: string, todayStr: string): number {
@@ -103,21 +58,10 @@ function daysUntil(dateStr: string, todayStr: string): number {
   return Math.round((parse(dateStr) - parse(todayStr)) / 86400000)
 }
 
-function isOverdueHomework(hw: Homework, now: Date): boolean {
-  if (hw.status === "finished") return false
-  return new Date(hw.due_date).getTime() < now.getTime()
-}
-
 function dueTimeLabel(iso: string, tz: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
   return d.toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" })
-}
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number)
-  if (Number.isNaN(h) || Number.isNaN(m)) return 0
-  return h * 60 + m
 }
 
 function dueMinutes(iso: string, tz: string): number {
@@ -133,6 +77,24 @@ function shortDate(iso: string): string {
     day: "numeric",
     month: "short",
   })
+}
+
+function OverdueIndicator() {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger
+          className="inline-flex items-center rounded outline-none shrink-0 focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Overdue"
+        >
+          <TriangleAlert className="size-3.5 text-destructive" />
+        </TooltipTrigger>
+        <TooltipContent side="top" align="center">
+          <span>Overdue</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 function SummaryChip({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
@@ -173,9 +135,9 @@ export function DashboardOverview() {
   const todayStr = toDateString(timezone, now)
   const backendWeekday = getTzParts(timezone, now).weekday
 
-  const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
+  const subjectMap = buildSubjectNameMap(subjects)
   const classSubjectMap = new Map(classes.map((c) => [c.id, c.subject_id]))
-  const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
+  const subjectIcons = buildSubjectIconMap(subjects)
 
   const todaysClasses = classes
     .filter((c) => c.weekday === backendWeekday)
@@ -438,21 +400,7 @@ export function DashboardOverview() {
                           <div className="flex flex-col gap-0.5 min-w-0">
                             <span className={cn("flex items-center gap-1.5 text-sm font-medium", row.overdue && "text-destructive", row.key === currentRowKey && "font-bold")}>
                               <span className="truncate">{hw.title}</span>
-                              {row.overdue && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger
-                                      className="inline-flex items-center rounded outline-none shrink-0 focus-visible:ring-2 focus-visible:ring-ring"
-                                      aria-label="Overdue"
-                                    >
-                                      <TriangleAlert className="size-3.5 text-destructive" />
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" align="center">
-                                      <span>Overdue</span>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
+                              {row.overdue && <OverdueIndicator />}
                             </span>
                             <span
                               className={cn(
@@ -461,7 +409,7 @@ export function DashboardOverview() {
                               )}
                             >
                               <SubjectIcon
-                                icon={subjectIconMap.get(hw.subject_id) ?? ""}
+                                icon={subjectIcons.get(hw.subject_id) ?? ""}
                                 className="size-3 shrink-0"
                               />
                               <span className="truncate">{subjectName}</span>
@@ -493,7 +441,7 @@ export function DashboardOverview() {
                           <FileText className="size-4 shrink-0 text-destructive" />
                         ) : (
                           <SubjectIcon
-                            icon={subjectIconMap.get(cls.subject_id) ?? ""}
+                            icon={subjectIcons.get(cls.subject_id) ?? ""}
                             className="size-4 shrink-0"
                           />
                         )}
@@ -550,13 +498,13 @@ export function DashboardOverview() {
                     >
                       <span className="flex flex-1 items-center gap-1.5 truncate text-sm font-medium">
                           <SubjectIcon
-                            icon={(subjectId && subjectIconMap.get(subjectId)) ?? ""}
+                            icon={(subjectId && subjectIcons.get(subjectId)) ?? ""}
                             className="size-3.5 shrink-0"
                           />
                           <span className="truncate">{subjectName}</span>
                         </span>
                       <span className="hidden text-sm text-right w-28 text-muted-foreground sm:block">
-                        {formatEvalDate(datePart(evaluation.date))}
+                        {formatDateWeekday(datePart(evaluation.date))}
                       </span>
                       <Badge
                         variant={
@@ -598,32 +546,18 @@ export function DashboardOverview() {
                     >
                       <span className={cn("flex flex-1 items-center gap-1.5 truncate text-sm font-medium min-w-0", overdue && "text-destructive")}>
                         <SubjectIcon
-                          icon={subjectIconMap.get(hw.subject_id) ?? ""}
+                          icon={subjectIcons.get(hw.subject_id) ?? ""}
                           className="size-3.5 shrink-0"
                         />
                         <span className="truncate">{hw.title}</span>
-                        {overdue && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger
-                                className="inline-flex items-center rounded outline-none shrink-0 focus-visible:ring-2 focus-visible:ring-ring"
-                                aria-label="Overdue"
-                              >
-                                <TriangleAlert className="size-3.5 text-destructive" />
-                              </TooltipTrigger>
-                              <TooltipContent side="top" align="center">
-                                <span>Overdue</span>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
+                        {overdue && <OverdueIndicator />}
                       </span>
                       <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                         <StatusIcon className="size-3" />
                         <span>{HOMEWORK_STATUS_LABELS[hw.status]}</span>
                       </span>
                       <span className="shrink-0 text-right text-sm tabular-nums text-muted-foreground sm:w-28">
-                        {formatDueDate(datePart(hw.due_date))}
+                        {formatDateDdMmYyyy(datePart(hw.due_date))}
                       </span>
                     </Link>
                   )

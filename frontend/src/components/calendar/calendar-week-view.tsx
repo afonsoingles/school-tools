@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Plus, Loader2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatInTz, getTzParts, tzDateFromParts } from "@/lib/date-time"
+import { DAY_FULL, DAY_NAMES, formatInTz, getTzParts, timeToMinutes, tzDateFromParts } from "@/lib/date-time"
+import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
@@ -17,28 +18,16 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { getClasses, getCancellations, uncancelClass } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
+import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
 import type { ClassEvent, CancelledClassEvent, Subject, Evaluation } from "@/types"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { REASON_LABELS, SLOT_HEIGHT } from "./constants"
 import { CancelClassDialog } from "./cancel-class-dialog"
 import { DeleteClassDialog } from "./delete-class-dialog"
 import { CreateClassDialog } from "./create-class-dialog"
 
-const EVALUATION_TYPE_LABELS: Record<string, string> = {
-  exam: "Exam",
-  quiz: "Quiz",
-  other: "Other",
-}
-
-const SLOT_HEIGHT = 20
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-const REASON_LABELS: Record<string, string> = {
-  break: "Break",
-  public_holiday: "Public holiday",
-  other: "Other",
-}
 const CLASS_COLORS = [
   "bg-blue-600 text-white hover:bg-blue-500",
   "bg-emerald-600 text-white hover:bg-emerald-500",
@@ -50,32 +39,13 @@ const CLASS_COLORS = [
   "bg-teal-600 text-white hover:bg-teal-500",
 ]
 
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number)
-  return h * 60 + m
-}
-
 function formatHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`
 }
 
-const WEEKDAY_MAP: Record<string, number> = { sun: 7, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
-
 function getTzCurrentDate(tz: string): { y: number; m: number; d: number; weekdayIndex: number } {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-  }).formatToParts(new Date())
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ""
-  return {
-    y: Number(get("year")),
-    m: Number(get("month")),
-    d: Number(get("day")),
-    weekdayIndex: WEEKDAY_MAP[get("weekday").toLowerCase()] ?? 1,
-  }
+  const p = getTzParts(tz, new Date())
+  return { y: p.y, m: p.m, d: p.d, weekdayIndex: p.weekday }
 }
 
 function addDaysTz(tz: string, date: Date, days: number): Date {
@@ -176,8 +146,8 @@ export function CalendarWeekView() {
     setWeekOffset(0)
   }
 
-  const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
-  const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
+  const subjectMap = buildSubjectNameMap(subjects)
+  const subjectIcon = buildSubjectIconMap(subjects)
 
   const fetchData = useCallback(() => {
     Promise.all([getClasses(), getCancellations(), getEvaluations(), getSubjects()])
@@ -437,7 +407,7 @@ export function CalendarWeekView() {
                 >
                   <span className="flex items-center gap-1 font-semibold text-sm leading-tight truncate text-left">
                     <SubjectIcon
-                      icon={subjectIconMap.get(cls.subject_id) ?? ""}
+                      icon={subjectIcon.get(cls.subject_id) ?? ""}
                       className="size-3.5 shrink-0"
                     />
                     <span className="truncate">{subjectName}</span>

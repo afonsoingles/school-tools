@@ -20,6 +20,9 @@ import {
 import type { ClassEvent } from "@/types"
 import { cancelClass } from "@/lib/api/calendar"
 import { Label } from "@/components/ui/label"
+import { ErrorBox } from "@/components/ui/error-box"
+import { formatDateDdMmYyyy } from "@/lib/date-time"
+import { REASON_LABELS } from "./constants"
 
 interface CancelClassDialogProps {
   open: boolean
@@ -27,17 +30,6 @@ interface CancelClassDialogProps {
   cls: ClassEvent | null
   date: string
   onCancelled: () => void
-}
-
-const REASON_LABELS: Record<string, string> = {
-  break: "Break",
-  public_holiday: "Public holiday",
-  other: "Other",
-}
-
-function formatDateDDMMYYYY(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-")
-  return `${d}/${m}/${y}`
 }
 
 export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }: CancelClassDialogProps) {
@@ -52,7 +44,7 @@ export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }
     setError(null)
 
     try {
-      await cancelClass(cls.id, formatDateDDMMYYYY(date), reason)
+      await cancelClass(cls.id, formatDateDdMmYyyy(date), reason)
       onCancelled()
       onOpenChange(false)
       setReason("")
@@ -91,9 +83,7 @@ export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }
         </div>
 
         {error && (
-          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-            {error}
-          </p>
+          <ErrorBox>{error}</ErrorBox>
         )}
 
         <div className="flex justify-end gap-2">

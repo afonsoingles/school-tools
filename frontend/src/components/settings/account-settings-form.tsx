@@ -24,21 +24,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ApiError } from "@/lib/api/client"
+import { errorMessage } from "@/lib/errors"
 import {
   changeAccountName,
   changeUserEmail,
   changeUserPassword,
 } from "@/lib/api/settings"
 import { isValidName, PASSWORD_HINT, PASSWORD_REGEX } from "@/lib/user-rules"
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
 
 function AccountCard({
   icon: Icon,

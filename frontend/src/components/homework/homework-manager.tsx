@@ -7,17 +7,13 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarClock,
-  CheckCircle2,
-  CircleDashed,
   Clock3,
   Eye,
   LayoutGrid,
-  Loader2,
   Plus,
   Search,
   Trash2,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -34,7 +30,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ApiError } from "@/lib/api/client"
+import { ErrorBox } from "@/components/ui/error-box"
+import { LoadingState } from "@/components/ui/loading"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { SubjectSelect } from "@/components/ui/subject-select"
+import { errorMessage } from "@/lib/errors"
+import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SubjectIcon } from "@/components/ui/subject-icon"
@@ -42,30 +43,11 @@ import { useTimezone } from "@/components/layout/timezone-provider"
 import { getSubjects } from "@/lib/api/settings"
 import { getHomework } from "@/lib/api/homework"
 import type { Homework, Subject } from "@/types"
-import { HOMEWORK_STATUS_BADGE, HOMEWORK_STATUS_LABELS, HOMEWORK_STATUS_ORDER } from "./constants"
+import { HOMEWORK_STATUS_BADGE, HOMEWORK_STATUS_ICON, HOMEWORK_STATUS_LABELS, HOMEWORK_STATUS_ORDER, isOverdueHomework } from "./constants"
 import { CreateHomeworkDialog } from "./create-homework-dialog"
 import { DeleteHomeworkDialog } from "./delete-homework-dialog"
 
 type SortKey = "due_date" | "title" | "subject" | "status"
-
-const HOMEWORK_STATUS_ICON: Record<string, LucideIcon> = {
-  not_started: CalendarClock,
-  ongoing: CircleDashed,
-  finished: CheckCircle2,
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
-
-function isOverdue(hw: Homework, now: Date): boolean {
-  if (hw.status === "finished") return false
-  return new Date(hw.due_date).getTime() < now.getTime()
-}
 
 function isUpcoming(hw: Homework): boolean {
   if (hw.status === "finished") return false
@@ -115,11 +97,11 @@ export function HomeworkManager() {
   useEffect(() => { fetchData() }, [])
 
   const subjectNameMap = useMemo(
-    () => new Map(subjects.map((s) => [s.id, s.name])),
+    () => buildSubjectNameMap(subjects),
     [subjects]
   )
   const subjectIconMap = useMemo(
-    () => new Map(subjects.map((s) => [s.id, s.icon])),
+    () => buildSubjectIconMap(subjects),
     [subjects]
   )
 
@@ -130,7 +112,7 @@ export function HomeworkManager() {
     const filtered = homeworks.filter((hw) => {
       if (q && !`${hw.title} ${hw.description}`.toLowerCase().includes(q)) return false
       if (subjectFilter !== "all" && hw.subject_id !== subjectFilter) return false
-      if (timeFilter === "overdue" && !isOverdue(hw, now)) return false
+      if (timeFilter === "overdue" && !isOverdueHomework(hw, now)) return false
       if (timeFilter === "upcoming" && !isUpcoming(hw)) return false
       return true
     })
@@ -171,17 +153,13 @@ export function HomeworkManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-      </div>
+      <LoadingState />
     )
   }
 
   if (loadError) {
     return (
-      <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
-        {loadError}
-      </p>
+      <ErrorBox>{loadError}</ErrorBox>
     )
   }
 
@@ -259,35 +237,7 @@ export function HomeworkManager() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Subject</label>
-          <Select value={subjectFilter} onValueChange={(v) => setSubjectFilter(String(v))}>
-            <SelectTrigger className="w-40">
-              {subjectFilter !== "all" ? (
-                <span className="flex items-center gap-1.5">
-                  <SubjectIcon
-                    icon={subjectIconMap.get(subjectFilter) ?? ""}
-                    className="size-3.5 shrink-0 text-muted-foreground"
-                  />
-                  {subjectNameMap.get(subjectFilter) ?? "Unknown"}
-                </span>
-              ) : (
-                "All subjects"
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" label="All subjects">All subjects</SelectItem>
-              {subjects.map((s) => (
-                <SelectItem key={s.id} value={s.id} label={s.name}>
-                  <span className="flex items-center gap-1.5">
-                    <SubjectIcon icon={s.icon} className="size-3.5 shrink-0 text-muted-foreground" />
-                    {s.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <SubjectSelect value={subjectFilter} onValueChange={setSubjectFilter} subjects={subjects} placeholder="All subjects" className="w-40" labelClassName="text-xs text-muted-foreground" />
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Sort by</label>
@@ -351,7 +301,7 @@ export function HomeworkManager() {
             </TableHeader>
             <TableBody>
               {rows.map(({ homework, subjectName, subjectIcon }) => {
-                const overdue = isOverdue(homework, new Date())
+                const overdue = isOverdueHomework(homework, new Date())
                 return (
                   <TableRow
                     key={homework.id}
@@ -369,13 +319,9 @@ export function HomeworkManager() {
                       <span className="text-sm font-medium truncate max-w-60">{homework.title}</span>
                     </TableCell>
                     <TableCell>
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", HOMEWORK_STATUS_BADGE[homework.status])}>
-                        {(() => {
-                          const StatusIcon = HOMEWORK_STATUS_ICON[homework.status]
-                          return <StatusIcon className="size-3 shrink-0" />
-                        })()}
+                      <StatusBadge icon={HOMEWORK_STATUS_ICON[homework.status]} className={HOMEWORK_STATUS_BADGE[homework.status]}>
                         {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
-                      </span>
+                      </StatusBadge>
                     </TableCell>
                     <TableCell>
                       <span className={cn("text-sm", overdue ? "font-medium text-red-400" : "text-muted-foreground")}>

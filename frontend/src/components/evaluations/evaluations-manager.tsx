@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -18,9 +18,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ApiError } from "@/lib/api/client"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { ErrorBox } from "@/components/ui/error-box"
+import { LoadingState } from "@/components/ui/loading"
+import { SubjectSelect } from "@/components/ui/subject-select"
 import { cn } from "@/lib/utils"
 import { SubjectIcon } from "@/components/ui/subject-icon"
+import { errorMessage } from "@/lib/errors"
+import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
+import { datePart, formatDateWeekday } from "@/lib/date-time"
 import { getClasses } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
 import { getEvaluations } from "@/lib/api/evaluations"
@@ -30,24 +36,6 @@ import { CreateEvaluationDialog } from "./create-evaluation-dialog"
 import { DeleteEvaluationDialog } from "./delete-evaluation-dialog"
 
 type ShowFilter = "upcoming" | "past" | "all"
-
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    const body = err.body as { message?: string } | null
-    return body?.message ?? "Something went wrong. Please try again."
-  }
-  return "Something went wrong. Please try again."
-}
-
-function datePart(iso: string): string {
-  return iso.includes("T") ? iso.split("T")[0] : iso
-}
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-")
-  const date = new Date(Number(y), Number(m) - 1, Number(d))
-  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
-}
 
 export function EvaluationsManager() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
@@ -80,13 +68,15 @@ export function EvaluationsManager() {
     return new Map(classes.map((c) => [c.id, c.subject_id]))
   }, [classes])
 
-  const subjectNameMap = useMemo(() => {
-    return new Map(subjects.map((s) => [s.id, s.name]))
-  }, [subjects])
+  const subjectNameMap = useMemo(
+    () => buildSubjectNameMap(subjects),
+    [subjects]
+  )
 
-  const subjectIconMap = useMemo(() => {
-    return new Map(subjects.map((s) => [s.id, s.icon]))
-  }, [subjects])
+  const subjectIconMap = useMemo(
+    () => buildSubjectIconMap(subjects),
+    [subjects]
+  )
 
   const rows = useMemo(() => {
     const today = new Date()
@@ -122,17 +112,13 @@ export function EvaluationsManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-      </div>
+      <LoadingState />
     )
   }
 
   if (loadError) {
     return (
-      <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
-        {loadError}
-      </p>
+      <ErrorBox>{loadError}</ErrorBox>
     )
   }
 
@@ -189,32 +175,7 @@ export function EvaluationsManager() {
             </SelectContent>
           </Select>
 
-          <Select value={subjectFilter} onValueChange={(v) => setSubjectFilter(String(v))}>
-            <SelectTrigger className="w-40">
-              {subjectFilter !== "all" ? (
-                <span className="flex items-center gap-1.5">
-                  <SubjectIcon
-                    icon={subjectIconMap.get(subjectFilter) ?? ""}
-                    className="size-3.5 shrink-0 text-muted-foreground"
-                  />
-                  {subjectNameMap.get(subjectFilter) ?? "Unknown"}
-                </span>
-              ) : (
-                "All subjects"
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" label="All subjects">All subjects</SelectItem>
-              {subjects.map((s) => (
-                <SelectItem key={s.id} value={s.id} label={s.name}>
-                  <span className="flex items-center gap-1.5">
-                    <SubjectIcon icon={s.icon} className="size-3.5 shrink-0 text-muted-foreground" />
-                    {s.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SubjectSelect value={subjectFilter} onValueChange={setSubjectFilter} subjects={subjects} placeholder="All subjects" className="w-40" hideLabel />
         </div>
 
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
@@ -248,9 +209,8 @@ export function EvaluationsManager() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span
+                    <StatusBadge
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
                         evaluation.type === "exam"
                           ? "bg-red-500/15 text-red-400"
                           : evaluation.type === "quiz"
@@ -259,9 +219,9 @@ export function EvaluationsManager() {
                       )}
                     >
                       {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
-                    </span>
+                    </StatusBadge>
                   </TableCell>
-                  <TableCell>{formatDate(datePart(evaluation.date))}</TableCell>
+                  <TableCell>{formatDateWeekday(datePart(evaluation.date))}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="destructive"
