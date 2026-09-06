@@ -589,7 +589,7 @@ export function DashboardOverview() {
                     <Link
                       key={hw.id}
                       href={`/homework/${hw.id}`}
-                      className="flex items-center gap-3 px-2 py-3 -mx-2 border-t rounded-md border-border first:border-t-0 hover:bg-muted/40"
+                      className="flex items-center gap-3 px-2 py-3 -mx-2 border-t border-border first:border-t-0 hover:bg-muted/40"
                     >
                       <span className={cn("flex flex-1 items-center gap-1.5 truncate text-sm font-medium", overdue && "text-destructive")}>
                         <SubjectIcon
