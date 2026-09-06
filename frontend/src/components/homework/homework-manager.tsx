@@ -7,6 +7,8 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarClock,
+  CheckCircle2,
+  CircleDashed,
   Clock3,
   Eye,
   LayoutGrid,
@@ -15,6 +17,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -44,6 +47,12 @@ import { CreateHomeworkDialog } from "./create-homework-dialog"
 import { DeleteHomeworkDialog } from "./delete-homework-dialog"
 
 type SortKey = "due_date" | "title" | "subject" | "status"
+
+const HOMEWORK_STATUS_ICON: Record<string, LucideIcon> = {
+  not_started: CalendarClock,
+  ongoing: CircleDashed,
+  finished: CheckCircle2,
+}
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -360,7 +369,11 @@ export function HomeworkManager() {
                       <span className="text-sm font-medium truncate max-w-60">{homework.title}</span>
                     </TableCell>
                     <TableCell>
-                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", HOMEWORK_STATUS_BADGE[homework.status])}>
+                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", HOMEWORK_STATUS_BADGE[homework.status])}>
+                        {(() => {
+                          const StatusIcon = HOMEWORK_STATUS_ICON[homework.status]
+                          return <StatusIcon className="size-3 shrink-0" />
+                        })()}
                         {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
                       </span>
                     </TableCell>
