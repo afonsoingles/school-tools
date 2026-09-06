@@ -99,7 +99,10 @@ function tzDateString(p: { y: number; m: number; d: number }): string {
 }
 
 export function CalendarWeekView() {
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollDesktopRef = useRef<HTMLDivElement>(null)
+  const scrollMobileRef = useRef<HTMLDivElement>(null)
+  const headerScrollRef = useRef<HTMLDivElement>(null)
+  const gutterScrollRef = useRef<HTMLDivElement>(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
   const [cancellations, setCancellations] = useState<CancelledClassEvent[]>([])
@@ -113,6 +116,8 @@ export function CalendarWeekView() {
   const [createDefaults, setCreateDefaults] = useState<{ weekday?: number; time?: string }>({})
   const [uncancelingId, setUncancelingId] = useState<string | null>(null)
   const [deletingEvalId, setDeletingEvalId] = useState<string | null>(null)
+  const scrolledWeekRef = useRef<number | null>(null)
+  const syncRef = useRef(false)
 
   const timezone = useTimezone()
 
@@ -150,17 +155,20 @@ export function CalendarWeekView() {
   useEffect(() => { fetchData() }, [fetchData])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      if (classes.length > 0) {
-        const earliest = classes.reduce((min, c) => {
-          const t = timeToMinutes(c.start_time)
-          return t < min ? t : min
-        }, Infinity)
-        const scrollTo = Math.max(0, ((earliest - 30) / 15) * SLOT_HEIGHT)
-        scrollRef.current.scrollTop = scrollTo
-      } else {
-        scrollRef.current.scrollTop = 7 * 4 * SLOT_HEIGHT
-      }
+    if (loading) return
+    if (scrolledWeekRef.current === weekOffset) return
+    scrolledWeekRef.current = weekOffset
+    if (classes.length > 0) {
+      const earliest = classes.reduce((min, c) => {
+        const t = timeToMinutes(c.start_time)
+        return t < min ? t : min
+      }, Infinity)
+      const target = Math.max(0, ((earliest - 30) / 15) * SLOT_HEIGHT)
+      if (scrollDesktopRef.current) scrollDesktopRef.current.scrollTop = target
+      if (scrollMobileRef.current) scrollMobileRef.current.scrollTop = target
+    } else {
+      if (scrollDesktopRef.current) scrollDesktopRef.current.scrollTop = 7 * 4 * SLOT_HEIGHT
+      if (scrollMobileRef.current) scrollMobileRef.current.scrollTop = 7 * 4 * SLOT_HEIGHT
     }
   }, [weekOffset, loading, classes])
 
@@ -271,9 +279,43 @@ export function CalendarWeekView() {
     return `${formatDateShort(weekStart, timezone)} – ${formatDateShort(end, timezone)} ${e.y}`
   }
 
+  function syncGridScroll() {
+    const g = scrollMobileRef.current
+    if (!g || syncRef.current) return
+    syncRef.current = true
+    try {
+      if (headerScrollRef.current && headerScrollRef.current.scrollLeft !== g.scrollLeft) {
+        headerScrollRef.current.scrollLeft = g.scrollLeft
+      }
+      if (gutterScrollRef.current && gutterScrollRef.current.scrollTop !== g.scrollTop) {
+        gutterScrollRef.current.scrollTop = g.scrollTop
+      }
+    } finally {
+      syncRef.current = false
+    }
+  }
+
+  function syncHeaderScroll() {
+    const h = headerScrollRef.current
+    const g = scrollMobileRef.current
+    if (!h || !g || syncRef.current || g.scrollLeft === h.scrollLeft) return
+    syncRef.current = true
+    g.scrollLeft = h.scrollLeft
+    syncRef.current = false
+  }
+
+  function syncGutterScroll() {
+    const u = gutterScrollRef.current
+    const g = scrollMobileRef.current
+    if (!u || !g || syncRef.current || g.scrollTop === u.scrollTop) return
+    syncRef.current = true
+    g.scrollTop = u.scrollTop
+    syncRef.current = false
+  }
+
   function handleGridClick(e: React.MouseEvent<HTMLDivElement>, weekday: number) {
     const rect = e.currentTarget.getBoundingClientRect()
-    const y = e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)
+    const y = e.clientY - rect.top
     const slotIndex = Math.round(y / SLOT_HEIGHT)
     const totalMinutes = slotIndex * 15
     const hour = Math.floor(totalMinutes / 60)
@@ -281,6 +323,176 @@ export function CalendarWeekView() {
     const time = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`
     setCreateDefaults({ weekday, time })
     setCreateOpen(true)
+  }
+
+  function renderHourLabels() {
+    return (
+      <div className="relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
+        {HOURS.map((hour) => (
+          <div
+            key={hour}
+            className="absolute right-0 -top-2 pr-2 text-[10px] text-muted-foreground tabular-nums"
+            style={{ top: `${hour * 4 * SLOT_HEIGHT}px` }}
+          >
+            {formatHour(hour)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderDayCells() {
+    return weekDays.map((day) => (
+      <div
+        key={day.dateStr}
+        className="relative w-32 shrink-0 border-l border-border/50 md:w-auto md:flex-1 md:min-w-0"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("[data-slot]")) return
+          handleGridClick(e, day.weekday)
+        }}
+      >
+        {HOURS.map((hour) => (
+          <div
+            key={hour}
+            className="absolute left-0 right-0 border-b border-border/30"
+            style={{ top: `${hour * 4 * SLOT_HEIGHT}px`, height: `${4 * SLOT_HEIGHT}px` }}
+          >
+            {[1, 2, 3].map((sub) => (
+              <div
+                key={sub}
+                className="absolute left-0 right-0 border-b border-border/10"
+                style={{ top: `${sub * SLOT_HEIGHT}px` }}
+              />
+            ))}
+          </div>
+        ))}
+
+        {(() => {
+          const dayClasses = classesForDay(day.weekday)
+          const layout = dayClassLayout(dayClasses)
+
+          return dayClasses.map((cls) => {
+            const cancel = cancelledForDay(cls.id, day.dateStr)
+            const evaluation = evaluationForDay(cls.id, day.dateStr)
+            const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
+            const isCancelled = !!cancel
+            const hasEvaluation = !!evaluation
+            const band = layout.get(cls.id) ?? { topMin: 0, endMin: 60, col: 0, total: 1, colorIndex: 0 }
+            const top = (band.topMin / 15) * SLOT_HEIGHT
+            const height = Math.max(((band.endMin - band.topMin) / 15) * SLOT_HEIGHT, 20)
+            const widthPct = 100 / band.total
+            const leftPct = band.col * widthPct
+
+            return (
+              <Popover key={cls.id}>
+                <PopoverTrigger
+                  className={cn(
+                    "absolute flex flex-col justify-start rounded px-2 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
+                    hasEvaluation
+                      ? "bg-red-500 text-white hover:bg-red-400"
+                      : isCancelled
+                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                        : CLASS_COLORS[band.colorIndex % CLASS_COLORS.length],
+                  )}
+                  style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
+                >
+                  <span className="flex items-center gap-1 font-semibold text-sm leading-tight truncate text-left">
+                    <SubjectIcon
+                      icon={subjectIconMap.get(cls.subject_id) ?? ""}
+                      className="size-3.5 shrink-0"
+                    />
+                    <span className="truncate">{subjectName}</span>
+                  </span>
+                  {height >= 40 && (
+                    <span className="text-xs leading-tight opacity-90 text-left">
+                      {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : `${cls.start_time} – ${cls.end_time}`}
+                    </span>
+                  )}
+                </PopoverTrigger>
+                <PopoverContent side="right" align="start" collisionPadding={16}>
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <PopoverTitle>{subjectName}</PopoverTitle>
+                      {hasEvaluation ? (
+                        <PopoverDescription>
+                          {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                        </PopoverDescription>
+                      ) : isCancelled ? (
+                        <div className="flex items-center gap-1 text-destructive mt-1">
+                          <AlertTriangle className="size-3.5 shrink-0" />
+                          <span className="text-sm">This class was cancelled.</span>
+                        </div>
+                      ) : (
+                        <PopoverDescription>
+                          {day.full} · {cls.start_time} – {cls.end_time}
+                        </PopoverDescription>
+                      )}
+                    </div>
+                    {(isCancelled || hasEvaluation) && (
+                      <>
+                        <div className="text-sm text-muted-foreground">
+                          {day.full} · {cls.start_time} – {cls.end_time}
+                        </div>
+                        {isCancelled && (
+                          <div className="text-sm text-muted-foreground">
+                            Reason: {REASON_LABELS[cancel.reason] ?? cancel.reason}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <Separator />
+                    <div className="flex gap-2">
+                      {hasEvaluation ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          disabled={deletingEvalId === evaluation.id}
+                          onClick={() => handleDeleteEvaluation(evaluation.id)}
+                        >
+                          {deletingEvalId === evaluation.id && <Loader2 className="size-3.5 animate-spin" />}
+                          Delete evaluation
+                        </Button>
+                      ) : isCancelled ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          disabled={uncancelingId === cancel.id}
+                          onClick={() => handleUncancel(cancel.id)}
+                        >
+                          {uncancelingId === cancel.id && <Loader2 className="size-3.5 animate-spin" />}
+                          Uncancel
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setCancelDialog({ cls, date: day.dateStr })}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setDeleteDialog({ cls, subjectName })}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )
+          })
+        })()}
+      </div>
+    ))
   }
 
   if (loading) {
@@ -292,13 +504,13 @@ export function CalendarWeekView() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 px-8 pb-6">
-      <div className="flex items-center justify-between pb-4">
-        <div className="flex items-center gap-0">
+    <div className="flex flex-col flex-1 min-h-0 px-4 pb-4 md:px-8 md:pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
+        <div className="flex flex-wrap items-center gap-1">
           <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o - 1)}>
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="text-sm font-medium min-w-50 text-center">{weekLabel()}</span>
+          <span className="text-sm font-medium min-w-32 text-center">{weekLabel()}</span>
           <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o + 1)}>
             <ChevronRight className="size-4" />
           </Button>
@@ -315,183 +527,58 @@ export function CalendarWeekView() {
       </div>
 
       <div className="flex flex-col flex-1 min-h-0 rounded-lg border border-border bg-background overflow-hidden">
-        <div className="flex border-b border-border">
+        <div className="flex shrink-0 border-b border-border bg-background">
           <div className="w-14 shrink-0" />
-          {weekDays.map((day) => (
-            <div key={day.dateStr} className={cn("flex-1 px-2 py-2 text-center border-l border-border/50")}>
-              <div className="text-xs text-muted-foreground">{day.name}</div>
-              <div className={cn("text-lg font-medium", day.today && "text-primary")}>
-                {day.dayNum}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
-          <div className="flex relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
-            <div className="w-14 shrink-0 relative border-r border-border">
-              {HOURS.map((hour) => (
+          <div
+            ref={headerScrollRef}
+            onScroll={syncHeaderScroll}
+            className="flex-1 max-md:overflow-x-auto max-md:no-scrollbar max-md:overscroll-x-contain"
+          >
+            <div className="flex">
+              {weekDays.map((day) => (
                 <div
-                  key={hour}
-                  className="absolute right-0 -top-2 pr-2 text-[10px] text-muted-foreground tabular-nums"
-                  style={{ top: `${hour * 4 * SLOT_HEIGHT}px` }}
+                  key={day.dateStr}
+                  className="w-32 shrink-0 border-l border-border/50 px-2 py-2 text-center md:w-auto md:flex-1 md:min-w-0"
                 >
-                  {formatHour(hour)}
+                  <div className="text-xs text-muted-foreground">{day.name}</div>
+                  <div className={cn("text-lg font-medium", day.today && "text-primary")}>
+                    {day.dayNum}
+                  </div>
                 </div>
               ))}
             </div>
+          </div>
+        </div>
 
-            {weekDays.map((day) => (
-              <div
-                key={day.dateStr}
-                className="relative flex-1 border-l border-border/50"
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).closest("[data-slot]")) return
-                  handleGridClick(e, day.weekday)
-                }}
-              >
-                {HOURS.map((hour) => (
-                  <div
-                    key={hour}
-                    className="absolute left-0 right-0 border-b border-border/30"
-                    style={{ top: `${hour * 4 * SLOT_HEIGHT}px`, height: `${4 * SLOT_HEIGHT}px` }}
-                  >
-                    {[1, 2, 3].map((sub) => (
-                      <div
-                        key={sub}
-                        className="absolute left-0 right-0 border-b border-border/10"
-                        style={{ top: `${sub * SLOT_HEIGHT}px` }}
-                      />
-                    ))}
-                  </div>
-                ))}
-
-                {(() => {
-                  const dayClasses = classesForDay(day.weekday)
-                  const layout = dayClassLayout(dayClasses)
-
-                  return dayClasses.map((cls) => {
-                  const cancel = cancelledForDay(cls.id, day.dateStr)
-                  const evaluation = evaluationForDay(cls.id, day.dateStr)
-                  const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
-                  const isCancelled = !!cancel
-                  const hasEvaluation = !!evaluation
-                  const band = layout.get(cls.id) ?? { topMin: 0, endMin: 60, col: 0, total: 1, colorIndex: 0 }
-                  const top = (band.topMin / 15) * SLOT_HEIGHT
-                  const height = Math.max(((band.endMin - band.topMin) / 15) * SLOT_HEIGHT, 20)
-                  const widthPct = 100 / band.total
-                  const leftPct = band.col * widthPct
-
-                  return (
-                    <Popover key={cls.id}>
-                      <PopoverTrigger
-                        className={cn(
-                          "absolute flex flex-col justify-start rounded px-2 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
-                          hasEvaluation
-                            ? "bg-red-500 text-white hover:bg-red-400"
-                            : isCancelled
-                              ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                              : CLASS_COLORS[band.colorIndex % CLASS_COLORS.length],
-                        )}
-                        style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
-                      >
-                        <span className="flex items-center gap-1 font-semibold text-sm leading-tight truncate text-left">
-                          <SubjectIcon
-                            icon={subjectIconMap.get(cls.subject_id) ?? ""}
-                            className="size-3.5 shrink-0"
-                          />
-                          <span className="truncate">{subjectName}</span>
-                        </span>
-                        {height >= 40 && (
-                          <span className="text-xs leading-tight opacity-90 text-left">
-                            {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : `${cls.start_time} – ${cls.end_time}`}
-                          </span>
-                        )}
-                      </PopoverTrigger>
-                      <PopoverContent side="right" align="start">
-                        <div className="flex flex-col gap-2">
-                          <div>
-                            <PopoverTitle>{subjectName}</PopoverTitle>
-                            {hasEvaluation ? (
-                              <PopoverDescription>
-                                {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
-                              </PopoverDescription>
-                            ) : isCancelled ? (
-                              <div className="flex items-center gap-1 text-destructive mt-1">
-                                <AlertTriangle className="size-3.5 shrink-0" />
-                                <span className="text-sm">This class was cancelled.</span>
-                              </div>
-                            ) : (
-                              <PopoverDescription>
-                                {day.full} · {cls.start_time} – {cls.end_time}
-                              </PopoverDescription>
-                            )}
-                          </div>
-                          {(isCancelled || hasEvaluation) && (
-                            <>
-                              <div className="text-sm text-muted-foreground">
-                                {day.full} · {cls.start_time} – {cls.end_time}
-                              </div>
-                              {isCancelled && (
-                                <div className="text-sm text-muted-foreground">
-                                  Reason: {REASON_LABELS[cancel.reason] ?? cancel.reason}
-                                </div>
-                              )}
-                            </>
-                          )}
-                          <Separator />
-                          <div className="flex gap-2">
-                            {hasEvaluation ? (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="flex-1"
-                                disabled={deletingEvalId === evaluation.id}
-                                onClick={() => handleDeleteEvaluation(evaluation.id)}
-                              >
-                                {deletingEvalId === evaluation.id && <Loader2 className="size-3.5 animate-spin" />}
-                                Delete evaluation
-                              </Button>
-                            ) : isCancelled ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                  disabled={uncancelingId === cancel.id}
-                                  onClick={() => handleUncancel(cancel.id)}
-                                >
-                                  {uncancelingId === cancel.id && <Loader2 className="size-3.5 animate-spin" />}
-                                  Uncancel
-                                </Button>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                  onClick={() => setCancelDialog({ cls, date: day.dateStr })}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="flex-1"
-                                  onClick={() => setDeleteDialog({ cls, subjectName })}
-                                >
-                                  Delete
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  )
-                })
-                })()}
+        <div className="flex flex-1 min-h-0">
+          <div className="md:flex max-md:hidden flex-1 min-h-0">
+            <div ref={scrollDesktopRef} className="flex-1 overflow-y-auto no-scrollbar">
+              <div className="flex relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
+                <div className="w-14 shrink-0 relative border-r border-border bg-background">
+                  {renderHourLabels()}
+                </div>
+                {renderDayCells()}
               </div>
-            ))}
+            </div>
+          </div>
+
+          <div className="flex md:hidden flex-1 min-h-0">
+            <div
+              ref={gutterScrollRef}
+              onScroll={syncGutterScroll}
+              className="w-14 shrink-0 overflow-y-auto border-r border-border bg-background no-scrollbar max-md:overscroll-y-contain"
+            >
+              {renderHourLabels()}
+            </div>
+            <div
+              ref={scrollMobileRef}
+              onScroll={syncGridScroll}
+              className="flex-1 min-h-0 overflow-auto max-md:overscroll-x-contain"
+            >
+              <div className="flex relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
+                {renderDayCells()}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -451,10 +451,11 @@ function IconPicker({
   onChange: (icon: string) => void
   disabled?: boolean
 }) {
+  const [open, setOpen] = useState(false)
   const icons = getSubjectIcons()
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
           <Button
@@ -476,7 +477,10 @@ function IconPicker({
               <Button
                 key={name}
                 variant="ghost"
-                onClick={() => onChange(name)}
+                onClick={() => {
+                  onChange(name)
+                  setOpen(false)
+                }}
                 className={cn(
                   "size-10 p-0! rounded-lg",
                   name === value ? "bg-foreground/10!" : "hover:bg-foreground/10!"

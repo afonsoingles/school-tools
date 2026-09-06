@@ -237,7 +237,7 @@ export function HomeworkManager() {
           </div>
         </div>
 
-        <div className="flex w-60 flex-col gap-1.5">
+        <div className="flex w-full sm:w-60 flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Search</label>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />

@@ -12,7 +12,7 @@ export default function CalendarPage() {
     <>
       <div className="relative">
         <PageHeader title="Calendar" subtitle="Your weekly schedule, containing classes and evaluations." />
-        <CalendarSyncHint className="absolute right-8 top-1/2 -translate-y-1/2" />
+        <CalendarSyncHint className="absolute top-1/2 right-8 -translate-y-1/2 max-md:static max-md:top-auto max-md:right-auto max-md:mr-4 max-md:flex max-md:translate-y-0 max-md:justify-end" />
       </div>
       <CalendarWeekView />
     </>

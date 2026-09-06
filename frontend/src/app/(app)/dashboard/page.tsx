@@ -23,9 +23,15 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={userName ? `Hello, ${userName}` : "Hello"} subtitle={todayLabel} />
-      <div className="flex flex-col flex-1 min-h-0 px-8 pb-6">
-        <DashboardOverview />
+      <PageHeader
+        className="max-md:hidden"
+        title={userName ? `Hello, ${userName}` : "Hello"}
+        subtitle={todayLabel}
+      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex flex-col pt-4 px-4 pb-4 md:pt-0 md:px-8 md:pb-6">
+          <DashboardOverview />
+        </div>
       </div>
     </>
   )

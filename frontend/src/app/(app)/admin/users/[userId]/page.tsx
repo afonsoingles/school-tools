@@ -35,7 +35,7 @@ export default async function AdminUserDetailsPage({
     return (
       <>
         <PageHeader title="User details" subtitle="Could not load this user." />
-        <div className="flex flex-col items-start gap-4 px-8 py-6">
+        <div className="flex flex-col items-start gap-4 px-4 py-4 md:px-8 md:py-6">
           <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
             {raw ?? "This user could not be loaded. Check that the account still exists."}
           </p>
@@ -50,14 +50,14 @@ export default async function AdminUserDetailsPage({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="flex items-center px-8 pt-6">
+      <div className="flex items-center px-4 pt-4 md:px-8 md:pt-6">
         <Button render={<Link href="/admin" />} variant="outline" size="sm" nativeButton={false} className="gap-1.5">
           <ArrowLeft className="size-3.5" />
           Back to users
         </Button>
       </div>
       <PageHeader title={detail.name} subtitle=""/>
-      <div className="flex flex-col gap-8 px-8">
+      <div className="flex flex-col gap-8 px-4 pb-4 md:px-8">
         <UserDetails initial={detail} />
       </div>
     </div>

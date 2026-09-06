@@ -3,12 +3,16 @@ import { SettingsNav } from "@/components/settings/settings-nav"
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <PageHeader title="Settings" subtitle="Manage your settings" />
-      <SettingsNav />
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="flex flex-col px-8 pb-6">{children}</div>
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex flex-col">
+        <PageHeader
+          className="max-md:hidden"
+          title="Settings"
+          subtitle="Manage your settings"
+        />
+        <SettingsNav />
+        <div className="flex flex-col px-4 pb-4 md:px-8 md:pb-6">{children}</div>
       </div>
-    </>
+    </div>
   )
 }

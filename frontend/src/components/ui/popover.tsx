@@ -27,9 +27,10 @@ function PopoverContent({
   sideOffset = 8,
   align = "center",
   side = "bottom",
+  collisionPadding = 8,
   ...props
 }: Omit<PopoverPrimitive.Popup.Props, "children"> &
-  Pick<PopoverPrimitive.Positioner.Props, "sideOffset" | "align" | "side"> &
+  Pick<PopoverPrimitive.Positioner.Props, "sideOffset" | "align" | "side" | "collisionPadding"> &
   React.ComponentProps<"div"> & { children: React.ReactNode }) {
   return (
     <PopoverPrimitive.Portal>
@@ -38,6 +39,7 @@ function PopoverContent({
         sideOffset={sideOffset}
         align={align}
         side={side}
+        collisionPadding={collisionPadding}
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"

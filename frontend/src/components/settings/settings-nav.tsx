@@ -14,8 +14,8 @@ export function SettingsNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="px-8 pb-2">
-      <div className="flex items-center gap-1 pb-2 border-b border-border">
+    <nav className="px-4 pt-4 pb-2 md:px-8 md:pt-0">
+      <div className="flex min-w-max items-center gap-1 overflow-x-auto border-b border-border pb-2 no-scrollbar">
         {settingsTabs.map((tab) => {
           const isActive = pathname === tab.href
 

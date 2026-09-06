@@ -3,6 +3,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 :root,
 .dark {
   --radius: 0.75rem;
@@ -102,6 +110,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
+}
+
+@media (max-width: 767px) {
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 ::-webkit-scrollbar {

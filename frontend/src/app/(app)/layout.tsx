@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import * as Sentry from "@sentry/nextjs"
 import { AppSidebar } from "@/components/layout/app-sidebar"
+import { AppBar } from "@/components/layout/app-bar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TimezoneProvider } from "@/components/layout/timezone-provider"
 import { TimezoneSync } from "@/components/layout/timezone-sync"
@@ -27,7 +28,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SidebarProvider className="min-h-0! h-dvh!">
         <AppSidebar user={user} />
         <SidebarInset className="overflow-hidden!">
-          <div className="flex flex-col flex-1 min-h-0">{children}</div>
+          <div className="flex flex-col flex-1 min-h-0">
+            <AppBar />
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TimezoneProvider>

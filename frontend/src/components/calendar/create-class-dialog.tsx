@@ -168,6 +168,7 @@ export function CreateClassDialog({
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 required
+                className="max-md:px-2 max-md:text-sm"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -177,12 +178,13 @@ export function CreateClassDialog({
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 required
+                className="max-md:px-2 max-md:text-sm"
               />
             </div>
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/25 rounded-md px-3 py-2">
+            <p className="px-3 py-2 text-sm text-red-400 border rounded-md bg-red-500/10 border-red-500/25">
               {error}
             </p>
           )}

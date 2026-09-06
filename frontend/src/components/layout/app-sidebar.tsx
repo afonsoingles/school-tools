@@ -15,6 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { UserMenu } from "@/components/layout/user-menu"
 import { navigation } from "@/lib/navigation"
@@ -23,6 +24,11 @@ import type { User } from "@/types"
 
 export function AppSidebar({ user }: { user: User }) {
   const pathname = usePathname()
+  const { openMobile, setOpenMobile } = useSidebar()
+
+  function handleNavigate() {
+    if (openMobile) setOpenMobile(false)
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -46,6 +52,7 @@ export function AppSidebar({ user }: { user: User }) {
                       render={<Link href={item.href} />}
                       isActive={isActive}
                       tooltip={item.title}
+                      onClick={handleNavigate}
                     >
                       <item.icon />
                       <span>{item.title}</span>
@@ -66,6 +73,7 @@ export function AppSidebar({ user }: { user: User }) {
               render={<Link href="/admin" />}
               isActive={pathname.startsWith("/admin")}
               tooltip="Admin"
+              onClick={handleNavigate}
               className="border border-dashed border-amber-500/25 bg-amber-500/10 text-white hover:bg-amber-500/20 hover:text-white hover:border-amber-500/40 data-active:bg-amber-500/15 data-active:text-white"
             >
               <Hammer />

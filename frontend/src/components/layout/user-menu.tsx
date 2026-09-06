@@ -18,6 +18,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import type { User } from "@/types"
 
@@ -32,7 +33,10 @@ function getInitials(name: string) {
 
 export function UserMenu({ user }: { user: User }) {
   const router = useRouter()
+  const { setOpenMobile } = useSidebar()
   const [loggingOut, setLoggingOut] = useState(false)
+
+  const closeDrawer = () => setOpenMobile(false)
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -45,45 +49,59 @@ export function UserMenu({ user }: { user: User }) {
     }
   }
 
+  const dropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <SidebarMenuButton
+            size="lg"
+            className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
+          />
+        }
+      >
+        <Avatar className="w-8 h-8 rounded-md after:hidden!">
+          <AvatarFallback className="text-xs rounded-md bg-sidebar-accent">
+            {getInitials(user.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="grid flex-1 text-sm leading-tight text-left">
+          <span className="font-medium truncate">{user.name}</span>
+          <span className="text-xs truncate text-sidebar-foreground/60">{user.email}</span>
+        </div>
+        <ChevronsUpDown className="ml-auto opacity-50 size-4" />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        className="rounded-lg min-w-56"
+        side="top"
+        align="end"
+        sideOffset={4}
+      >
+        <DropdownMenuItem
+          render={<Link href="/settings" />}
+          onClick={closeDrawer}
+        >
+          <Settings className="size-4" />
+          Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => {
+            closeDrawer()
+            handleLogout()
+          }}
+          disabled={loggingOut}
+        >
+          {loggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+          Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <SidebarMenuButton
-                size="lg"
-                className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
-              />
-            }
-          >
-            <Avatar className="w-8 h-8 rounded-md">
-              <AvatarFallback className="text-xs rounded-md bg-sidebar-accent">
-                {getInitials(user.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-sm leading-tight text-left">
-              <span className="font-medium truncate">{user.name}</span>
-              <span className="text-xs truncate text-sidebar-foreground/60">{user.email}</span>
-            </div>
-            <ChevronsUpDown className="ml-auto opacity-50 size-4" />
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent className="rounded-lg min-w-56" side="top" align="end" sideOffset={4}>
-            <DropdownMenuItem
-              render={<Link href="/settings" />}
-            >
-              <Settings className="size-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} disabled={loggingOut}>
-              {loggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
+      <SidebarMenuItem>{dropdown}</SidebarMenuItem>
     </SidebarMenu>
   )
 }

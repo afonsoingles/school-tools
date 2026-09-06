@@ -1,15 +1,19 @@
 "use client"
 
 import { Toaster as Sonner } from "sonner"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  const isMobile = useIsMobile()
+
   return (
     <Sonner
       theme="dark"
       className="toaster group"
-      position="top-right"
+      position={isMobile ? "top-center" : "top-right"}
+      offset={isMobile ? 64 : undefined}
       toastOptions={{
         classNames: {
           toast:
