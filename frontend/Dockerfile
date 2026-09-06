@@ -1,4 +1,4 @@
-FROM oven/bun:1-alphine AS deps
+FROM oven/bun:1-alpine AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
