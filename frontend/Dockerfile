@@ -1,11 +1,11 @@
-FROM node:22-alpine AS deps
+FROM oven/bun:1-alphine AS deps
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm install --frozen-lockfile
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
-FROM node:22-alpine AS builder
+
+FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
 ARG NEXT_PUBLIC_API_URL=/api
@@ -18,7 +18,7 @@ COPY . .
 
 RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
     export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN 2>/dev/null || true)" && \
-    npm run build
+    bun run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
