@@ -12,6 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Stack
 - **Next.js 16.3.0** (App Router), **React 19**, TS. `next dev`/`next build` via Turbopack.
+- **Use `bun` (not npm)** for installs — the repo runs on `bun.lock` (no `package-lock.json`) and the Dockerfile does `bun install --frozen-lockfile`. `bun add <pkg>` / `bun add -d <pkg>`.
 - **shadcn/base-nova style** built on **`@base-ui/react`** (NOT Radix). Primitives live in `src/components/ui/` and are the ONLY sanctioned UI building blocks — do not reach for other component libs.
 - Styling is **Tailwind v4** + `cn()` from `@/lib/utils` (clsx + tailwind-merge). No `tailwind.config.js` (v4 CSS-based). Icons via **lucide-react** (imported by name; latest renamed: `ClipboardPen` not `ClipboardPencil`, `Ruler` not `RulerMeasure`).
 - Available ui primitives: `avatar, badge, button, card, dialog, dropdown-menu, input, label, popover, select, separator, sheet, sidebar, skeleton, sonner, table, tabs, tooltip, alert, subject-icon`.
@@ -25,6 +26,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - `Button` rendering a `<Link>` via `render` needs `nativeButton={false}` to avoid a console error.
 - **Client components must NOT import `next/headers` transitively** (causes a Pages-Router build error). Server-only logic goes in separate modules (e.g. `lib/api/admin-server.ts`, `lib/api/auth.ts`); client-safe functions in their own module (e.g. `lib/api/auth-client.ts`).
 - Small local helpers (date formatting, `errorMessage(err)`, `initials`) are defined as module-level functions inside the same file.
+- **User avatars = `UserAvatar`** (`components/layout/user-avatar.tsx`, built on the shadcn/base-ui `ui/avatar` primitives — `Avatar` + `AvatarImage` + `AvatarFallback`). It serves the Gravatar (`md5` of lowercase email via `blueimp-md5`, URL `https://www.gravatar.com/avatar/{hash}?s=96&d=404&r=g`); `d=404` makes a user without a Gravatar fall back to the initials letter block automatically (base-ui keeps the fallback on image error). Use it instead of hand-rolling `Avatar`+`AvatarFallback` for users. It accepts `size` (`sm`/`default`/`lg`), `className` (root) and `fallbackClassName`.
 
 ## Card layout (use the built-in slots)
 `Card` uses slot primitives. For an action button in a card header use **`CardAction`** (renders `justify-self-end` in the header grid) — do NOT hand-roll flex layouts inside `CardHeader`:

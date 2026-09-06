@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, Loader2, RefreshCcw, Search, Zap } from "lucide-react"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { UserAvatar } from "@/components/layout/user-avatar"
 import {
   Select,
   SelectContent,
@@ -57,16 +57,6 @@ function errorMessage(err: unknown): string {
     return body?.message ?? "Something went wrong. Please try again."
   }
   return "Something went wrong. Please try again."
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
 }
 
 function formatDate(value: string): string {
@@ -251,9 +241,7 @@ export function UsersManager() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <Avatar size="sm">
-                          <AvatarFallback>{initials(user.name)}</AvatarFallback>
-                        </Avatar>
+                        <UserAvatar user={user} size="sm" />
                         {user.name}
                         {(user.admin || user.superadmin) && (
                           <span

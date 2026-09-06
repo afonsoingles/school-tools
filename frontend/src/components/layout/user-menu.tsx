@@ -6,7 +6,7 @@ import Link from "next/link"
 import * as Sentry from "@sentry/nextjs"
 import { ChevronsUpDown, Loader2, LogOut, Settings } from "lucide-react"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/layout/user-avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,15 +21,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import type { User } from "@/types"
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
-}
 
 export function UserMenu({ user }: { user: User }) {
   const router = useRouter()
@@ -59,11 +50,11 @@ export function UserMenu({ user }: { user: User }) {
           />
         }
       >
-        <Avatar className="w-8 h-8 rounded-md after:hidden!">
-          <AvatarFallback className="text-xs rounded-md bg-sidebar-accent">
-            {getInitials(user.name)}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          user={user}
+          className="w-8 h-8 rounded-md after:hidden!"
+          fallbackClassName="text-xs rounded-md bg-sidebar-accent"
+        />
         <div className="grid flex-1 text-sm leading-tight text-left">
           <span className="font-medium truncate">{user.name}</span>
           <span className="text-xs truncate text-sidebar-foreground/60">{user.email}</span>
