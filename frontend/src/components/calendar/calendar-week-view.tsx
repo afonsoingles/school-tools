@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Loader2, AlertTriangle } from "lucide-
 import { cn } from "@/lib/utils"
 import { formatInTz, getTzParts, tzDateFromParts } from "@/lib/date-time"
 import { useTimezone } from "@/components/layout/timezone-provider"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -104,6 +105,7 @@ export function CalendarWeekView() {
   const headerScrollRef = useRef<HTMLDivElement>(null)
   const gutterScrollRef = useRef<HTMLDivElement>(null)
   const [weekOffset, setWeekOffset] = useState(0)
+  const [mobileDayOffset, setMobileDayOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
   const [cancellations, setCancellations] = useState<CancelledClassEvent[]>([])
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
@@ -136,6 +138,43 @@ export function CalendarWeekView() {
       today: p.y === todayTz.y && p.m === todayTz.m && p.d === todayTz.d,
     }
   })
+
+  const isMobile = useIsMobile()
+
+  const mobileDayDate = addDaysTz(
+    timezone,
+    tzDateFromParts(timezone, todayTz.y, todayTz.m, todayTz.d, 0, 0),
+    mobileDayOffset
+  )
+  const mobileDay = (() => {
+    const p = getTzParts(timezone, mobileDayDate)
+    const weekday = p.weekday
+    return {
+      weekday,
+      dateStr: tzDateString(p),
+      name: DAY_NAMES[weekday - 1],
+      full: DAY_FULL[weekday - 1],
+      dayNum: p.d,
+      today: p.y === todayTz.y && p.m === todayTz.m && p.d === todayTz.d,
+    }
+  })()
+
+  const showToday = isMobile ? mobileDayOffset !== 0 : weekOffset !== 0
+
+  function goPrev() {
+    if (isMobile) setMobileDayOffset((o) => o - 1)
+    else setWeekOffset((o) => o - 1)
+  }
+
+  function goNext() {
+    if (isMobile) setMobileDayOffset((o) => o + 1)
+    else setWeekOffset((o) => o + 1)
+  }
+
+  function goToday() {
+    setMobileDayOffset(0)
+    setWeekOffset(0)
+  }
 
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]))
   const subjectIconMap = new Map(subjects.map((s) => [s.id, s.icon]))
@@ -341,11 +380,11 @@ export function CalendarWeekView() {
     )
   }
 
-  function renderDayCells() {
-    return weekDays.map((day) => (
+  function renderDayCell(day: { weekday: number; dateStr: string; full: string }) {
+    return (
       <div
         key={day.dateStr}
-        className="relative w-32 shrink-0 border-l border-border/50 md:w-auto md:flex-1 md:min-w-0"
+        className="relative min-w-0 flex-1 border-l border-border/50"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("[data-slot]")) return
           handleGridClick(e, day.weekday)
@@ -492,7 +531,11 @@ export function CalendarWeekView() {
           })
         })()}
       </div>
-    ))
+    )
+  }
+
+  function renderDayCells() {
+    return weekDays.map((day) => renderDayCell(day))
   }
 
   if (loading) {
@@ -507,22 +550,29 @@ export function CalendarWeekView() {
     <div className="flex flex-col flex-1 min-h-0 px-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:px-8 md:pb-6">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         <div className="flex flex-wrap items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o - 1)}>
+          <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={goPrev}>
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="text-sm font-medium min-w-32 text-center">{weekLabel()}</span>
-          <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={() => setWeekOffset((o) => o + 1)}>
+          <span className="text-sm font-medium min-w-32 text-center">
+            {isMobile ? `${mobileDay.full}, ${formatDateShort(mobileDayDate, timezone)}` : weekLabel()}
+          </span>
+          <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={goNext}>
             <ChevronRight className="size-4" />
           </Button>
-          {weekOffset !== 0 && (
-            <Button variant="outline" size="sm" onClick={() => setWeekOffset(0)}>
+          {showToday && (
+            <Button variant="outline" size="sm" onClick={goToday}>
               Today
             </Button>
           )}
         </div>
-        <Button size="sm" onClick={() => { setCreateDefaults({}); setCreateOpen(true) }} className="gap-1.5">
+        <Button
+          size="sm"
+          onClick={() => { setCreateDefaults({}); setCreateOpen(true) }}
+          className={cn("gap-1.5", showToday && "max-md:size-9 max-md:p-0")}
+          aria-label="New class"
+        >
           <Plus className="size-3.5" />
-          New class
+          {showToday && <span className="max-md:hidden">New class</span>}
         </Button>
       </div>
 
@@ -532,13 +582,13 @@ export function CalendarWeekView() {
           <div
             ref={headerScrollRef}
             onScroll={syncHeaderScroll}
-            className="flex-1 max-md:overflow-x-auto max-md:no-scrollbar max-md:overscroll-x-contain"
+            className="flex-1 max-md:overflow-hidden"
           >
-            <div className="flex">
+            <div className="hidden md:flex">
               {weekDays.map((day) => (
                 <div
                   key={day.dateStr}
-                  className="w-32 shrink-0 border-l border-border/50 px-2 py-2 text-center md:w-auto md:flex-1 md:min-w-0"
+                  className="flex-1 min-w-0 border-l border-border/50 px-2 py-2 text-center"
                 >
                   <div className="text-xs text-muted-foreground">{day.name}</div>
                   <div className={cn("text-lg font-medium", day.today && "text-primary")}>
@@ -546,6 +596,14 @@ export function CalendarWeekView() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="flex md:hidden">
+              <div className="flex-1 border-l border-border/50 px-2 py-2 text-center">
+                <div className="text-xs text-muted-foreground">{mobileDay.name}</div>
+                <div className={cn("text-lg font-medium", mobileDay.today && "text-primary")}>
+                  {mobileDay.dayNum} {formatInTz(mobileDayDate, timezone, { month: "short" })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -573,10 +631,10 @@ export function CalendarWeekView() {
             <div
               ref={scrollMobileRef}
               onScroll={syncGridScroll}
-              className="flex-1 min-h-0 overflow-auto max-md:overscroll-x-contain"
+              className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
             >
               <div className="flex relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
-                {renderDayCells()}
+                {renderDayCell(mobileDay)}
               </div>
             </div>
           </div>
