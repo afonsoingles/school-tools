@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -26,7 +27,9 @@ export function AppBar() {
       className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] md:hidden"
     >
       <SidebarTrigger className="size-9" />
-      <Image src="/logo.png" alt="School Tools" width={32} height={32} className="shrink-0" />
+      <Link href="/dashboard" className="flex shrink-0" aria-label="Go to dashboard">
+        <Image src="/logo.png" alt="School Tools" width={32} height={32} />
+      </Link>
       <span className="truncate text-sm font-semibold text-foreground">{sectionTitle(pathname)}</span>
     </header>
   )

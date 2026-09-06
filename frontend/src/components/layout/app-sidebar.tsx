@@ -33,10 +33,10 @@ export function AppSidebar({ user }: { user: User }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-3 px-2 py-1.5">
+        <Link href="/dashboard" onClick={handleNavigate} className="flex items-center gap-3 px-2 py-1.5">
           <Image src="/logo.png" loading="eager" alt="School Tools" width={70} height={70}/>
           <span className="text-2xl font-bold tracking-tight leading-none group-data-[collapsible=icon]:hidden">School Tools</span>
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
