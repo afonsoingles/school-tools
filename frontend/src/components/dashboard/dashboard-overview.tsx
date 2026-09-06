@@ -90,6 +90,11 @@ function formatEvalDate(dateStr: string): string {
   return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
 }
 
+function formatDueDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-")
+  return `${d}/${m}/${y}`
+}
+
 function daysUntil(dateStr: string, todayStr: string): number {
   const parse = (s: string) => {
     const [y, m, d] = s.split("-").map(Number)
@@ -591,7 +596,7 @@ export function DashboardOverview() {
                       href={`/homework/${hw.id}`}
                       className="flex items-center gap-3 px-2 py-3 -mx-2 border-t border-border first:border-t-0 hover:bg-muted/40"
                     >
-                      <span className={cn("flex flex-1 items-center gap-1.5 truncate text-sm font-medium", overdue && "text-destructive")}>
+                      <span className={cn("flex flex-1 items-center gap-1.5 truncate text-sm font-medium min-w-0", overdue && "text-destructive")}>
                         <SubjectIcon
                           icon={subjectIconMap.get(hw.subject_id) ?? ""}
                           className="size-3.5 shrink-0"
@@ -613,12 +618,12 @@ export function DashboardOverview() {
                           </TooltipProvider>
                         )}
                       </span>
-                      <span className="items-center hidden gap-1 text-xs text-muted-foreground sm:flex shrink-0">
+                      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                         <StatusIcon className="size-3" />
                         <span>{HOMEWORK_STATUS_LABELS[hw.status]}</span>
                       </span>
-                      <span className="hidden text-sm text-right w-28 text-muted-foreground sm:block">
-                        {formatEvalDate(datePart(hw.due_date))}
+                      <span className="shrink-0 text-right text-sm tabular-nums text-muted-foreground sm:w-28">
+                        {formatDueDate(datePart(hw.due_date))}
                       </span>
                     </Link>
                   )
