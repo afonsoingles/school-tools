@@ -56,7 +56,7 @@ function addDaysTz(tz: string, date: Date, days: number): Date {
 
 function getWeekStart(offset: number, tz: string): Date {
   const now = getTzCurrentDate(tz)
-  const mondayDelta = now.weekdayIndex - 1 + offset * 7
+  const mondayDelta = now.weekdayIndex - 1 - offset * 7
   const today = tzDateFromParts(tz, now.y, now.m, now.d, 0, 0)
   return addDaysTz(tz, today, -mondayDelta)
 }
