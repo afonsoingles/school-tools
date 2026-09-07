@@ -60,11 +60,13 @@ async def signup(request: Request) -> JSONResponse:
 
     if len(str(name).strip()) < 2 or len(str(name).strip()) > 50:
         raise InvalidNameError
-    
+
+    if len(str(email).strip()) < 5 or len(str(email).strip()) > 100:
+        raise InvalidEmailError
     try:
         validate_email(email, check_deliverability=False)
     except EmailNotValidError:
-        raise EmailSyntaxError
+        raise InvalidEmailError
 
     try:
         ZoneInfo(timezone)
@@ -170,7 +172,7 @@ async def change_email(request: Request) -> JSONResponse:
     try:
         validate_email(new_email, check_deliverability=False)
     except EmailNotValidError:
-        raise EmailSyntaxError
+        raise InvalidEmailError
 
     user = user_tools.get_user_by_id(request.state.user.id)
     stored_pwd = user.password.get_secret_value()

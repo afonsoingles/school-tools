@@ -46,10 +46,10 @@ class PasswordTooWeakError(BaseError):
     code = "password_too_weak"
     message = "The provided password is too weak. Please choose a stronger password between 8 and 50 characters that includes uppercase and lowercase letters."
 
-class EmailSyntaxError(BaseError):
+class InvalidEmailError(BaseError):
     status_code = 400
     code = "email_syntax_error"
-    message = "The provided email has a syntax error. Please provide a valid email address."
+    message = "The provided email is invalid. Please provide a valid email address with a maximum of 100 characters."
 
 class InvalidNameError(BaseError):
     status_code = 400
