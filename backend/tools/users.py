@@ -93,8 +93,17 @@ class UserTools:
       
         return user
 
-    def get_users(self, limit: int = 100, offset: int = 0) -> list[User]:
-        raw = self.db.mongo.users.find().skip(offset).limit(limit)
+    def get_users(self, limit: int = 100, offset: int = 0, search=None) -> list[User]:
+        query = {}
+        if search:
+            query = {
+                "$or": [
+                    {"name": {"$regex": search, "$options": "i"}},
+                    {"email": {"$regex": search, "$options": "i"}},
+                ]
+            }
+
+        raw = self.db.mongo.users.find(query).skip(offset).limit(limit)
         users = [User.model_validate(user) for user in raw]
         
         for user in users:

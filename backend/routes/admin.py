@@ -33,10 +33,11 @@ async def force_generate_pending_feeds(request: Request) -> JSONResponse:
 @router.get("/v1/admin/users")
 @require_auth(require_admin=True)
 async def get_users(request: Request) -> JSONResponse:
-    limit = int(request.query_params.get("limit", 100))
+    limit = int(request.query_params.get("limit", 10))
     offset = int(request.query_params.get("offset", 0))
+    search = request.query_params.get("search", None)
 
-    users = user_tools.get_users(limit=limit, offset=offset)
+    users = user_tools.get_users(limit=limit, offset=offset, search=search)
     safe_users = [SafeUser.model_validate(user) for user in users]
 
     return JSONResponse({"success": True, "users": [user.model_dump(mode="json") for user in safe_users]})
