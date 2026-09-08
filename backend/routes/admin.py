@@ -8,11 +8,7 @@ from tools.evaluations import EvaluationTools
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
 from models.user import SafeUser
-from jobs.generate_ics import generate_pending_feeds
-from utils.scheduler import scheduler
-from errors.base import NotFound
 import uuid
-import os
 
 
 router = APIRouter()
@@ -22,12 +18,6 @@ evaluation_tools = EvaluationTools()
 subject_tools = SubjectTools()
 class_tools = ClassTools()
 
-@router.post("/v1/admin/force_generate_pending_feeds")
-@require_auth(require_admin=True)
-async def force_generate_pending_feeds(request: Request) -> JSONResponse:
-    scheduler.add_job(generate_pending_feeds, id="calendar.generate_pending_feeds.force", replace_existing=True)
-
-    return JSONResponse({"success": True, "message": "done! triggered the job to generate pending feeds."})
 
 # Users
 @router.get("/v1/admin/users")
@@ -73,33 +63,3 @@ async def resend_verification_email(request: Request, user_id: str) -> JSONRespo
     user_tools.send_verification_link(user.id, user.name, user.email)
 
     return JSONResponse({"success": True, "message": "done! sent them a link to their email!"})
-
-# Development ONLY.
-
-def _is_dev() -> bool:
-    return os.environ.get("ENVIRONMENT") == "development"
-
-@router.post("/v1/admin/dev/clear_global_user_cache")
-@require_auth(require_admin=True)
-async def dev_clear_user_cache(request: Request) -> JSONResponse:
-    if not _is_dev():
-        raise NotFound
-
-    keys = []
-    keys.extend(db.redis.keys("users.lookup.email:*") or [])
-    keys.extend(db.redis.keys("users.user:*") or [])
-    
-    if keys:
-        db.redis.delete(*keys)
-    
-    return JSONResponse({"success": True, "message": "user cache went kaboom!"})
-
-@router.post("/v1/admin/dev/nuke_redis")
-@require_auth(require_admin=True)
-async def dev_nuke_redis(request: Request) -> JSONResponse:
-    if not _is_dev():
-        raise NotFound
-    
-    db.redis.flushdb()
-    
-    return JSONResponse({"success": True, "message": "redis was nuked!"})
