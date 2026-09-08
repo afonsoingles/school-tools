@@ -12,7 +12,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def require_auth(func: Callable[P, Awaitable[R]] | None = None, *, require_admin: bool = False, allow_unverified_email: bool = False) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+def require_auth(func: Callable[P, Awaitable[R]] | None = None, *, require_admin: bool = False, require_superadmin: bool = False, allow_unverified_email: bool = False) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     def decorator(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -49,6 +49,9 @@ def require_auth(func: Callable[P, Awaitable[R]] | None = None, *, require_admin
                 raise UserSuspendedError
             if not user.admin and require_admin:
                 raise UserNotAdmin
+
+            if not user.superadmin and require_superadmin:
+                raise UserNotSuperAdmin
             
             if not user.email_verified and not allow_unverified_email and not user.admin:
                 raise UserNotVerifiedError
