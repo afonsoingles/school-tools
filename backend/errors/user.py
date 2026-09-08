@@ -36,6 +36,11 @@ class UserNotAdmin(BaseError):
     code = "user_not_admin"
     message = "sudo make me admin — oh wait, that's not how this works."
 
+class UserNotSuperAdmin(BaseError):
+    status_code = 403
+    code = "user_not_superadmin"
+    message = "sudo make superadmin — oh wait, that's not how this works."
+
 class EmailAlreadyVerified(BaseError):
     status_code = 409
     code = "already_verified"
