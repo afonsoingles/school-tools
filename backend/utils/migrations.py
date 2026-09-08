@@ -1,4 +1,5 @@
 import importlib.util
+import re
 import sys
 import datetime
 from pathlib import Path
@@ -7,6 +8,13 @@ import sentry_sdk
 
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "jobs" / "migrations"
+
+_MIGRATION_ID_RE = re.compile(r'MIGRATION_ID\s*=\s*["\']([^"\']+)["\']')
+
+
+def _migration_id_from_source(path: Path) -> str:
+    match = _MIGRATION_ID_RE.search(path.read_text(encoding="utf-8"))
+    return match.group(1) if match else path.stem
 
 
 def _discover_migrations() -> list[Path]:
@@ -17,24 +25,24 @@ def _discover_migrations() -> list[Path]:
         files.append(path)
 
     def migration_sort_key(path: Path):
-        parts = path.stem.split("_", 2)
-        date_part = parts[0] if parts else ""
-        number_part = parts[1] if len(parts) > 1 else ""
+        parts = _migration_id_from_source(path).split("_", 2)
+        date_part = parts[0] if len(parts) >= 1 else ""
+        number_part = parts[1] if len(parts) >= 2 else ""
 
         try:
-            date_value = datetime.datetime.strptime(date_part, "%Y%m%d").date()
+            date_value = int(date_part)
         except ValueError:
-            date_value = datetime.date.min
+            date_value = 0
 
         try:
             number_value = int(number_part)
         except ValueError:
             number_value = 0
 
-        return (date_value, number_value, path.name)
+        return (date_value, number_value, _migration_id_from_source(path))
 
-    # Oldest first (chronological): YYYYMMDD + sequence number.
-    return sorted(files, key=migration_sort_key, reverse=True)
+    # Oldest first (chronological): the MIGRATION_ID carries the date, not the filename.
+    return sorted(files, key=migration_sort_key)
 
 
 def _load_migration(path: Path):
