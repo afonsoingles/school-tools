@@ -2,10 +2,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from decorators.auth import require_auth
 from utils.database import Database
-from tools.users import UserTools
-from tools.evaluations import EvaluationTools
-from tools.subjects import SubjectTools
-from tools.classes import ClassTools
 from utils.scheduler import scheduler
 from jobs.generate_ics import generate_pending_feeds
 
@@ -13,10 +9,6 @@ from jobs.generate_ics import generate_pending_feeds
 
 router = APIRouter()
 db = Database()
-user_tools = UserTools()
-evaluation_tools = EvaluationTools()
-subject_tools = SubjectTools()
-class_tools = ClassTools()
 
 
 
