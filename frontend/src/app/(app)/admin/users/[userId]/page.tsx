@@ -10,8 +10,21 @@ import { getCurrentUser } from "@/lib/api/auth"
 import { serverGetAdminUser } from "@/lib/api/admin-server"
 import { ApiError } from "@/lib/api/client"
 
-export const metadata: Metadata = {
-  title: "User details",
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ userId: string }>
+}): Promise<Metadata> {
+  const { userId } = await params
+  let name: string | null = null
+  try {
+    const detail = await serverGetAdminUser(userId)
+    name = detail.name
+  } catch {}
+
+  return {
+    title: name ? `${name}` : "User/Users/Admin",
+  }
 }
 
 export default async function AdminUserDetailsPage({

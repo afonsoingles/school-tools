@@ -106,3 +106,33 @@ export interface AdminUserDetail extends User {
   evaluations: Evaluation[]
   subjects: Subject[]
 }
+
+export interface UserStats {
+  total: number
+  verified: number
+  unverified: number
+  active: number
+  inactive: number
+  new_7d: number
+  new_30d: number
+  computed_at: string
+}
+
+export interface AdoptionStats {
+  homework: number
+  evaluations: number
+  subjects: number
+  classes: number
+  cancellations: number
+  ics: number
+  computed_at: string
+}
+
+export interface FunctionalityStats {
+  homework: number
+  evaluations: number
+  subjects: number
+  classes: number
+  cancellations: number
+  computed_at: string
+}

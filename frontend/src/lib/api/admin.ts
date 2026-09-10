@@ -1,11 +1,14 @@
 import { apiFetch } from "@/lib/api/client"
 import type {
   AdminUserDetail,
+  AdoptionStats,
   CancelledClassEvent,
   ClassEvent,
   Evaluation,
+  FunctionalityStats,
   Subject,
   User,
+  UserStats,
 } from "@/types"
 
 export interface AdminUserPatch {
@@ -63,25 +66,32 @@ export async function resendVerificationEmail(userId: string): Promise<string> {
   return res.message
 }
 
-export async function adminClearGlobalUserCache(): Promise<string> {
-  const res = await apiFetch<{ success: boolean; message: string }>(
-    "/v1/admin/dev/clear_global_user_cache",
-    { method: "POST" }
-  )
-  return res.message
+async function fetchStats<T>(path: string): Promise<T> {
+  const res = await apiFetch<{ success: boolean; stats: T }>(path)
+  return res.stats
 }
 
-export async function adminNukeRedis(): Promise<string> {
-  const res = await apiFetch<{ success: boolean; message: string }>("/v1/admin/dev/nuke_redis", {
+function runAdminAction(path: string): Promise<string> {
+  return apiFetch<{ success: boolean; message: string }>(path, {
     method: "POST",
-  })
-  return res.message
+  }).then((res) => res.message)
 }
 
-export async function adminForceGeneratePendingFeeds(): Promise<string> {
-  const res = await apiFetch<{ success: boolean; message: string }>(
-    "/v1/admin/force_generate_pending_feeds",
-    { method: "POST" }
-  )
-  return res.message
-}
+export const getUserStats = (): Promise<UserStats> => fetchStats<UserStats>("/v1/admin/stats/user")
+
+export const getAdoptionStats = (): Promise<AdoptionStats> =>
+  fetchStats<AdoptionStats>("/v1/admin/stats/adoption")
+
+export const getFunctionalityStats = (): Promise<FunctionalityStats> =>
+  fetchStats<FunctionalityStats>("/v1/admin/stats/functionality")
+
+export const adminRefreshStats = (): Promise<string> => runAdminAction("/v1/admin/stats")
+
+export const adminClearGlobalUserCache = (): Promise<string> =>
+  runAdminAction("/v1/admin/development/db/nuke_users_cache")
+
+export const adminNukeRedis = (): Promise<string> =>
+  runAdminAction("/v1/admin/development/db/nuke_redis")
+
+export const adminForceGeneratePendingFeeds = (): Promise<string> =>
+  runAdminAction("/v1/admin/development/calendar/force_feed_generation")
