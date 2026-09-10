@@ -20,7 +20,6 @@ class SubjectIcon(str, Enum):
     CALCULATOR = "Calculator"
     DRAFTING_COMPASS = "DraftingCompass"
     RULER = "Ruler"
-    RULER_MEASURE = "RulerMeasure"
     FLASK_CONICAL = "FlaskConical"
     ATOM = "Atom"
     DNA = "Dna"

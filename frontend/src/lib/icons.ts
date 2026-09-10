@@ -39,7 +39,6 @@ import {
   Pi,
   Quote,
   Ruler,
-  Ruler as RulerMeasure,
   Scale,
   School,
   Scroll,
@@ -70,7 +69,6 @@ export const SUBJECT_ICONS: Record<string, LucideIcon> = {
   Calculator,
   DraftingCompass,
   Ruler,
-  RulerMeasure,
   FlaskConical,
   Atom,
   Dna,
@@ -107,8 +105,13 @@ export const SUBJECT_ICONS: Record<string, LucideIcon> = {
 
 export const DEFAULT_SUBJECT_ICON = "BookOpen"
 
+export const LEGACY_ICON_ALIASES: Record<string, string> = {
+  RulerMeasure: "Ruler",
+}
+
 export function getSubjectIcon(icon?: string | null): LucideIcon {
-  return (icon && SUBJECT_ICONS[icon]) || SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
+  const resolved = icon ? LEGACY_ICON_ALIASES[icon] ?? icon : undefined
+  return (resolved && SUBJECT_ICONS[resolved]) || SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
 }
 
 export function getSubjectIcons(): Array<{ name: string; Icon: LucideIcon }> {

@@ -1,4 +1,4 @@
-import { DEFAULT_SUBJECT_ICON, SUBJECT_ICONS } from "@/lib/icons"
+import { DEFAULT_SUBJECT_ICON, LEGACY_ICON_ALIASES, SUBJECT_ICONS } from "@/lib/icons"
 
 export function SubjectIcon({
   icon,
@@ -7,6 +7,6 @@ export function SubjectIcon({
   icon: string
   className?: string
 }) {
-  const Icon = SUBJECT_ICONS[icon] ?? SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
+  const Icon = SUBJECT_ICONS[LEGACY_ICON_ALIASES[icon] ?? icon] ?? SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
   return <Icon className={className} />
 }

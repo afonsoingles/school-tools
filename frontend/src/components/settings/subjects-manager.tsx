@@ -42,6 +42,7 @@ import {
 } from "@/lib/api/settings"
 import {
   DEFAULT_SUBJECT_ICON,
+  LEGACY_ICON_ALIASES,
   SUBJECT_ICONS,
   getSubjectIcons,
 } from "@/lib/icons"
@@ -421,7 +422,7 @@ function CreateSubjectDialog({
 }
 
 function SubjectIcon({ icon, className }: { icon: string; className?: string }) {
-  const Icon = SUBJECT_ICONS[icon] ?? SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
+  const Icon = SUBJECT_ICONS[LEGACY_ICON_ALIASES[icon] ?? icon] ?? SUBJECT_ICONS[DEFAULT_SUBJECT_ICON]
   return <Icon className={className} />
 }
 
