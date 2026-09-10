@@ -14,13 +14,17 @@ from utils.scheduler import scheduler
 from apscheduler.triggers.cron import CronTrigger
 from utils.limiter import limiter
 from utils.migrations import run_migrations
+from utils.dev import is_dev
 
 from errors.base import BaseError
 
 from jobs.generate_ics import generate_pending_feeds
+from jobs.update_stats import update_statistics
 
 from routes.auth import router as auth_router
-from routes.admin import router as admin_router
+from routes._admin import router as admin_router
+from routes.admin.stats import router as admin_stats_router
+from routes.admin.development import router as admin_dev_router
 from routes.subjects import router as subjects_router
 from routes.classes import router as classes_router
 from routes.evaluations import router as evaluations_router
@@ -42,6 +46,14 @@ scheduler.add_job(
     generate_pending_feeds,
     trigger=CronTrigger(minute="*/5", second=0, timezone="Europe/London"),
     id="calendar.generate_pending_feeds",
+    replace_existing=True,
+    misfire_grace_time=60,
+)
+
+scheduler.add_job(
+    update_statistics,
+    trigger=CronTrigger(minute=0, second=0, timezone="Europe/London"),
+    id="stats.update",
     replace_existing=True,
     misfire_grace_time=60,
 )
@@ -69,11 +81,15 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(admin_stats_router)
 app.include_router(subjects_router)
 app.include_router(classes_router)
 app.include_router(evaluations_router)
 app.include_router(calendar_router)
 app.include_router(homework_router)
+
+if is_dev():
+    app.include_router(admin_dev_router)
 
 app.add_middleware(SlowAPIMiddleware)
 
