@@ -74,7 +74,7 @@ export function AppSidebar({ user }: { user: User }) {
               isActive={pathname.startsWith("/admin")}
               tooltip="Admin"
               onClick={handleNavigate}
-              className="border border-dashed border-amber-500/25 bg-amber-500/10 text-white hover:bg-amber-500/20 hover:text-white hover:border-amber-500/40 data-active:bg-amber-500/15 data-active:text-white"
+              className="border-2 border-dashed border-amber-500/40 bg-transparent text-white hover:border-amber-500/60 hover:bg-transparent hover:text-white data-active:border-amber-500/70 data-active:bg-transparent data-active:text-white"
             >
               <Hammer />
               <span>Admin</span>
