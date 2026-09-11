@@ -22,8 +22,8 @@ class StatisticTools:
         if cached and not force_refresh:
             return UserStats.model_validate(json.loads(cached))
 
-        cut_7d = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
-        cut_30d = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
+        cut_7d = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()
+        cut_30d = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).isoformat()
 
         try:
             row = self.db.mongo.users.aggregate([
@@ -31,8 +31,8 @@ class StatisticTools:
                     "total": {"$sum": 1},
                     "verified": {"$sum": {"$cond": [{"$eq": ["$email_verified", True]}, 1, 0]}},
                     "active": {"$sum": {"$cond": [{"$eq": ["$active", True]}, 1, 0]}},
-                    "new_7d": {"$sum": {"$cond": [{"$gte": ["$created_at", cut_7d]}, 1, 0]}},
-                    "new_30d": {"$sum": {"$cond": [{"$gte": ["$created_at", cut_30d]}, 1, 0]}}}}
+                    "new_7d": {"$sum": {"$cond": [{"$gte": ["$created_at", {"$literal": cut_7d}]}, 1, 0]}},
+                    "new_30d": {"$sum": {"$cond": [{"$gte": ["$created_at", {"$literal": cut_30d}]}, 1, 0]}}}}
             ]).next()
         except StopIteration:
             row = {"total": 0, "verified": 0, "active": 0, "new_7d": 0, "new_30d": 0}
