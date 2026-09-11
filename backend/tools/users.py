@@ -8,7 +8,9 @@ from pydantic_extra_types.timezone_name import TimeZoneName
 import uuid
 import bcrypt
 import datetime
+import hashlib
 import os
+import re
 
 class UserTools:
     def __init__(self) -> None:
@@ -52,6 +54,7 @@ class UserTools:
 
         self.db.redis.set(f"users.user:{user.id}", user.model_dump_json(), ex=10800)
         self.db.redis.set(f"users.lookup.email:{email}", str(user.id), ex=10800)
+        self.invalidate_admin_users_lists()
 
         return User.model_validate(user_dict)
 
@@ -93,24 +96,42 @@ class UserTools:
       
         return user
 
-    def get_users(self, limit: int = 100, offset: int = 0, search=None) -> list[User]:
-        query = {}
+    def get_users(self, limit: int = 50, offset: int = 0, search=None, verified=None, active=None, role=None) -> tuple[list[SafeUser], int]:
+        filters = []
         if search:
-            query = {
+            filters.append({
                 "$or": [
-                    {"name": {"$regex": search, "$options": "i"}},
-                    {"email": {"$regex": search, "$options": "i"}},
+                    {"name": {"$regex": re.escape(search), "$options": "i"}},
+                    {"email": {"$regex": re.escape(search), "$options": "i"}},
                 ]
-            }
+            })
+        if verified is not None:
+            filters.append({"email_verified": verified})
+        if active is not None:
+            filters.append({"active": active})
+        if role == "admin":
+            filters.append({"$or": [{"admin": True}, {"superadmin": True}]})
+        elif role == "superadmin":
+            filters.append({"superadmin": True})
+        elif role == "user":
+            filters.append({"admin": False, "superadmin": False})
 
-        raw = self.db.mongo.users.find(query).skip(offset).limit(limit)
-        users = [User.model_validate(user) for user in raw]
-        
-        for user in users:
-            self.db.redis.set(f"users.user:{str(user.id)}", user.model_dump_json(), ex=10800)
-            self.db.redis.set(f"users.lookup.email:{user.email}", str(user.id), ex=10800)
+        query = {"$and": filters} if filters else {}
 
-        return users
+        total = self.db.mongo.users.count_documents(query)
+        raw = (self.db.mongo.users.find(query)
+               .sort("created_at", -1).skip(offset).limit(limit))
+        users = [SafeUser.model_validate(user) for user in raw]
+
+        return users, total
+
+    def admin_users_list_cache_key(self, limit: int, offset: int, search, verified, active, role) -> str:
+        payload = repr((limit, offset, search, verified, active, role))
+        return f"admin.users.list:{hashlib.md5(payload.encode("utf-8")).hexdigest()}"
+
+    def invalidate_admin_users_lists(self) -> None:
+        for key in self.db.redis.scan_iter("admin.users.list:*"):
+            self.db.redis.delete(key)
 
     def update_user(self, id, **kwargs) -> User:
         user_id = id if isinstance(id, uuid.UUID) else uuid.UUID(str(id))
@@ -142,6 +163,8 @@ class UserTools:
         self.db.redis.set(f"users.lookup.email:{user.email}", str(user_id), ex=10800)
         if old_email:
             self.db.redis.delete(f"users.lookup.email:{old_email}")
+
+        self.invalidate_admin_users_lists()
 
         return user
     
