@@ -18,11 +18,3 @@ async def update_user(request: Request, user_id: str) -> JSONResponse:
     safe_user = SafeUser.model_validate(user)
 
     return JSONResponse({"success": True, "user": safe_user.model_dump(mode="json")})
-
-@router.post("/v1/admin/users/{user_id}/resend_verification_email")
-@require_auth(require_admin=True)
-async def resend_verification_email(request: Request, user_id: str) -> JSONResponse:
-    user = user_tools.get_user_by_id(user_id)
-    user_tools.send_verification_link(user.id, user.name, user.email)
-
-    return JSONResponse({"success": True, "message": "done! sent them a link to their email!"})

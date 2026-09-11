@@ -24,6 +24,7 @@ from jobs.update_stats import update_statistics
 from routes.auth import router as auth_router
 from routes._admin import router as admin_router
 from routes.admin.stats import router as admin_stats_router
+from routes.admin.users import router as admin_users_router
 from routes.admin.development import router as admin_dev_router
 from routes.subjects import router as subjects_router
 from routes.classes import router as classes_router
@@ -82,6 +83,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(admin_stats_router)
+app.include_router(admin_users_router)
 app.include_router(subjects_router)
 app.include_router(classes_router)
 app.include_router(evaluations_router)

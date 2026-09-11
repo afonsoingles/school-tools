@@ -107,6 +107,18 @@ export interface AdminUserDetail extends User {
   subjects: Subject[]
 }
 
+export type AdminUserContentType = "subjects" | "classes" | "cancellations" | "evaluations"
+
+export type AdminUserContent<C extends AdminUserContentType> = C extends "subjects"
+  ? Subject[]
+  : C extends "classes"
+    ? ClassEvent[]
+    : C extends "cancellations"
+      ? CancelledClassEvent[]
+      : C extends "evaluations"
+        ? Evaluation[]
+        : never
+
 export interface UserStats {
   total: number
   verified: number

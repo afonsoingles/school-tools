@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Loader2, RefreshCcw, Search, Zap } from "lucide-react"
+import { Ban, Loader2, MailCheck, RefreshCcw, Search, ShieldCheck, Zap } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,111 +28,137 @@ import { ErrorBox } from "@/components/ui/error-box"
 import { errorMessage } from "@/lib/errors"
 import { formatDateDmy } from "@/lib/date-time"
 import { cn } from "@/lib/utils"
-import { getUsers } from "@/lib/api/admin"
+import { getAdminUsers } from "@/lib/api/admin"
 import type { User } from "@/types"
 
-const PAGE_SIZE = 10
-const CACHE_TTL_MS = 10 * 60 * 1000
+const PAGE_SIZE = 50
+const SEARCH_DEBOUNCE_MS = 300
 
-interface CachedUsers {
-  users: User[]
-  cachedAt: number
+const ROLE_LABELS: Record<string, string> = {
+  all: "All",
+  admin: "Admin",
+  superadmin: "Superadmin",
+  user: "User",
 }
 
-async function loadWithCache(): Promise<CachedUsers> {
-  const cached = (globalThis as { __adminUsersCache?: CachedUsers }).__adminUsersCache
-  const now = Date.now()
-  if (cached && now - cached.cachedAt < CACHE_TTL_MS) {
-    return cached
-  }
-  const users = await getUsers()
-  const result: CachedUsers = { users, cachedAt: now }
-  ;(globalThis as { __adminUsersCache?: CachedUsers }).__adminUsersCache = result
-  return result
+const VERIFIED_LABELS: Record<string, string> = {
+  all: "Any",
+  verified: "Yes",
+  unverified: "No",
 }
 
-function clearUsersCache() {
-  delete (globalThis as { __adminUsersCache?: CachedUsers }).__adminUsersCache
+const STATUS_LABELS: Record<string, string> = {
+  all: "All",
+  active: "Active",
+  banned: "Inactive",
 }
 
-function UsersPagination({
-  page,
-  totalPages,
-  onPageChange,
-  className,
-}: {
-  page: number
-  totalPages: number
-  onPageChange: (page: number) => void
-  className?: string
-}) {
-  return (
-    <div className={cn("flex items-center gap-1", className)}>
-      <Button
-        variant="outline"
-        size="icon-sm"
-        onClick={() => onPageChange(Math.max(1, page - 1))}
-        disabled={page <= 1}
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="size-3.5" />
-      </Button>
-      <span className="px-2 text-sm text-muted-foreground tabular-nums">
-        {page} / {totalPages}
-      </span>
-      <Button
-        variant="outline"
-        size="icon-sm"
-        onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-        disabled={page >= totalPages}
-        aria-label="Next page"
-      >
-        <ChevronRight className="size-3.5" />
-      </Button>
-    </div>
-  )
+function loadMoreUsers(
+  offset: number
+): Promise<{ users: User[]; total: number }> {
+  return getAdminUsers({ limit: PAGE_SIZE, offset }).then((res) => ({
+    users: res.users,
+    total: res.total,
+  }))
 }
 
 export function UsersManager() {
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [verifiedFilter, setVerifiedFilter] = useState("all")
-  const [page, setPage] = useState(1)
-
-  const loadUsers = useCallback((bypassCache: boolean) => {
-    if (bypassCache) clearUsersCache()
-    return loadWithCache()
-      .then(({ users }) => setUsers(users))
-      .catch((err) => setLoadError(errorMessage(err)))
-      .finally(() => setLoading(false))
-  }, [])
+  const [bannedFilter, setBannedFilter] = useState("all")
+  const [reloadKey, setReloadKey] = useState(0)
+  const debouncedRef = useRef("")
+  const sentinelRef = useRef<HTMLTableRowElement | null>(null)
 
   useEffect(() => {
-    loadUsers(false)
-  }, [loadUsers])
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return users.filter((u) => {
-      if (q && !u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) {
-        return false
+    const timer = window.setTimeout(() => {
+      if (debouncedRef.current !== query) {
+        debouncedRef.current = query
+        setLoading(true)
       }
-      if (roleFilter === "admin" && !u.admin && !u.superadmin) return false
-      if (roleFilter === "superadmin" && !u.superadmin) return false
-      if (roleFilter === "user" && (u.admin || u.superadmin)) return false
-      if (verifiedFilter === "verified" && !u.email_verified) return false
-      if (verifiedFilter === "unverified" && u.email_verified) return false
-      return true
-    })
-  }, [users, query, roleFilter, verifiedFilter])
+      setDebouncedQuery(query)
+    }, SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [query])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  useEffect(() => {
+    let cancelled = false
+
+    getAdminUsers({
+      limit: PAGE_SIZE,
+      offset: 0,
+      search: debouncedQuery.trim() || undefined,
+      verified: verifiedFilter === "all" ? undefined : verifiedFilter === "verified",
+      banned: bannedFilter === "all" ? undefined : bannedFilter === "banned",
+      role: roleFilter === "all" ? undefined : (roleFilter as "admin" | "superadmin" | "user"),
+    })
+      .then((res) => {
+        if (cancelled) return
+        setUsers(res.users)
+        setTotal(res.total)
+        setLoadError(null)
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(errorMessage(err))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedQuery, roleFilter, verifiedFilter, bannedFilter, reloadKey])
+
+  const hasMore = !loading && users.length > 0 && users.length < total
+
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || users.length >= total) return
+    const offset = users.length
+    setLoadingMore(true)
+    loadMoreUsers(offset)
+      .then((res) => {
+        setUsers((prev) => {
+          const known = new Set(prev.map((u) => u.id))
+          const fresh = res.users.filter((u) => !known.has(u.id))
+          return [...prev, ...fresh]
+        })
+        setTotal(res.total)
+        setLoadError(null)
+      })
+      .catch((err) => setLoadError(errorMessage(err)))
+      .finally(() => setLoadingMore(false))
+  }, [loading, loadingMore, users.length, total])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || loading || !hasMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) loadMore()
+        })
+      },
+      { root: null, rootMargin: "200px" }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadMore])
+
+  function handleRefresh() {
+    setLoadError(null)
+    setLoading(true)
+    setReloadKey((key) => key + 1)
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -142,10 +168,7 @@ export function UsersManager() {
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
-              onChange={(event) => {
-                setQuery(event.target.value)
-                setPage(1)
-              }}
+              onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by name or email..."
               className="h-9 pl-8"
             />
@@ -153,11 +176,7 @@ export function UsersManager() {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => {
-              setLoading(true)
-              setLoadError(null)
-              loadUsers(true)
-            }}
+            onClick={handleRefresh}
             disabled={loading}
             className="text-muted-foreground hover:bg-foreground/10!"
             aria-label="Refresh users"
@@ -168,21 +187,35 @@ export function UsersManager() {
               <RefreshCcw className="size-3.5" />
             )}
           </Button>
+          {!loading && (
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {total} {total === 1 ? "user" : "users"}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={roleFilter}
             onValueChange={(value) => {
-              setRoleFilter(String(value))
-              setPage(1)
+              const next = String(value)
+              if (next === roleFilter) return
+              setRoleFilter(next)
+              setLoading(true)
             }}
           >
-            <SelectTrigger className="h-9 w-32">
-              <SelectValue />
+            <SelectTrigger className="h-9 w-48">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <ShieldCheck className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Role</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) => ROLE_LABELS[String(value)] ?? ROLE_LABELS.all}
+                </SelectValue>
+              </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="superadmin">Superadmin</SelectItem>
               <SelectItem value="user">User</SelectItem>
@@ -192,24 +225,55 @@ export function UsersManager() {
           <Select
             value={verifiedFilter}
             onValueChange={(value) => {
-              setVerifiedFilter(String(value))
-              setPage(1)
+              const next = String(value)
+              if (next === verifiedFilter) return
+              setVerifiedFilter(next)
+              setLoading(true)
             }}
           >
             <SelectTrigger className="h-9 w-40">
-              <SelectValue />
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <MailCheck className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Verified</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) => VERIFIED_LABELS[String(value)] ?? VERIFIED_LABELS.all}
+                </SelectValue>
+              </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Any verification</SelectItem>
-              <SelectItem value="verified">Email verified</SelectItem>
-              <SelectItem value="unverified">Email not verified</SelectItem>
+              <SelectItem value="all">Any</SelectItem>
+              <SelectItem value="verified">Yes</SelectItem>
+              <SelectItem value="unverified">No</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={bannedFilter}
+            onValueChange={(value) => {
+              const next = String(value)
+              if (next === bannedFilter) return
+              setBannedFilter(next)
+              setLoading(true)
+            }}
+          >
+            <SelectTrigger className="h-9 w-40">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <Ban className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Status</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) => STATUS_LABELS[String(value)] ?? STATUS_LABELS.all}
+                </SelectValue>
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="banned">Inactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
-
-        {!loading && filtered.length > PAGE_SIZE && (
-          <UsersPagination page={safePage} totalPages={totalPages} onPageChange={setPage} />
-        )}
       </div>
 
       {loading ? (
@@ -228,17 +292,20 @@ export function UsersManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.length === 0 ? (
+              {users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="py-12 text-center text-sm text-muted-foreground">
                     No users found.
                   </TableCell>
                 </TableRow>
               ) : (
-                paged.map((user) => (
+                users.map((user) => (
                   <TableRow
                     key={user.id}
-                    className="cursor-pointer"
+                    className={cn(
+                      "cursor-pointer",
+                      !user.active && "bg-red-500/[0.06] hover:bg-red-500/10!"
+                    )}
                     onClick={() => router.push(`/admin/users/${user.id}`)}
                   >
                     <TableCell>
@@ -255,30 +322,52 @@ export function UsersManager() {
                         )}
                       </div>
                     </TableCell>
-<TableCell className="text-muted-foreground">{user.email}</TableCell>
-<TableCell>
-  <Badge variant={user.email_verified ? "secondary" : "outline"}>
-    {user.email_verified ? "Verified" : "Unverified"}
-  </Badge>
-</TableCell>
-<TableCell className="text-right text-muted-foreground">
-  {formatDateDmy(user.created_at)}
-</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={user.email_verified ? "secondary" : "outline"}
+                        className={
+                          user.email_verified
+                            ? "border-green-300/40 bg-green-300/10 text-green-300 [a]:hover:bg-green-300/10"
+                            : "border-red-400/40 bg-red-500/10 text-red-400 [a]:hover:bg-red-500/10"
+                        }
+                      >
+                        {user.email_verified ? "Verified" : "Unverified"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatDateDmy(user.created_at)}
+                    </TableCell>
                   </TableRow>
                 ))
+              )}
+
+              {hasMore && (
+                <TableRow ref={sentinelRef}>
+                  <TableCell
+                    colSpan={4}
+                    className="py-4 text-center text-sm text-muted-foreground"
+                  >
+                    {loadingMore ? (
+                      <Loader2 className="mx-auto size-4 animate-spin" />
+                    ) : (
+                      "Scroll for more"
+                    )}
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
       )}
 
-      {!loading && filtered.length > PAGE_SIZE && (
-        <UsersPagination
-          page={safePage}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          className="justify-end"
-        />
+      {hasMore && !loading && (
+        <div className="flex justify-center">
+          <Button variant="outline" className="gap-1.5" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore && <Loader2 className="size-4 animate-spin" />}
+            Load more
+          </Button>
+        </div>
       )}
     </section>
   )

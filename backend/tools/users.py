@@ -202,3 +202,20 @@ class UserTools:
         self.update_user(user.id, email_verified=True)
         self.db.redis.delete(f"users.verification:{user.id}")
         return
+
+    def suspend_user(self, id: uuid.UUID, reason: str, admin: str) -> User:
+        user = self.get_user_by_id(id)
+        if not user.active:
+            raise UserAlreadySuspendedError
+        
+        self.update_user(user.id, active=False)
+        self.mailer.send_email(subject="Your account has been suspended", template="user_suspended_en", to=user.email, name=user.name, reason=reason, admin=admin)
+        return user
+
+    def unsuspend_user(self, id: uuid.UUID) -> User:
+        user = self.get_user_by_id(id)
+        if user.active:
+            raise UserNotSuspendedError
+        
+        self.update_user(user.id, active=True)
+        return user

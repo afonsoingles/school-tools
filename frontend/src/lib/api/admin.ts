@@ -1,12 +1,9 @@
 import { apiFetch } from "@/lib/api/client"
 import type {
-  AdminUserDetail,
+  AdminUserContent,
+  AdminUserContentType,
   AdoptionStats,
-  CancelledClassEvent,
-  ClassEvent,
-  Evaluation,
   FunctionalityStats,
-  Subject,
   User,
   UserStats,
 } from "@/types"
@@ -21,33 +18,46 @@ export interface AdminUserPatch {
   email_verified?: boolean
 }
 
-export interface AdminUserDetailResponse {
+export interface AdminUserListParams {
+  limit?: number
+  offset?: number
+  search?: string
+  verified?: boolean
+  banned?: boolean
+  role?: "admin" | "superadmin" | "user"
+}
+
+export interface AdminUserListResponse {
   success: boolean
-  user: User
-  classes: ClassEvent[]
-  cancelled_classes: CancelledClassEvent[]
-  evaluations: Evaluation[]
-  subjects: Subject[]
+  users: User[]
+  total: number
 }
 
-export function mapAdminUserDetail(res: AdminUserDetailResponse): AdminUserDetail {
-  return {
-    ...res.user,
-    classes: res.classes,
-    cancelled_classes: res.cancelled_classes,
-    evaluations: res.evaluations,
-    subjects: res.subjects,
-  }
+export async function getAdminUsers(params: AdminUserListParams = {}): Promise<AdminUserListResponse> {
+  const searchParams = new URLSearchParams()
+  if (params.limit !== undefined) searchParams.set("limit", String(params.limit))
+  if (params.offset !== undefined) searchParams.set("offset", String(params.offset))
+  if (params.search) searchParams.set("search", params.search)
+  if (params.verified !== undefined) searchParams.set("verified", String(params.verified))
+  if (params.banned !== undefined) searchParams.set("banned", String(params.banned))
+  if (params.role) searchParams.set("role", params.role)
+  const qs = searchParams.toString()
+  return apiFetch<AdminUserListResponse>(`/v1/admin/users${qs ? `?${qs}` : ""}`)
 }
 
-export async function getUsers(): Promise<User[]> {
-  const res = await apiFetch<{ success: boolean; users: User[] }>("/v1/admin/users")
-  return res.users
+export async function getAdminUser(userId: string): Promise<User> {
+  const res = await apiFetch<{ success: boolean; user: User }>(`/v1/admin/users/${userId}`)
+  return res.user
 }
 
-export async function getAdminUser(userId: string): Promise<AdminUserDetail> {
-  const res = await apiFetch<AdminUserDetailResponse>(`/v1/admin/users/${userId}`)
-  return mapAdminUserDetail(res)
+export async function getUserContent<C extends AdminUserContentType>(
+  userId: string,
+  contentType: C
+): Promise<AdminUserContent<C>> {
+  const res = await apiFetch<{ success: boolean; content: AdminUserContent<C> }>(
+    `/v1/admin/users/${userId}/${contentType}`
+  )
+  return res.content
 }
 
 export async function updateAdminUser(userId: string, patch: AdminUserPatch): Promise<User> {
@@ -60,7 +70,23 @@ export async function updateAdminUser(userId: string, patch: AdminUserPatch): Pr
 
 export async function resendVerificationEmail(userId: string): Promise<string> {
   const res = await apiFetch<{ success: boolean; message: string }>(
-    `/v1/admin/users/${userId}/resend_verification_email`,
+    `/v1/admin/users/${userId}/actions/resend_verification_email`,
+    { method: "POST" }
+  )
+  return res.message
+}
+
+export async function suspendUser(userId: string, reason: string): Promise<string> {
+  const res = await apiFetch<{ success: boolean; message: string }>(
+    `/v1/admin/users/${userId}/actions/suspend`,
+    { method: "POST", body: JSON.stringify({ reason }) }
+  )
+  return res.message
+}
+
+export async function unsuspendUser(userId: string): Promise<string> {
+  const res = await apiFetch<{ success: boolean; message: string }>(
+    `/v1/admin/users/${userId}/actions/unsuspend`,
     { method: "POST" }
   )
   return res.message

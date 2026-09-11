@@ -1,0 +1,10 @@
+Hello {name},
+
+This email serves as a notification that your School Tools accounts is suspended.
+
+Reason: {reason}
+
+If you believe this is a mistake, please email hi@afonsoingles.dev no longer than 5 days after the sending of this email. After that, we will start the proccess of permanently deleting your account and all associated data.
+
+Warmly,
+{admin} @ School Tools

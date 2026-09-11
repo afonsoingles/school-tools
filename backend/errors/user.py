@@ -80,3 +80,13 @@ class EmailChangeRateLimitError(BaseError):
     status_code = 429
     code = "email_change_rate_limit"
     message = "You have recently changed your email. Please wait before changing your email again."
+
+class UserAlreadySuspendedError(BaseError):
+    status_code = 400
+    code = "user_already_suspended"
+    message = "This user is already suspended."
+
+class UserNotSuspendedError(BaseError):
+    status_code = 400
+    code = "user_not_suspended"
+    message = "This user is not suspended."
