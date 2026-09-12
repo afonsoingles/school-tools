@@ -377,7 +377,7 @@ export function UsersManager() {
                     key={user.id}
                     className={cn(
                       "cursor-pointer",
-                      !user.active && "bg-red-500/[0.06] hover:bg-red-500/10!"
+                      !user.active && "bg-red-500/6 hover:bg-red-500/10!"
                     )}
                     onClick={() => router.push(`/admin/users/${user.id}`)}
                   >
