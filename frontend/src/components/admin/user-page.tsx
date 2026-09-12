@@ -280,10 +280,12 @@ export function UserDetails({
   initial,
   viewerId,
   isSuperadmin,
+  viewerTimezone,
 }: {
   initial: User
   viewerId: string
   isSuperadmin: boolean
+  viewerTimezone: string
 }) {
   const [user, setUser] = useState<User>(initial)
   const [subjects, setSubjects] = useState<Subject[] | null>(null)
@@ -565,10 +567,10 @@ export function UserDetails({
                   {user.timezone}
                 </Detail>
                 <Detail label="Created" icon={<CalendarDays className="size-3.5" />}>
-                  {formatDateTimeTz(user.created_at, user.timezone)}
+                  {formatDateTimeTz(user.created_at, viewerTimezone)}
                 </Detail>
                 <Detail label="Updated" icon={<Clock className="size-3.5" />}>
-                  {formatDateTimeTz(user.updated_at, user.timezone)}
+                  {formatDateTimeTz(user.updated_at, viewerTimezone)}
                 </Detail>
               </div>
             ) : draft ? (

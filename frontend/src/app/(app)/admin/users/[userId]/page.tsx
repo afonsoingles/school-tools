@@ -85,6 +85,7 @@ export default async function AdminUserDetailsPage({
             initial={detail}
             viewerId={currentUser.id}
             isSuperadmin={currentUser.superadmin}
+            viewerTimezone={currentUser.timezone}
           />
         </div>
       </div>
