@@ -104,7 +104,7 @@ async def resend_verification_email(request: Request, user_id: str) -> JSONRespo
 @valid_json(["reason"])
 async def suspend_user(request: Request, user_id: str) -> JSONResponse:
     reason = request.state.json["reason"]
-    user_tools.suspend_user(uuid.UUID(user_id), reason, request.state.user.name)
+    user_tools.suspend_user(uuid.UUID(user_id), reason, request.state.user)
 
     return JSONResponse({"success": True, "message": "The user has been suspended and notified via email."})
 
@@ -114,3 +114,29 @@ async def unsuspend_user(request: Request, user_id: str) -> JSONResponse:
     user_tools.unsuspend_user(uuid.UUID(user_id))
 
     return JSONResponse({"success": True, "message": "The user has been unsuspended. They have NOT been notified about this action."})
+
+@router.patch("/v1/admin/users/{user_id}")
+@require_auth(require_admin=True)
+async def update_user(request: Request, user_id: str) -> JSONResponse:
+    data = await request.json()
+    user = user_tools.update_user(user_id, safe_update=True, **data)
+
+    safe_user = SafeUser.model_validate(user)
+
+    return JSONResponse({"success": True, "user": safe_user.model_dump(mode="json")})
+
+@router.post("/v1/admin/users/{user_id}/actions/promote/{role}")
+@require_auth(require_superadmin=True)
+async def promote_user(request: Request, user_id: str, role: str) -> JSONResponse:
+    user_uuid = uuid.UUID(user_id)
+    match role:
+        case "admin":
+            user_tools.update_user(user_uuid, safe_update=False, admin=True)
+        case "superadmin":
+            user_tools.update_user(user_uuid, safe_update=False, superadmin=True, admin=True)
+        case "user":
+            user_tools.update_user(user_uuid, safe_update=False, superadmin=False, admin=False)
+        case _:
+            raise AdminInvalidContentType
+
+    return JSONResponse({"success": True, "message": f"The user has been promoted to {role}."})

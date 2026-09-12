@@ -22,7 +22,6 @@ from jobs.generate_ics import generate_pending_feeds
 from jobs.update_stats import update_statistics
 
 from routes.auth import router as auth_router
-from routes._admin import router as admin_router
 from routes.admin.stats import router as admin_stats_router
 from routes.admin.users import router as admin_users_router
 from routes.admin.development import router as admin_dev_router
@@ -81,7 +80,6 @@ app.add_middleware(
 
 
 app.include_router(auth_router)
-app.include_router(admin_router)
 app.include_router(admin_stats_router)
 app.include_router(admin_users_router)
 app.include_router(subjects_router)

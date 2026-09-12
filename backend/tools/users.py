@@ -1,6 +1,7 @@
 from utils.database import Database
 from models.user import User, SafeUser
 from errors.user import *
+from errors.base import *
 from pydantic import SecretStr
 from utils.jwt import JWT
 from utils.mailer import Mailer
@@ -137,11 +138,17 @@ class UserTools:
         for key in self.db.redis.scan_iter("admin.users.list:*"):
             self.db.redis.delete(key)
 
-    def update_user(self, id, **kwargs) -> User:
+    def update_user(self, id, safe_update=True, **kwargs) -> User:
         user_id = id if isinstance(id, uuid.UUID) else uuid.UUID(str(id))
         user = self.get_user_by_id(user_id)
         old_email = None
 
+        if set(kwargs) & {"id", "created_at", "updated_at"}:
+            raise ImmutableField
+        
+        if safe_update and set(kwargs) & {"admin", "superadmin", "active", "password"}:
+            raise ImmutableField
+        
         for key, value in kwargs.items():
             if key == "password":
                 value = self._hash_password(value)
@@ -161,6 +168,7 @@ class UserTools:
             if hasattr(user, key):
                 setattr(user, key, value)
 
+        user.updated_at = datetime.datetime.now(datetime.timezone.utc)
         self.db.mongo.users.update_one({"id": user_id}, {"$set": user.model_dump()})
 
         self.db.redis.set(f"users.user:{user_id}", user.model_dump_json(), ex=10800)
@@ -207,13 +215,19 @@ class UserTools:
         self.db.redis.delete(f"users.verification:{user.id}")
         return
 
-    def suspend_user(self, id: uuid.UUID, reason: str, admin: str) -> User:
+    def suspend_user(self, id: uuid.UUID, reason: str, admin) -> User:
         user = self.get_user_by_id(id)
         if not user.active:
             raise UserAlreadySuspendedError
-        
-        self.update_user(user.id, active=False)
-        self.mailer.send_email(subject="Your account has been suspended", template="user_suspended_en", to=user.email, name=user.name, reason=reason, admin=admin)
+
+        if user.admin or user.superadmin:
+            raise CannotSuspendAdminError
+
+        if user.id == admin.id:
+            raise CannotSuspendSelfError
+
+        self.update_user(user.id, safe_update=False, active=False)
+        self.mailer.send_email(subject="Your account has been suspended", template="user_suspended_en", to=user.email, name=user.name, reason=reason, admin=admin.name)
         return user
 
     def unsuspend_user(self, id: uuid.UUID) -> User:
@@ -221,5 +235,5 @@ class UserTools:
         if user.active:
             raise UserNotSuspendedError
         
-        self.update_user(user.id, active=True)
+        self.update_user(user.id, safe_update=False, active=True)
         return user

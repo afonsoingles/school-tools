@@ -90,3 +90,18 @@ class UserNotSuspendedError(BaseError):
     status_code = 400
     code = "user_not_suspended"
     message = "This user is not suspended."
+
+class CannotSuspendAdminError(BaseError):
+    status_code = 403
+    code = "cannot_suspend_admin"
+    message = "You cannot suspend an admin or superadmin user."
+
+class CannotSuspendSelfError(BaseError):
+    status_code = 403
+    code = "cannot_suspend_self"
+    message = "You cannot suspend yourself."
+
+class HierarchyViolationError(BaseError):
+    status_code = 403
+    code = "hierarchy_violation"
+    message = "You cannot perform this action on a user with a higher or equal role than yours."
