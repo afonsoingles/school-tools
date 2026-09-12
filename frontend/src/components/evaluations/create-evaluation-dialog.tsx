@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -87,6 +88,7 @@ export function CreateEvaluationDialog({
 
     try {
       await createEvaluation({ class_id: classId, date: toDateTimeInput(date, timezone), type })
+      toast.success("Evaluation created successfully.")
       onCreated()
       handleOpenChange(false)
     } catch (err) {
