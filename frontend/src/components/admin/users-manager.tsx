@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Ban, Loader2, MailCheck, RefreshCcw, Search, ShieldCheck, Zap } from "lucide-react"
+import { ArrowUpDown, Ban, Loader2, MailCheck, RefreshCcw, Search, ShieldCheck, Zap } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -53,13 +53,46 @@ const STATUS_LABELS: Record<string, string> = {
   banned: "Inactive",
 }
 
-function loadMoreUsers(
-  offset: number
-): Promise<{ users: User[]; total: number }> {
-  return getAdminUsers({ limit: PAGE_SIZE, offset }).then((res) => ({
-    users: res.users,
-    total: res.total,
-  }))
+const SORT_LABELS: Record<string, string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  name_az: "Name A–Z",
+  name_za: "Name Z–A",
+  email_az: "Email A–Z",
+  email_za: "Email Z–A",
+  updated: "Recently updated",
+}
+
+const SORT_MAP: Record<string, { sort: "created_at" | "updated_at" | "name" | "email"; order: "asc" | "desc" }> = {
+  newest: { sort: "created_at", order: "desc" },
+  oldest: { sort: "created_at", order: "asc" },
+  name_az: { sort: "name", order: "asc" },
+  name_za: { sort: "name", order: "desc" },
+  email_az: { sort: "email", order: "asc" },
+  email_za: { sort: "email", order: "desc" },
+  updated: { sort: "updated_at", order: "desc" },
+}
+
+interface ListFilters {
+  search: string
+  role: string
+  verified: string
+  banned: string
+  sort: string
+}
+
+function buildListParams(offset: number, filters: ListFilters) {
+  const { sort, order } = SORT_MAP[filters.sort] ?? SORT_MAP.newest
+  return {
+    limit: PAGE_SIZE,
+    offset,
+    search: filters.search.trim() || undefined,
+    verified: filters.verified === "all" ? undefined : filters.verified === "verified",
+    banned: filters.banned === "all" ? undefined : filters.banned === "banned",
+    role: filters.role === "all" ? undefined : (filters.role as "admin" | "superadmin" | "user"),
+    sort,
+    order,
+  }
 }
 
 export function UsersManager() {
@@ -74,6 +107,7 @@ export function UsersManager() {
   const [roleFilter, setRoleFilter] = useState("all")
   const [verifiedFilter, setVerifiedFilter] = useState("all")
   const [bannedFilter, setBannedFilter] = useState("all")
+  const [sortFilter, setSortFilter] = useState("newest")
   const [reloadKey, setReloadKey] = useState(0)
   const debouncedRef = useRef("")
   const sentinelRef = useRef<HTMLTableRowElement | null>(null)
@@ -92,14 +126,15 @@ export function UsersManager() {
   useEffect(() => {
     let cancelled = false
 
-    getAdminUsers({
-      limit: PAGE_SIZE,
-      offset: 0,
-      search: debouncedQuery.trim() || undefined,
-      verified: verifiedFilter === "all" ? undefined : verifiedFilter === "verified",
-      banned: bannedFilter === "all" ? undefined : bannedFilter === "banned",
-      role: roleFilter === "all" ? undefined : (roleFilter as "admin" | "superadmin" | "user"),
-    })
+    getAdminUsers(
+      buildListParams(0, {
+        search: debouncedQuery,
+        role: roleFilter,
+        verified: verifiedFilter,
+        banned: bannedFilter,
+        sort: sortFilter,
+      })
+    )
       .then((res) => {
         if (cancelled) return
         setUsers(res.users)
@@ -116,7 +151,7 @@ export function UsersManager() {
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery, roleFilter, verifiedFilter, bannedFilter, reloadKey])
+  }, [debouncedQuery, roleFilter, verifiedFilter, bannedFilter, sortFilter, reloadKey])
 
   const hasMore = !loading && users.length > 0 && users.length < total
 
@@ -124,7 +159,15 @@ export function UsersManager() {
     if (loading || loadingMore || users.length >= total) return
     const offset = users.length
     setLoadingMore(true)
-    loadMoreUsers(offset)
+    getAdminUsers(
+      buildListParams(offset, {
+        search: debouncedQuery,
+        role: roleFilter,
+        verified: verifiedFilter,
+        banned: bannedFilter,
+        sort: sortFilter,
+      })
+    )
       .then((res) => {
         setUsers((prev) => {
           const known = new Set(prev.map((u) => u.id))
@@ -136,7 +179,7 @@ export function UsersManager() {
       })
       .catch((err) => setLoadError(errorMessage(err)))
       .finally(() => setLoadingMore(false))
-  }, [loading, loadingMore, users.length, total])
+  }, [loading, loadingMore, users.length, total, debouncedQuery, roleFilter, verifiedFilter, bannedFilter, sortFilter])
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -273,6 +316,36 @@ export function UsersManager() {
               <SelectItem value="banned">Inactive</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select
+            value={sortFilter}
+            onValueChange={(value) => {
+              const next = String(value)
+              if (next === sortFilter) return
+              setSortFilter(next)
+              setLoading(true)
+            }}
+          >
+            <SelectTrigger className="h-9 w-44">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Sort</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) => SORT_LABELS[String(value)] ?? SORT_LABELS.newest}
+                </SelectValue>
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="name_az">Name A–Z</SelectItem>
+              <SelectItem value="name_za">Name Z–A</SelectItem>
+              <SelectItem value="email_az">Email A–Z</SelectItem>
+              <SelectItem value="email_za">Email Z–A</SelectItem>
+              <SelectItem value="updated">Recently updated</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -342,17 +415,10 @@ export function UsersManager() {
                 ))
               )}
 
-              {hasMore && (
+{hasMore && (
                 <TableRow ref={sentinelRef}>
-                  <TableCell
-                    colSpan={4}
-                    className="py-4 text-center text-sm text-muted-foreground"
-                  >
-                    {loadingMore ? (
-                      <Loader2 className="mx-auto size-4 animate-spin" />
-                    ) : (
-                      "Scroll for more"
-                    )}
+                  <TableCell colSpan={4} className="py-4 text-center">
+                    <Loader2 className="mx-auto size-4 animate-spin text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               )}

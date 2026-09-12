@@ -96,7 +96,11 @@ class UserTools:
       
         return user
 
-    def get_users(self, limit: int = 50, offset: int = 0, search=None, verified=None, active=None, role=None) -> tuple[list[SafeUser], int]:
+    def get_users(self, limit: int = 50, offset: int = 0, search=None, verified=None, active=None, role=None, sort="created_at", order="desc") -> tuple[list[SafeUser], int]:
+        if sort not in ("created_at", "updated_at", "name", "email"):
+            sort = "created_at"
+        direction = -1 if order != "asc" else 1
+
         filters = []
         if search:
             filters.append({
@@ -120,13 +124,13 @@ class UserTools:
 
         total = self.db.mongo.users.count_documents(query)
         raw = (self.db.mongo.users.find(query)
-               .sort("created_at", -1).skip(offset).limit(limit))
+               .sort(sort, direction).skip(offset).limit(limit))
         users = [SafeUser.model_validate(user) for user in raw]
 
         return users, total
 
-    def admin_users_list_cache_key(self, limit: int, offset: int, search, verified, active, role) -> str:
-        payload = repr((limit, offset, search, verified, active, role))
+    def admin_users_list_cache_key(self, limit: int, offset: int, search, verified, active, role, sort="created_at", order="desc") -> str:
+        payload = repr((limit, offset, search, verified, active, role, sort, order))
         return f"admin.users.list:{hashlib.md5(payload.encode("utf-8")).hexdigest()}"
 
     def invalidate_admin_users_lists(self) -> None:

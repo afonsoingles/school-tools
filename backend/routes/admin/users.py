@@ -38,14 +38,20 @@ async def get_users(request: Request) -> JSONResponse:
     role = request.query_params.get("role", None)
     if role not in ("admin", "superadmin", "user"):
         role = None
+    sort = request.query_params.get("sort", None) or "created_at"
+    if sort not in ("created_at", "updated_at", "name", "email"):
+        sort = "created_at"
+    order = request.query_params.get("order", None) or "desc"
+    if order not in ("asc", "desc"):
+        order = "desc"
 
-    cache_key = user_tools.admin_users_list_cache_key(limit, offset, search, verified, active, role)
+    cache_key = user_tools.admin_users_list_cache_key(limit, offset, search, verified, active, role, sort, order)
     cached = db.redis.get(cache_key)
     if cached:
         return JSONResponse(json.loads(cached))
 
     users, total = user_tools.get_users(
-        limit=limit, offset=offset, search=search, verified=verified, active=active, role=role
+        limit=limit, offset=offset, search=search, verified=verified, active=active, role=role, sort=sort, order=order
     )
     response = {
         "success": True,

@@ -25,6 +25,8 @@ export interface AdminUserListParams {
   verified?: boolean
   banned?: boolean
   role?: "admin" | "superadmin" | "user"
+  sort?: "created_at" | "updated_at" | "name" | "email"
+  order?: "asc" | "desc"
 }
 
 export interface AdminUserListResponse {
