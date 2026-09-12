@@ -81,7 +81,11 @@ export default async function AdminUserDetailsPage({
           All users
         </Button>
         <div className="flex flex-col gap-8">
-          <UserDetails initial={detail} />
+          <UserDetails
+            initial={detail}
+            viewerId={currentUser.id}
+            isSuperadmin={currentUser.superadmin}
+          />
         </div>
       </div>
     </div>

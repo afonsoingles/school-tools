@@ -12,11 +12,10 @@ export interface AdminUserPatch {
   name?: string
   email?: string
   timezone?: string
-  active?: boolean
-  admin?: boolean
-  superadmin?: boolean
   email_verified?: boolean
 }
+
+export type PromoteRole = "admin" | "superadmin" | "user"
 
 export interface AdminUserListParams {
   limit?: number
@@ -89,6 +88,14 @@ export async function suspendUser(userId: string, reason: string): Promise<strin
 export async function unsuspendUser(userId: string): Promise<string> {
   const res = await apiFetch<{ success: boolean; message: string }>(
     `/v1/admin/users/${userId}/actions/unsuspend`,
+    { method: "POST" }
+  )
+  return res.message
+}
+
+export async function promoteUser(userId: string, role: PromoteRole): Promise<string> {
+  const res = await apiFetch<{ success: boolean; message: string }>(
+    `/v1/admin/users/${userId}/actions/promote/${role}`,
     { method: "POST" }
   )
   return res.message

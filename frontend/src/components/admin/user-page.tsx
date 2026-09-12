@@ -7,6 +7,7 @@ import {
   Ban,
   CalendarDays,
   CalendarX2,
+  ChevronDown,
   Clock,
   Globe,
   Loader2,
@@ -16,11 +17,12 @@ import {
   RefreshCcw,
   Save,
   ShieldCheck,
+  ShieldOff,
+  Star,
   Trash2,
   UserCheck,
   Zap,
 } from "lucide-react"
-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +35,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -63,11 +72,13 @@ import { WEEKDAY_NAMES } from "@/lib/date-time"
 import { REASON_LABELS } from "@/components/calendar/constants"
 import {
   getUserContent,
+  promoteUser,
   resendVerificationEmail,
   suspendUser,
   unsuspendUser,
   updateAdminUser,
 } from "@/lib/api/admin"
+import type { PromoteRole } from "@/lib/api/admin"
 import type {
   AdminUserContent,
   AdminUserContentType,
@@ -95,11 +106,16 @@ interface Draft {
   name: string
   email: string
   timezone: string
-  active: boolean
-  admin: boolean
-  superadmin: boolean
   email_verified: boolean
 }
+
+interface RoleAction {
+  role: PromoteRole
+  kind: "promote" | "demote"
+  title: string
+}
+
+type FieldErrors = Partial<Record<"name" | "email" | "timezone", string>>
 
 function getIanaTimezones(): string[] {
   try {
@@ -190,6 +206,10 @@ function BoolSelect({
   )
 }
 
+function FieldError({ message }: { message: string }) {
+  return <p className="text-sm text-red-400">{message}</p>
+}
+
 function StatusMessage({
   message,
 }: {
@@ -256,7 +276,15 @@ function SectionBody<T extends readonly unknown[]>({
   return children(data)
 }
 
-export function UserDetails({ initial }: { initial: User }) {
+export function UserDetails({
+  initial,
+  viewerId,
+  isSuperadmin,
+}: {
+  initial: User
+  viewerId: string
+  isSuperadmin: boolean
+}) {
   const [user, setUser] = useState<User>(initial)
   const [subjects, setSubjects] = useState<Subject[] | null>(null)
   const [classes, setClasses] = useState<ClassEvent[] | null>(null)
@@ -269,6 +297,7 @@ export function UserDetails({ initial }: { initial: User }) {
 
   const [editMode, setEditMode] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [sendingVerification, setSendingVerification] = useState(false)
@@ -281,6 +310,10 @@ export function UserDetails({ initial }: { initial: User }) {
   const [reactivateOpen, setReactivateOpen] = useState(false)
   const [reactivating, setReactivating] = useState(false)
   const [reactivateError, setReactivateError] = useState<string | null>(null)
+
+  const [roleAction, setRoleAction] = useState<RoleAction | null>(null)
+  const [roleBusy, setRoleBusy] = useState(false)
+  const [roleError, setRoleError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -342,38 +375,53 @@ export function UserDetails({ initial }: { initial: User }) {
       name: user.name,
       email: user.email,
       timezone: user.timezone,
-      active: user.active,
-      admin: user.admin,
-      superadmin: user.superadmin,
       email_verified: user.email_verified,
     })
+    setFieldErrors({})
     setSaveMessage(null)
     setEditMode(true)
   }
 
   function cancelEdit() {
     setDraft(null)
+    setFieldErrors({})
     setSaveMessage(null)
     setEditMode(false)
   }
 
+  function validateDraft(draft: Draft): FieldErrors {
+    const errors: FieldErrors = {}
+    if (draft.name.trim().length < 2) {
+      errors.name = "Name must be at least 2 characters."
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
+      errors.email = "Enter a valid email address."
+    }
+    if (!draft.timezone) {
+      errors.timezone = "Pick a timezone."
+    }
+    return errors
+  }
+
   async function save() {
     if (!draft) return
+    const errors = validateDraft(draft)
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
     setSaving(true)
     setSaveMessage(null)
 
     try {
       const updated = await updateAdminUser(user.id, {
-        name: draft.name,
-        email: draft.email,
+        name: draft.name.trim(),
+        email: draft.email.trim(),
         timezone: draft.timezone,
-        active: draft.active,
-        admin: draft.admin,
-        superadmin: draft.superadmin,
         email_verified: draft.email_verified,
       })
       setUser(updated)
       setDraft(null)
+      setFieldErrors({})
       setEditMode(false)
       setSaveMessage({ ok: true, text: "User updated." })
     } catch (err) {
@@ -433,6 +481,32 @@ export function UserDetails({ initial }: { initial: User }) {
     }
   }
 
+  function openRoleAction(role: PromoteRole, kind: "promote" | "demote", title: string) {
+    setRoleError(null)
+    setRoleAction({ role, kind, title })
+  }
+
+  async function handleRoleAction() {
+    if (!roleAction) return
+    setRoleBusy(true)
+    setRoleError(null)
+
+    try {
+      const message = await promoteUser(user.id, roleAction.role)
+      toast.success(message)
+      setUser((prev) => ({
+        ...prev,
+        admin: roleAction.role !== "user",
+        superadmin: roleAction.role === "superadmin",
+      }))
+      setRoleAction(null)
+    } catch (err) {
+      setRoleError(errorMessage(err))
+    } finally {
+      setRoleBusy(false)
+    }
+  }
+
   function retrySections() {
     setSectionErrors({})
     setRetryKey((key) => key + 1)
@@ -445,6 +519,9 @@ export function UserDetails({ initial }: { initial: User }) {
         {user.superadmin ? "Superadmin" : "Admin"}
       </Badge>
     ) : null
+
+  const roleLabel = user.superadmin ? "Superadmin" : user.admin ? "Admin" : "User"
+  const canChangeRole = isSuperadmin && user.id !== viewerId
 
   return (
     <div className="flex flex-col gap-8">
@@ -501,8 +578,13 @@ export function UserDetails({ initial }: { initial: User }) {
                   <Input
                     id="user-name"
                     value={draft.name}
-                    onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                    aria-invalid={fieldErrors.name ? true : undefined}
+                    onChange={(event) => {
+                      setDraft({ ...draft, name: event.target.value })
+                      setFieldErrors((prev) => ({ ...prev, name: undefined }))
+                    }}
                   />
+                  {fieldErrors.name && <FieldError message={fieldErrors.name} />}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="user-email">Email</Label>
@@ -510,16 +592,22 @@ export function UserDetails({ initial }: { initial: User }) {
                     id="user-email"
                     type="email"
                     value={draft.email}
-                    onChange={(event) => setDraft({ ...draft, email: event.target.value })}
+                    aria-invalid={fieldErrors.email ? true : undefined}
+                    onChange={(event) => {
+                      setDraft({ ...draft, email: event.target.value })
+                      setFieldErrors((prev) => ({ ...prev, email: undefined }))
+                    }}
                   />
+                  {fieldErrors.email && <FieldError message={fieldErrors.email} />}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="user-timezone">Timezone</Label>
                   <Select
                     value={draft.timezone}
-                    onValueChange={(timezone) =>
+                    onValueChange={(timezone) => {
                       setDraft({ ...draft, timezone: String(timezone) })
-                    }
+                      setFieldErrors((prev) => ({ ...prev, timezone: undefined }))
+                    }}
                   >
                     <SelectTrigger id="user-timezone">
                       <SelectValue />
@@ -532,31 +620,14 @@ export function UserDetails({ initial }: { initial: User }) {
                       ))}
                     </SelectContent>
                   </Select>
+                  {fieldErrors.timezone && <FieldError message={fieldErrors.timezone} />}
                 </div>
-                <div className="flex flex-col justify-end gap-1.5">
-                  <Label>Flags</Label>
-                  <span className="flex flex-wrap items-center gap-2">
-                    <BoolSelect
-                      label="Admin"
-                      value={draft.admin}
-                      onChange={(admin) => setDraft({ ...draft, admin })}
-                    />
-                    <BoolSelect
-                      label="Superadmin"
-                      value={draft.superadmin}
-                      onChange={(superadmin) => setDraft({ ...draft, superadmin })}
-                    />
-                  </span>
-                </div>
-                <BoolSelect
-                  label="Active"
-                  value={draft.active}
-                  onChange={(active) => setDraft({ ...draft, active })}
-                />
                 <BoolSelect
                   label="Email verified"
                   value={draft.email_verified}
-                  onChange={(email_verified) => setDraft({ ...draft, email_verified })}
+                  onChange={(email_verified) =>
+                    setDraft({ ...draft, email_verified })
+                  }
                 />
               </div>
             ) : null}
@@ -605,6 +676,91 @@ export function UserDetails({ initial }: { initial: User }) {
                   <UserCheck className="size-3.5" />
                   Reactivate
                 </Button>
+              )}
+
+              {canChangeRole && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button variant="outline" size="sm" className="gap-1.5" />
+                    }
+                  >
+                    <ShieldCheck className="size-3.5" />
+                    Role · {roleLabel}
+                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-44">
+                    {!user.admin && (
+                      <>
+                        <DropdownMenuItem
+                          className="gap-1.5"
+                          onClick={() =>
+                            openRoleAction("admin", "promote", "Make admin")
+                          }
+                        >
+                          <ShieldCheck className="size-3.5 text-yellow-300" />
+                          Make admin
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-1.5"
+                          onClick={() =>
+                            openRoleAction("superadmin", "promote", "Make superadmin")
+                          }
+                        >
+                          <Star className="size-3.5 text-yellow-300" />
+                          Make superadmin
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {user.admin && !user.superadmin && (
+                      <>
+                        <DropdownMenuItem
+                          className="gap-1.5"
+                          onClick={() =>
+                            openRoleAction("superadmin", "promote", "Make superadmin")
+                          }
+                        >
+                          <Star className="size-3.5 text-yellow-300" />
+                          Make superadmin
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          className="gap-1.5"
+                          onClick={() =>
+                            openRoleAction("user", "demote", "Demote to user")
+                          }
+                        >
+                          <ShieldOff className="size-3.5" />
+                          Demote to user
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {user.superadmin && (
+                      <>
+                        <DropdownMenuItem
+                          className="gap-1.5"
+                          onClick={() =>
+                            openRoleAction("admin", "demote", "Demote to admin")
+                          }
+                        >
+                          <ShieldCheck className="size-3.5" />
+                          Demote to admin
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          className="gap-1.5"
+                          onClick={() =>
+                            openRoleAction("user", "demote", "Demote to user")
+                          }
+                        >
+                          <ShieldOff className="size-3.5" />
+                          Demote to user
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               <Button
@@ -889,6 +1045,65 @@ export function UserDetails({ initial }: { initial: User }) {
             >
               {reactivating && <Loader2 className="size-4 animate-spin" />}
               Reactivate user
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={roleAction !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setRoleError(null)
+            setRoleAction(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{roleAction?.title ?? ""}</DialogTitle>
+            <DialogDescription>
+              {roleAction?.kind === "promote" ? (
+                roleAction.role === "superadmin" ? (
+                  <>
+                    This grants <span className="font-medium">{user.name}</span> full superadmin
+                    powers, including the ability to promote or demote other users.
+                  </>
+                ) : (
+                  <>
+                    This grants <span className="font-medium">{user.name}</span> access to the
+                    admin panel.
+                  </>
+                )
+              ) : roleAction?.role === "admin" ? (
+                <>
+                  This removes superadmin powers from{" "}
+                  <span className="font-medium">{user.name}</span>. They keep admin access.
+                </>
+              ) : (
+                <>
+                  This removes all admin powers from{" "}
+                  <span className="font-medium">{user.name}</span> and they become a regular
+                  user.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {roleError && <ErrorBox>{roleError}</ErrorBox>}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRoleAction(null)} disabled={roleBusy}>
+              Cancel
+            </Button>
+            <Button
+              variant={roleAction?.kind === "demote" ? "destructive" : "default"}
+              onClick={handleRoleAction}
+              disabled={roleBusy}
+              className="gap-1.5"
+            >
+              {roleBusy && <Loader2 className="size-4 animate-spin" />}
+              {roleAction?.title ?? ""}
             </Button>
           </div>
         </DialogContent>
