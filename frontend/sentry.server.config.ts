@@ -30,6 +30,17 @@ function stripTransactionSessionCookie(event: TransactionEvent): TransactionEven
   return stripSessionCookie(event) as TransactionEvent;
 }
 
+// Next.js reports route-handler request errors to Sentry labelled with the route
+// template (e.g. "POST /api/[[...path]]") instead of the concrete request path.
+// The SDK exposes the real path in contexts.nextjs.request_path — surface it as the title.
+function setConcreteRequestPath(event: ErrorEvent): ErrorEvent {
+  const requestPath = (event.contexts?.nextjs as { request_path?: string } | undefined)?.request_path;
+  if (!requestPath) return event;
+  const method = event.transaction?.split(" ")[0] ?? "REQUEST";
+  event.transaction = `${method} ${requestPath}`;
+  return event;
+}
+
 Sentry.init({
   dsn: process.env.NODE_ENV === "production" ? process.env.NEXT_PUBLIC_SENTRY_DSN : undefined,
 
@@ -39,7 +50,7 @@ Sentry.init({
   // Enable logs to be sent to Sentry
   enableLogs: true,
 
-  beforeSend: stripErrorSessionCookie,
+  beforeSend: (event) => setConcreteRequestPath(stripErrorSessionCookie(event)),
   beforeSendTransaction: stripTransactionSessionCookie,
 
   dataCollection: {
