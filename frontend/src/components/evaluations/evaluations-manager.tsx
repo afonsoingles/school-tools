@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { CalendarClock, FileText, Plus, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +9,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select"
 import {
   Table,
@@ -36,6 +37,12 @@ import { CreateEvaluationDialog } from "./create-evaluation-dialog"
 import { DeleteEvaluationDialog } from "./delete-evaluation-dialog"
 
 type ShowFilter = "upcoming" | "past" | "all"
+
+const SHOW_LABELS: Record<ShowFilter, string> = {
+  upcoming: "Upcoming",
+  past: "Past",
+  all: "All",
+}
 
 export function EvaluationsManager() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
@@ -153,8 +160,15 @@ export function EvaluationsManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={showFilter} onValueChange={(v) => setShowFilter(String(v) as ShowFilter)}>
-            <SelectTrigger className="w-32">
-              {showFilter === "upcoming" ? "Upcoming" : showFilter === "past" ? "Past" : "All"}
+            <SelectTrigger className="h-9 w-48">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <CalendarClock className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Show</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) => SHOW_LABELS[String(value) as ShowFilter] ?? "All"}
+                </SelectValue>
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="upcoming" label="Upcoming">Upcoming</SelectItem>
@@ -164,8 +178,19 @@ export function EvaluationsManager() {
           </Select>
 
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(String(v))}>
-            <SelectTrigger className="w-36">
-              {typeFilter === "all" ? "All types" : EVALUATION_TYPE_LABELS[typeFilter] ?? typeFilter}
+            <SelectTrigger className="h-9 w-44">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Type</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) =>
+                    value === "all"
+                      ? "All"
+                      : EVALUATION_TYPE_LABELS[String(value)] ?? String(value)
+                  }
+                </SelectValue>
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" label="All types">All types</SelectItem>
@@ -175,7 +200,14 @@ export function EvaluationsManager() {
             </SelectContent>
           </Select>
 
-          <SubjectSelect value={subjectFilter} onValueChange={setSubjectFilter} subjects={subjects} placeholder="All subjects" className="w-40" hideLabel />
+          <SubjectSelect
+            value={subjectFilter}
+            onValueChange={setSubjectFilter}
+            subjects={subjects}
+            placeholder="All subjects"
+            className="w-52"
+            variant="filter"
+          />
         </div>
 
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">

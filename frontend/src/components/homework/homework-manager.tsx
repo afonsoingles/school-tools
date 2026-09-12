@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUpDown,
   CalendarClock,
   Clock3,
   Eye,
@@ -21,6 +22,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select"
 import {
   Table,
@@ -48,6 +50,13 @@ import { CreateHomeworkDialog } from "./create-homework-dialog"
 import { DeleteHomeworkDialog } from "./delete-homework-dialog"
 
 type SortKey = "due_date" | "title" | "subject" | "status"
+
+const SORT_KEY_LABELS: Record<SortKey, string> = {
+  due_date: "Due date",
+  title: "Title",
+  subject: "Subject",
+  status: "Status",
+}
 
 function isUpcoming(hw: Homework): boolean {
   if (hw.status === "finished") return false
@@ -190,81 +199,87 @@ export function HomeworkManager() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">View</label>
-          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5">
-            <Button
-              variant={timeFilter === "all" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setTimeFilter("all")}
-              className={cn("gap-1.5 px-3", timeFilter !== "all" && "text-muted-foreground hover:text-foreground")}
-            >
-              <LayoutGrid className="size-3.5" />
-              All
-            </Button>
-            <Button
-              variant={timeFilter === "upcoming" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setTimeFilter("upcoming")}
-              className={cn("gap-1.5 px-3", timeFilter !== "upcoming" && "text-muted-foreground hover:text-foreground")}
-            >
-              <Clock3 className="size-3.5" />
-              Upcoming
-            </Button>
-            <Button
-              variant={timeFilter === "overdue" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setTimeFilter("overdue")}
-              className={cn("gap-1.5 px-3", timeFilter !== "overdue" && "text-muted-foreground hover:text-foreground")}
-            >
-              <CalendarClock className="size-3.5" />
-              Overdue
-            </Button>
-          </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+          <Button
+            variant={timeFilter === "all" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setTimeFilter("all")}
+            className={cn("gap-1.5 px-3", timeFilter !== "all" && "text-muted-foreground hover:text-foreground")}
+          >
+            <LayoutGrid className="size-3.5" />
+            All
+          </Button>
+          <Button
+            variant={timeFilter === "upcoming" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setTimeFilter("upcoming")}
+            className={cn("gap-1.5 px-3", timeFilter !== "upcoming" && "text-muted-foreground hover:text-foreground")}
+          >
+            <Clock3 className="size-3.5" />
+            Upcoming
+          </Button>
+          <Button
+            variant={timeFilter === "overdue" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setTimeFilter("overdue")}
+            className={cn("gap-1.5 px-3", timeFilter !== "overdue" && "text-muted-foreground hover:text-foreground")}
+          >
+            <CalendarClock className="size-3.5" />
+            Overdue
+          </Button>
         </div>
 
-        <div className="flex w-full sm:w-60 flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Search</label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search title or description…"
-              className="pl-8"
-            />
-          </div>
+        <div className="relative w-full sm:w-60">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search title or description…"
+            className="h-9 pl-8"
+          />
         </div>
 
-        <SubjectSelect value={subjectFilter} onValueChange={setSubjectFilter} subjects={subjects} placeholder="All subjects" className="w-40" labelClassName="text-xs text-muted-foreground" />
+        <SubjectSelect
+          value={subjectFilter}
+          onValueChange={setSubjectFilter}
+          subjects={subjects}
+          placeholder="All subjects"
+          className="w-52"
+          variant="filter"
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Sort by</label>
-          <div className="flex items-center gap-1.5">
-            <Select
-              value={sortKey}
-              onValueChange={(v) => setSortKey(String(v) as SortKey)}
-            >
-              <SelectTrigger className="w-36">
-                {sortKey === "due_date" ? "Due date" : sortKey === "title" ? "Title" : sortKey === "subject" ? "Subject" : "Status"}
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="due_date" label="Due date">Due date</SelectItem>
-                <SelectItem value="title" label="Title">Title</SelectItem>
-                <SelectItem value="subject" label="Subject">Subject</SelectItem>
-                <SelectItem value="status" label="Status">Status</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-              aria-label={sortDir === "asc" ? "Sort descending" : "Sort ascending"}
-            >
-              {sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
-            </Button>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <Select
+            value={sortKey}
+            onValueChange={(v) => setSortKey(String(v) as SortKey)}
+          >
+            <SelectTrigger className="h-9 w-44">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Sort</span>
+                <span className="select-none text-muted-foreground">·</span>
+                <SelectValue className="truncate">
+                  {(value) => SORT_KEY_LABELS[String(value) as SortKey] ?? "Due date"}
+                </SelectValue>
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="due_date" label="Due date">Due date</SelectItem>
+              <SelectItem value="title" label="Title">Title</SelectItem>
+              <SelectItem value="subject" label="Subject">Subject</SelectItem>
+              <SelectItem value="status" label="Status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="h-9"
+            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+            aria-label={sortDir === "asc" ? "Sort descending" : "Sort ascending"}
+          >
+            {sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
+          </Button>
         </div>
       </div>
 
