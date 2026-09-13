@@ -23,7 +23,7 @@ export function LoginForm() {
       description="Welcome back to School Tools"
       footer={
         <>
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             href="/auth/signup"
             className="font-semibold underline text-foreground underline-offset-4"
