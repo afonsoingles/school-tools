@@ -106,13 +106,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
     setChanging(true)
     setStatusError(null)
     try {
-      await updateHomework(homework.id, {
-        subject_id: homework.subject_id,
-        title: homework.title,
-        description: homework.description,
-        due_date: homework.due_date,
-        status,
-      })
+      await updateHomework(homework.id, { status })
       setHomeworks((prev) =>
         prev.map((h) => (h.id === homework.id ? { ...h, status } : h))
       )

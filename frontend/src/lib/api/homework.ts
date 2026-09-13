@@ -29,7 +29,7 @@ export async function createHomework(payload: {
 
 export async function updateHomework(
   homeworkId: string,
-  payload: HomeworkPayload
+  payload: Partial<HomeworkPayload>
 ): Promise<Homework> {
   const res = await apiFetch<{ success: boolean; homework: Homework }>(
     `/v1/homework/${homeworkId}`,

@@ -64,46 +64,58 @@ async def get_homework(request: Request) -> JSONResponse:
 
 @router.patch("/v1/homework/{homework_id}")
 @require_auth
-@valid_json(["title", "description", "due_date", "status"])
+@valid_json()
 async def update_homework(request: Request, homework_id: str) -> JSONResponse:
     try:
         hw_id = uuid.UUID(homework_id)
     except:
         raise HomeworkNotFound
 
-    try:
-        due_date = parse_user_datetime(request.state.json["due_date"], request.state.user.timezone)
-    except HomeworkDateInThePast:
-        existing_hw = homework_tools.get_user_homeworks(request.state.user.id)
-        for hw in existing_hw:
-            if hw.id == hw_id:
-                due_date = hw.due_date
-                break
-        else:
-            raise
-    except:
-        raise InvalidTimeFormat
+    data = request.state.json
+    update_data = {}
+    if "due_date" in data:
+        try:
+            update_data["due_date"] = parse_user_datetime(data["due_date"], request.state.user.timezone)
+        except HomeworkDateInThePast:
+            existing_hw = homework_tools.get_user_homeworks(request.state.user.id)
+            for hw in existing_hw:
+                if hw.id == hw_id:
+                    update_data["due_date"] = hw.due_date
+                    break
+            else:
+                raise
+        except:
+            raise InvalidTimeFormat
+    
+    if "status" in data:
+        try:
+            update_data["status"] = HomeworkStatus(data["status"])
+        except:
+            raise InvalidHomeworkStatus
 
-    try:
-        status = HomeworkStatus(request.state.json["status"])
-    except:
-        raise InvalidHomeworkStatus
+    if "title" in data:
+        if len(data["title"]) > 70 or not data["title"].strip():
+            raise InvalidHomeworkTitle
+        update_data["title"] = data["title"]
 
-    if len(request.state.json["title"]) > 70 or not request.state.json["title"].strip():
-        raise InvalidHomeworkTitle
+    if "description" in data:
+        if len(data["description"]) > 1500 or not data["description"].strip():
+            raise InvalidHomeworkDescription
+        update_data["description"] = data["description"]
 
-    if len(request.state.json["description"]) > 1500 or not request.state.json["description"].strip():
-        raise InvalidHomeworkDescription
+    if "subject_id" in data:
+        try:
+            subject_id = uuid.UUID(data["subject_id"])
+        except:
+            raise SubjectNotFound
+        if not subject_tools.does_subject_exist(user_id=request.state.user.id, subject_id=subject_id):
+            raise SubjectNotFound
+        update_data["subject_id"] = subject_id
     
     result = homework_tools.update_homework(
         user_id=request.state.user.id,
         homework_id=hw_id,
-        update_data={
-            "title": request.state.json["title"],
-            "description": request.state.json["description"],
-            "due_date": due_date,
-            "status": status
-        }
+        update_data=update_data
     )
 
     safe_result = SafeHomework.model_validate(result)
