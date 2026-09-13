@@ -67,6 +67,13 @@ import { UserAvatar } from "@/components/layout/user-avatar"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { SubjectIcon } from "@/components/ui/subject-icon"
 import { ErrorBox } from "@/components/ui/error-box"
+import { StatusBadge } from "@/components/ui/status-badge"
+import {
+  HOMEWORK_STATUS_BADGE,
+  HOMEWORK_STATUS_ICON,
+  HOMEWORK_STATUS_LABELS,
+  isOverdueHomework,
+} from "@/components/homework/constants"
 import { errorMessage } from "@/lib/errors"
 import { WEEKDAY_NAMES } from "@/lib/date-time"
 import { REASON_LABELS } from "@/components/calendar/constants"
@@ -85,6 +92,7 @@ import type {
   CancelledClassEvent,
   ClassEvent,
   Evaluation,
+  Homework,
   Subject,
   User,
 } from "@/types"
@@ -292,10 +300,12 @@ export function UserDetails({
   const [classes, setClasses] = useState<ClassEvent[] | null>(null)
   const [cancellations, setCancellations] = useState<CancelledClassEvent[] | null>(null)
   const [evaluations, setEvaluations] = useState<Evaluation[] | null>(null)
+  const [homeworks, setHomeworks] = useState<Homework[] | null>(null)
   const [sectionErrors, setSectionErrors] = useState<Partial<Record<AdminUserContentType, string>>>(
     {}
   )
   const [retryKey, setRetryKey] = useState(0)
+  const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null)
 
   const [editMode, setEditMode] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -340,6 +350,7 @@ export function UserDetails({
     loadSection("classes", setClasses)
     loadSection("cancellations", setCancellations)
     loadSection("evaluations", setEvaluations)
+    loadSection("homework", setHomeworks)
 
     return () => {
       cancelled = true
@@ -972,6 +983,145 @@ export function UserDetails({
           )}
         </SectionBody>
       </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          Homework{homeworks !== null ? ` (${homeworks.length})` : ""}
+        </h2>
+        <SectionBody
+          data={homeworks}
+          error={sectionErrors.homework}
+          loadingLabel="homework"
+          emptyLabel="homework"
+          onRetry={retrySections}
+        >
+          {(data) => (
+            <div className="overflow-hidden rounded-lg border border-border bg-background">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Due</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...data]
+                    .sort(
+                      (a, b) =>
+                        new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+                    )
+                    .map((homework) => {
+                      const overdue = isOverdueHomework(homework, new Date())
+                      return (
+                        <TableRow
+                          key={homework.id}
+                          data-overdue={overdue || undefined}
+                          className={overdue ? "cursor-pointer bg-red-500/5" : "cursor-pointer"}
+                          onClick={() => setSelectedHomework(homework)}
+                        >
+                          <TableCell className="font-medium">
+                            <span className="flex items-center gap-1.5">
+                              <SubjectIcon
+                                icon={subjectIcons.get(homework.subject_id) ?? ""}
+                                className="size-3.5 shrink-0 text-muted-foreground"
+                              />
+                              {subjectNames.get(homework.subject_id) ?? "Unknown subject"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-medium">{homework.title}</span>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge
+                              icon={HOMEWORK_STATUS_ICON[homework.status]}
+                              className={HOMEWORK_STATUS_BADGE[homework.status]}
+                            >
+                              {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
+                            </StatusBadge>
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={
+                                overdue
+                                  ? "font-medium text-red-400"
+                                  : "text-muted-foreground"
+                              }
+                            >
+                              {formatDateTimeTz(homework.due_date, viewerTimezone)}
+                              {overdue && (
+                                <span className="ml-1.5 text-xs text-red-400">· Overdue</span>
+                              )}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </SectionBody>
+      </section>
+
+      <Dialog
+        open={selectedHomework !== null}
+        onOpenChange={(next) => {
+          if (!next) setSelectedHomework(null)
+        }}
+      >
+        {selectedHomework && (() => {
+          const homework = selectedHomework
+          const overdue = isOverdueHomework(homework, new Date())
+          return (
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{homework.title}</DialogTitle>
+                <DialogDescription>
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <SubjectIcon
+                        icon={subjectIcons.get(homework.subject_id) ?? ""}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                      <span className="font-medium text-foreground">
+                        {subjectNames.get(homework.subject_id) ?? "Unknown subject"}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <CalendarDays className="size-3.5 text-muted-foreground" />
+                      <span className={overdue ? "font-medium text-red-400" : ""}>
+                        {formatDateTimeTz(homework.due_date, viewerTimezone)}
+                        {overdue && (
+                          <span className="ml-1.5 text-xs text-red-400">· Overdue</span>
+                        )}
+                      </span>
+                    </span>
+                    <StatusBadge
+                      icon={HOMEWORK_STATUS_ICON[homework.status]}
+                      className={HOMEWORK_STATUS_BADGE[homework.status]}
+                    >
+                      {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
+                    </StatusBadge>
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="h-px bg-border" />
+
+              <div>
+                <h3 className="mb-1.5 text-sm font-semibold text-muted-foreground">
+                  Description
+                </h3>
+                <p className="max-w-xl text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                  {homework.description || "No description provided."}
+                </p>
+              </div>
+            </DialogContent>
+          )
+        })()}
+      </Dialog>
 
       <Dialog
         open={suspendOpen}

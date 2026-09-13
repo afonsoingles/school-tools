@@ -8,8 +8,8 @@ from tools.users import UserTools
 from tools.evaluations import EvaluationTools
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
+from tools.homework import HomeworkTools
 from models.user import *
-from errors.user import UserNotFoundError
 from errors.admin import AdminInvalidContentType
 import json
 import uuid
@@ -21,6 +21,7 @@ user_tools = UserTools()
 evaluation_tools = EvaluationTools()
 subject_tools = SubjectTools()
 class_tools = ClassTools()
+homework_tools = HomeworkTools()
 
 # Get user-related data
 
@@ -84,6 +85,8 @@ async def get_user_content(request: Request, user_id: str, content_type: str) ->
             content = evaluation_tools.get_user_evaluations(user_uuid)
         case "subjects":
             content = subject_tools.get_user_subjects(user_uuid)
+        case "homework":
+            content = homework_tools.get_user_homeworks(user_uuid)
         case _:
             raise AdminInvalidContentType
 

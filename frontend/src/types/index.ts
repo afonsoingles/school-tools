@@ -107,7 +107,7 @@ export interface AdminUserDetail extends User {
   subjects: Subject[]
 }
 
-export type AdminUserContentType = "subjects" | "classes" | "cancellations" | "evaluations"
+export type AdminUserContentType = "subjects" | "classes" | "cancellations" | "evaluations" | "homework"
 
 export type AdminUserContent<C extends AdminUserContentType> = C extends "subjects"
   ? Subject[]
@@ -117,7 +117,9 @@ export type AdminUserContent<C extends AdminUserContentType> = C extends "subjec
       ? CancelledClassEvent[]
       : C extends "evaluations"
         ? Evaluation[]
-        : never
+        : C extends "homework"
+          ? Homework[]
+          : never
 
 export interface UserStats {
   total: number
