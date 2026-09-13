@@ -1,20 +1,70 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, LogOut, Mail } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { resendVerificationEmailClient } from "@/lib/api/auth-client"
+import {
+  getCurrentUserClient,
+  resendVerificationEmailClient,
+} from "@/lib/api/auth-client"
 
 const RESEND_COOLDOWN_SECONDS = 21600
+const CHECK_INTERVAL_MS = 5000
 
 export default function VerifyEmailPendingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+
+  const checkVerified = useCallback(async (): Promise<boolean> => {
+    let user
+    try {
+      user = await getCurrentUserClient()
+    } catch {
+      return false
+    }
+
+    if (!user) {
+      router.push("/auth/login")
+      return true
+    }
+
+    if (user.email_verified) {
+      router.push("/dashboard")
+      router.refresh()
+      return true
+    }
+
+    return false
+  }, [router])
+
+  useEffect(() => {
+    let active = true
+    const interval = setInterval(async () => {
+      if (!active) return
+      if (await checkVerified()) clearInterval(interval)
+    }, CHECK_INTERVAL_MS)
+
+    const onFocus = () => {
+      if (active) checkVerified()
+    }
+
+    checkVerified()
+
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", onFocus)
+
+    return () => {
+      active = false
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+      document.removeEventListener("visibilitychange", onFocus)
+    }
+  }, [checkVerified])
 
   async function handleLogout() {
     setLoggingOut(true)
