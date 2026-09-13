@@ -3,29 +3,34 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
-import {
-  AuthError,
-  AuthField,
-  AuthFooterLink,
-  AuthSubmit,
-  AuthTitle,
-} from "@/components/auth/auth-form"
+import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
 
 export function SignupForm() {
   const router = useRouter()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   return (
-    <form
-      className="flex flex-col w-full max-w-sm gap-6"
+    <AuthCard
+      title="Create account"
+      description="Let's get you started with School Tools"
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link
+            href="/auth/login"
+            className="font-semibold underline text-foreground underline-offset-4"
+          >
+            Login
+          </Link>
+        </>
+      }
       onSubmit={async (event) => {
         event.preventDefault()
-        setError(null)
         setIsSubmitting(true)
 
         try {
@@ -42,7 +47,7 @@ export function SignupForm() {
 
           if (!res.ok) {
             const body = await res.json().catch(() => null)
-            setError(
+            toast.error(
               body?.code === "email_already_registered"
                 ? "This email is already registered."
                 : (body?.message ?? "Could not create account.")
@@ -64,14 +69,12 @@ export function SignupForm() {
           router.push("/auth/verify/pending")
           router.refresh()
         } catch {
-          setError("Something went wrong. Please try again.")
+          toast.error("Something went wrong. Please try again.")
         } finally {
           setIsSubmitting(false)
         }
       }}
     >
-      <AuthTitle>Create account</AuthTitle>
-
       <AuthField
         id="name"
         label="Name"
@@ -106,18 +109,6 @@ export function SignupForm() {
       />
 
       <AuthSubmit loading={isSubmitting}>Create account</AuthSubmit>
-
-      <AuthError message={error} />
-
-      <AuthFooterLink>
-        Already have an account?{" "}
-        <Link
-          href="/auth/login"
-          className="font-semibold underline text-foreground underline-offset-4"
-        >
-          Login
-        </Link>
-      </AuthFooterLink>
-    </form>
+    </AuthCard>
   )
 }

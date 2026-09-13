@@ -3,15 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 import { safeNextPath } from "@/lib/utils"
 
-import {
-  AuthError,
-  AuthField,
-  AuthFooterLink,
-  AuthSubmit,
-  AuthTitle,
-} from "@/components/auth/auth-form"
+import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
 
 export function LoginForm() {
   const router = useRouter()
@@ -20,15 +15,25 @@ export function LoginForm() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   return (
-    <form
-      className="flex flex-col w-full max-w-sm gap-6"
+    <AuthCard
+      title="Login"
+      description="Welcome back to School Tools"
+      footer={
+        <>
+          Don't have an account?{" "}
+          <Link
+            href="/auth/signup"
+            className="font-semibold underline text-foreground underline-offset-4"
+          >
+            Sign up
+          </Link>
+        </>
+      }
       onSubmit={async (event) => {
         event.preventDefault()
-        setError(null)
         setIsSubmitting(true)
 
         try {
@@ -40,21 +45,19 @@ export function LoginForm() {
 
           if (!res.ok) {
             const body = await res.json().catch(() => null)
-            setError(body?.message ?? "Invalid email or password.")
+            toast.error(body?.message ?? "Invalid email or password.")
             return
           }
 
           router.push(next)
           router.refresh()
         } catch {
-          setError("Something went wrong. Please try again.")
+          toast.error("Something went wrong. Please try again.")
         } finally {
           setIsSubmitting(false)
         }
       }}
     >
-      <AuthTitle>Login</AuthTitle>
-
       <AuthField
         id="email"
         label="Email"
@@ -78,18 +81,6 @@ export function LoginForm() {
       />
 
       <AuthSubmit loading={isSubmitting}>Login</AuthSubmit>
-
-      <AuthError message={error} />
-
-      <AuthFooterLink>
-        Need an account?{" "}
-        <Link
-          href="/auth/signup"
-          className="font-semibold underline text-foreground underline-offset-4"
-        >
-          Sign up
-        </Link>
-      </AuthFooterLink>
-    </form>
+    </AuthCard>
   )
 }
