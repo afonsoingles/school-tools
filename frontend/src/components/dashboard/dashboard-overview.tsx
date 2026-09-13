@@ -266,12 +266,15 @@ export function DashboardOverview() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="rounded-full h-9 w-44" />
+            <Skeleton key={i} className="h-9 w-36 rounded-full" />
           ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
+          <div className="flex flex-col gap-4">
+            <Skeleton className="h-64 rounded-xl" />
+            <Skeleton className="h-64 rounded-xl" />
+          </div>
         </div>
       </div>
     )
@@ -279,7 +282,7 @@ export function DashboardOverview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="hidden md:flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <SummaryChip icon={<CalendarDays className="size-4" />}>
           {todaysClasses.length === 0
             ? "No classes today"
@@ -324,7 +327,12 @@ export function DashboardOverview() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Today&apos;s schedule</CardTitle>
+            <CardTitle>
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                Today&apos;s schedule
+              </span>
+            </CardTitle>
             <CardDescription>
               {now.toLocaleDateString("en-GB", {
                 timeZone: timezone,
@@ -479,7 +487,12 @@ export function DashboardOverview() {
         <div className="flex flex-col gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming evaluations</CardTitle>
+            <CardTitle>
+              <span className="flex items-center gap-1.5">
+                <ClipboardList className="size-4 text-muted-foreground" />
+                Upcoming evaluations
+              </span>
+            </CardTitle>
             <CardDescription>Next exams, quizzes and assessments</CardDescription>
           </CardHeader>
           <CardContent>
@@ -527,7 +540,12 @@ export function DashboardOverview() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Homework</CardTitle>
+            <CardTitle>
+              <span className="flex items-center gap-1.5">
+                <FileText className="size-4 text-muted-foreground" />
+                Homework
+              </span>
+            </CardTitle>
             <CardDescription>You don&apos;t want to miss those assignments</CardDescription>
           </CardHeader>
           <CardContent>
