@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
 import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
-import { Button } from "@/components/ui/button"
 import { errorMessage } from "@/lib/errors"
 import { confirmPasswordReset, isValidPasswordResetToken } from "@/lib/api/auth-client"
 import { PASSWORD_HINT, PASSWORD_REGEX } from "@/lib/user-rules"
@@ -53,15 +52,14 @@ export function ResetPasswordForm({ token }: { token: string }) {
   if (status === "invalid") {
     return (
       <AuthCard title="Invalid reset link" description={invalidMessage ?? undefined}>
-        <Button
-          render={<Link href="/auth/login" />}
-          nativeButton={false}
-          type="button"
-          variant="outline"
-          className="h-10 gap-1.5"
-        >
-          Back to login
-        </Button>
+        <div className="flex justify-center">
+          <Link
+            href="/auth/login"
+            className="text-sm font-semibold text-foreground underline underline-offset-4"
+          >
+            Back to login
+          </Link>
+        </div>
       </AuthCard>
     )
   }
