@@ -105,3 +105,8 @@ class HierarchyViolationError(BaseError):
     status_code = 403
     code = "hierarchy_violation"
     message = "You cannot perform this action on a user with a higher or equal role than yours."
+
+class PasswordResetRateLimitError(BaseError):
+    status_code = 429
+    code = "password_reset_rate_limit"
+    message = "You have recently requested a password reset. Please wait 6 hours before requesting another password reset."

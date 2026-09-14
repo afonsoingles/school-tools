@@ -237,3 +237,57 @@ class UserTools:
         
         self.update_user(user.id, safe_update=False, active=True)
         return user
+
+    def send_password_reset_link(self, email: str, bypass_rate_limit=False) -> None:
+        try:
+            user = self.get_user_by_email(email)
+        except UserNotFoundError:
+            return
+
+        now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+
+        ttl = self.db.redis.ttl(f"users.password_reset:{user.id}")
+        if self.db.redis.get(f"users.password_reset:{user.id}") and ttl > 0 and (86400 - ttl) < 21600 and not bypass_rate_limit:
+            raise PasswordResetRateLimitError
+        
+        payload = {
+            "iss": "school-tools.backend.password_reset",
+            "sub": str(user.id),
+            "email": user.email,
+            "exp": now + 86400, # 1 day
+            "iat": now,
+            "jti": str(uuid.uuid4())
+        }
+        token = self.jwt.encode(payload)
+
+        self.db.redis.set(f"users.password_reset:{user.id}", str(token), ex=86400)
+        link = f"{os.environ.get('BASE_URL', 'http://localhost:3000')}/auth/reset?token={token}"
+        self.mailer.send_email(subject="Reset your password", template="reset_password_en", to=user.email, name=user.name, link=link)
+        return
+
+    def is_valid_password_reset_token(self, token) -> bool:
+        decoded = self.jwt.decode(token)
+        if not decoded["iss"] == "school-tools.backend.password_reset":
+            return False
+        
+        user = self.get_user_by_id(decoded["sub"])
+        if not user.email == decoded["email"]:
+            return False
+        
+        redis_token = self.db.redis.get(f"users.password_reset:{user.id}")
+        if not redis_token or redis_token != token:
+            return False
+        
+        return True
+
+    def invalidate_password_reset_token(self, token) -> None:
+        decoded = self.jwt.decode(token)
+        if not decoded["iss"] == "school-tools.backend.password_reset":
+            raise InvalidOrExpiredTokenError
+        
+        user = self.get_user_by_id(decoded["sub"])
+        if not user.email == decoded["email"]:
+            raise InvalidOrExpiredTokenError
+        
+        self.db.redis.delete(f"users.password_reset:{user.id}")
+        return

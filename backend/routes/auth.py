@@ -11,6 +11,7 @@ from decorators.valid_json import valid_json
 from sentry_sdk import metrics
 from utils.limiter import limiter
 from zoneinfo import ZoneInfo
+import uuid
 
 router = APIRouter()
 user_tools = UserTools()
@@ -192,3 +193,51 @@ async def change_email(request: Request) -> JSONResponse:
     session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
 
     return JSONResponse({"success": True, "message": "Your email has been updated successfully! Please check your new email to verify it and regain access."})
+
+@router.post("/v1/auth/password_reset/request")
+@valid_json(["email"])
+@limiter.limit("10/hour")
+async def request_password_reset(request: Request) -> JSONResponse:
+    email = request.state.json["email"]
+
+    try:
+        validate_email(email, check_deliverability=False)
+    except:
+        raise InvalidEmailError
+    
+    user_tools.send_password_reset_link(email)
+
+    return JSONResponse({"success": True, "message": "If the provided email is registered, a password reset link has been sent to it."})
+
+@router.post("/v1/auth/password_reset/token")
+@valid_json(["token"])
+async def is_valid_password_reset_token(request: Request) -> JSONResponse:
+    token = request.state.json["token"]
+        
+    value = user_tools.is_valid_password_reset_token(token)
+    
+    return JSONResponse({"success": True, "valid": value})
+
+@router.post("/v1/auth/password_reset/confirm")
+@valid_json(["token", "new_password"])
+async def confirm_password_reset(request: Request) -> JSONResponse:
+    token = request.state.json["token"]
+    new_password = request.state.json["new_password"]
+
+    PASSWORD_REGEX = re.compile(
+        r"^(?=.*[a-z])(?=.*[A-Z]).{8,50}$"
+    )
+
+    if not PASSWORD_REGEX.match(new_password):
+        raise PasswordTooWeakError
+
+    if not user_tools.is_valid_password_reset_token(token):
+        raise InvalidOrExpiredTokenError
+    
+    user_uuid = uuid.UUID(user_tools.jwt.decode(token)["sub"])
+
+    user_tools.update_user(user_uuid, safe_update=False, password=new_password)
+    user_tools.invalidate_password_reset_token(token)
+    session_tools.revoke_user_sessions(user_uuid)
+
+    return JSONResponse({"success": True, "message": "Your password has been reset successfully!"})

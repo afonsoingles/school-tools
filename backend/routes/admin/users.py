@@ -143,3 +143,12 @@ async def promote_user(request: Request, user_id: str, role: str) -> JSONRespons
             raise AdminInvalidContentType
 
     return JSONResponse({"success": True, "message": f"The user has been promoted to {role}."})
+
+@router.post("/v1/admin/users/{user_id}/actions/password_reset")
+@require_auth(require_admin=True)
+async def admin_request_password_reset(request: Request, user_id: str) -> JSONResponse:
+    user = user_tools.get_user_by_id(user_id)
+
+    user_tools.send_password_reset_link(user.email)
+
+    return JSONResponse({"success": True, "message": "If the provided email is registered, a password reset link has been sent to it."})
