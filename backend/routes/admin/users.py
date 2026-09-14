@@ -151,4 +151,4 @@ async def admin_request_password_reset(request: Request, user_id: str) -> JSONRe
 
     user_tools.send_password_reset_link(user.email)
 
-    return JSONResponse({"success": True, "message": "If the provided email is registered, a password reset link has been sent to it."})
+    return JSONResponse({"success": True, "message": "Password reset link sent"})
