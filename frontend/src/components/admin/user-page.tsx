@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Clock,
   Globe,
+  KeyRound,
   Loader2,
   Mail,
   MailCheck,
@@ -84,6 +85,7 @@ import {
   suspendUser,
   unsuspendUser,
   updateAdminUser,
+  adminSendPasswordReset,
 } from "@/lib/api/admin"
 import type { PromoteRole } from "@/lib/api/admin"
 import type {
@@ -323,6 +325,10 @@ export function UserDetails({
   const [reactivating, setReactivating] = useState(false)
   const [reactivateError, setReactivateError] = useState<string | null>(null)
 
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
   const [roleAction, setRoleAction] = useState<RoleAction | null>(null)
   const [roleBusy, setRoleBusy] = useState(false)
   const [roleError, setRoleError] = useState<string | null>(null)
@@ -491,6 +497,21 @@ export function UserDetails({
       setReactivateError(errorMessage(err))
     } finally {
       setReactivating(false)
+    }
+  }
+
+  async function handlePasswordReset() {
+    setResetting(true)
+    setResetError(null)
+
+    try {
+      const message = await adminSendPasswordReset(user.id)
+      toast.success(message)
+      setResetOpen(false)
+    } catch (err) {
+      setResetError(errorMessage(err))
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -789,6 +810,19 @@ export function UserDetails({
                   <MailCheck className="size-3.5" />
                 )}
                 Resend verification email
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setResetError(null)
+                  setResetOpen(true)
+                }}
+                className="gap-1.5"
+              >
+                <KeyRound className="size-3.5" />
+                Send password reset
               </Button>
 
               <TooltipProvider>
@@ -1197,6 +1231,39 @@ export function UserDetails({
             >
               {reactivating && <Loader2 className="size-4 animate-spin" />}
               Reactivate user
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={resetOpen}
+        onOpenChange={(next) => {
+          if (!next) {
+            setResetError(null)
+          }
+          setResetOpen(next)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send password reset</DialogTitle>
+            <DialogDescription>
+              A password reset link will be sent to <span className="font-medium">{user.email}</span>.
+              They will be able to set a new password.
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetError && <ErrorBox>{resetError}</ErrorBox>}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={handlePasswordReset}
+              disabled={resetting}
+              className="gap-1.5"
+            >
+              {resetting && <Loader2 className="size-4 animate-spin" />}
+              Send reset link
             </Button>
           </div>
         </DialogContent>

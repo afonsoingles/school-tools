@@ -77,6 +77,14 @@ export async function resendVerificationEmail(userId: string): Promise<string> {
   return res.message
 }
 
+export async function adminSendPasswordReset(userId: string): Promise<string> {
+  const res = await apiFetch<{ success: boolean; message: string }>(
+    `/v1/admin/users/${userId}/actions/password_reset`,
+    { method: "POST" }
+  )
+  return res.message
+}
+
 export async function suspendUser(userId: string, reason: string): Promise<string> {
   const res = await apiFetch<{ success: boolean; message: string }>(
     `/v1/admin/users/${userId}/actions/suspend`,

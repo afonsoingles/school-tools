@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import { LoginForm } from "@/components/auth/login-form"
+import { RedirectIfAuthed } from "@/components/auth/redirect-if-authed"
 
 export const metadata: Metadata = {
   title: "Login",
@@ -9,8 +10,10 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
+    <RedirectIfAuthed>
+      <Suspense>
+        <LoginForm />
+      </Suspense>
+    </RedirectIfAuthed>
   )
 }

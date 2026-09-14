@@ -80,6 +80,13 @@ export function LoginForm() {
         onChange={(event) => setPassword(event.target.value)}
       />
 
+      <Link
+        href="/auth/reset/request"
+        className="self-start text-sm text-muted-foreground hover:text-foreground underline-offset-4"
+      >
+        Forgot password?
+      </Link>
+
       <AuthSubmit loading={isSubmitting}>Login</AuthSubmit>
     </AuthCard>
   )

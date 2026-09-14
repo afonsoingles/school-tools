@@ -19,7 +19,7 @@ type AuthCardProps = {
   title: string
   description?: string
   footer?: React.ReactNode
-  onSubmit: React.FormEventHandler<HTMLFormElement>
+  onSubmit?: React.FormEventHandler<HTMLFormElement>
   children: React.ReactNode
 }
 
@@ -31,9 +31,13 @@ export function AuthCard({ title, description, footer, onSubmit, children }: Aut
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          {children}
-        </form>
+        {onSubmit ? (
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            {children}
+          </form>
+        ) : (
+          children
+        )}
       </CardContent>
       {footer && (
         <CardFooter className="justify-center py-3.5">
