@@ -92,7 +92,8 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
+  --font-heading: var(--font-geist-sans);
 }
 
 @layer base {

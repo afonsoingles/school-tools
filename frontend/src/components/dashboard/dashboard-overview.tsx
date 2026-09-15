@@ -84,7 +84,7 @@ function OverdueIndicator() {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger
-          className="inline-flex items-center rounded outline-none shrink-0 focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center rounded outline-hidden shrink-0 focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Overdue"
         >
           <TriangleAlert className="size-3.5 text-destructive" />

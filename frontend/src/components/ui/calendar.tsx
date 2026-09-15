@@ -207,7 +207,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col items-center justify-center gap-1 border-0 rounded-(--cell-radius) bg-transparent p-0 leading-none font-normal text-foreground transition-none outline-none hover:bg-muted hover:text-foreground",
+        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col items-center justify-center gap-1 border-0 rounded-(--cell-radius) bg-transparent p-0 leading-none font-normal text-foreground transition-none outline-hidden hover:bg-muted hover:text-foreground",
         "data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-end=true]:hover:bg-primary data-[range-end=true]:hover:text-primary-foreground",
         "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-primary data-[range-middle=true]:text-primary-foreground data-[range-middle=true]:hover:bg-primary data-[range-middle=true]:hover:text-primary-foreground",
         "data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-start=true]:hover:bg-primary data-[range-start=true]:hover:text-primary-foreground",

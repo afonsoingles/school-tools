@@ -23,7 +23,7 @@ export function CalendarSyncHint({ className }: CalendarSyncHintProps) {
       <TooltipProvider>
         <Tooltip open={open} onOpenChange={setOpen}>
           <TooltipTrigger
-            className="inline-flex items-center justify-center transition-colors rounded-md outline-none size-8 text-muted-foreground hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center justify-center transition-colors rounded-md outline-hidden size-8 text-muted-foreground hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Sync your calendar with external apps"
             onClick={() => setOpen((o) => !o)}
           >

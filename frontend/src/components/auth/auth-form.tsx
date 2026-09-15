@@ -65,7 +65,7 @@ export function AuthField({ id, label, hint, type = "text", ...props }: AuthFiel
           <TooltipProvider delay={0}>
             <Tooltip open={hintOpen} onOpenChange={setHintOpen}>
               <TooltipTrigger
-                className="inline-flex items-center justify-center transition-colors rounded-sm outline-none size-5 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex items-center justify-center transition-colors rounded-sm outline-hidden size-5 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="More information"
                 onClick={() => setHintOpen((open) => !open)}
               >

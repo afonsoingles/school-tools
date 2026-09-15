@@ -120,7 +120,7 @@ export function CreateHomeworkDialog({
               placeholder="Describe the details…"
               rows={6}
               required
-              className="w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+              className="w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-hidden placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
             />
             <span className="text-xs text-right text-muted-foreground">{description.length}/1500</span>
           </div>
