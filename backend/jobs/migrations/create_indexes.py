@@ -29,7 +29,7 @@ def migrate():
     print(f"[MIGRATIONS][{MIGRATION_ID}] Created indexes for classes successfully.")
 
     # cancelled classes
-    db.mongo.class_camcellations.create_indexes([
+    db.mongo.class_cancellations.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True, name="idx_id"),
         IndexModel([("user_id", ASCENDING), ("date", ASCENDING)], name="idx_user_date"),
         IndexModel([("class_id", ASCENDING)], name="idx_class_id")
@@ -61,6 +61,6 @@ def migrate():
     # calendar feed settings
     db.mongo.calendar_feed_settings.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True, name="idx_id"),
-        IndexModel([("user_id", ASCENDING), ("calendar_feed_id", ASCENDING)], unique=True, name="idx_user_feed"),
+        IndexModel([("user_id", ASCENDING)], unique=True, name="idx_user_feed"),
     ])
     print(f"[MIGRATIONS][{MIGRATION_ID}] Created indexes for calendar feed settings successfully.")
