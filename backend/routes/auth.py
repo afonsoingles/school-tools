@@ -121,7 +121,7 @@ async def me(request: Request) -> JSONResponse:
 async def logout(request: Request) -> JSONResponse:
 
     session_tools.revoke_session(request.state.token)
-
+    metrics.count("user.logout", 1, attributes={"user_id": request.state.user.id})
     return JSONResponse({"success": True, "message": "Logged out and session revoked!"})
 
 @router.post("/v1/auth/settings/change_name")
@@ -135,7 +135,7 @@ async def change_name(request: Request) -> JSONResponse:
         raise InvalidNameError
     
     user_tools.update_user(request.state.user.id, name=name)
-
+    metrics.count("user.name_changed", 1, attributes={"user_id": request.state.user.id})
     return JSONResponse({"success": True, "message": "Your name as updated successfully!"})
 
 @router.post("/v1/auth/settings/change_password")
@@ -160,7 +160,8 @@ async def change_password(request: Request) -> JSONResponse:
 
     user_tools.update_user(request.state.user.id, password=new_password)
     session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
-    
+    metrics.count("user.password_changed", 1, attributes={"user_id": request.state.user.id})
+
     return JSONResponse({"success": True, "message": "Your password has been updated successfully!"})
 
 @router.post("/v1/auth/settings/change_email")
@@ -192,6 +193,7 @@ async def change_email(request: Request) -> JSONResponse:
 
     session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
 
+    metrics.count("user.email_changed", 1, attributes={"user_id": request.state.user.id})
     return JSONResponse({"success": True, "message": "Your email has been updated successfully! Please check your new email to verify it and regain access."})
 
 @router.post("/v1/auth/password_reset/request")
@@ -206,7 +208,7 @@ async def request_password_reset(request: Request) -> JSONResponse:
         raise InvalidEmailError
     
     user_tools.send_password_reset_link(email)
-
+    metrics.count("users.password_reset.requested", 1, attributes={"email": email})
     return JSONResponse({"success": True, "message": "If the provided email is registered, a password reset link has been sent to it."})
 
 @router.post("/v1/auth/password_reset/token")
@@ -240,4 +242,5 @@ async def confirm_password_reset(request: Request) -> JSONResponse:
     user_tools.invalidate_password_reset_token(token)
     session_tools.revoke_user_sessions(user_uuid)
 
+    metrics.count("users.password_reset.confirmed", 1, attributes={"user_id": str(user_uuid)})
     return JSONResponse({"success": True, "message": "Your password has been reset successfully!"})
