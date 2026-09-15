@@ -17,7 +17,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 COPY --from=builder --chown=backend:backend /app/.venv ./.venv
 COPY --chown=backend:backend . .
+COPY --chown=backend:backend .env ./.env
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
+CMD ["sh", "-c", "set -a && . ./.env && set +a && exec uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=\"$FORWARDED_ALLOW_IPS\""]
