@@ -21,7 +21,12 @@ class InvalidSubjectIcon(BaseError):
     code = "invalid_subject_icon"
     message = "The subject icon is invalid."
 
+class InvalidSubjectColor(BaseError):
+    status_code = 400
+    code = "invalid_subject_color"
+    message = "The subject color is invalid."
+
 class SubjectEditMissingFields(BaseError):
     status_code = 400
     code = "subject_edit_missing_fields"
-    message = "You need to set either new_name, new_icon or both to edit the subject."
+    message = "You need to set either new_name, new_icon, new_color or both to edit the subject."

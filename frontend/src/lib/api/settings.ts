@@ -24,10 +24,10 @@ export async function getSubjects(): Promise<Subject[]> {
   return res.subjects
 }
 
-export async function createSubject(name: string, icon: string): Promise<Subject> {
+export async function createSubject(name: string, icon: string, color: string): Promise<Subject> {
   const res = await apiFetch<SubjectResponse>("/v1/subjects", {
     method: "POST",
-    body: JSON.stringify({ name, icon }),
+    body: JSON.stringify({ name, icon, color }),
   })
   return res.subject
 }
@@ -44,6 +44,14 @@ export async function updateSubjectIcon(subjectId: string, newIcon: string): Pro
   const res = await apiFetch<SubjectResponse>(`/v1/subjects/${subjectId}`, {
     method: "PATCH",
     body: JSON.stringify({ new_icon: newIcon }),
+  })
+  return res.subject
+}
+
+export async function updateSubjectColor(subjectId: string, newColor: string): Promise<Subject> {
+  const res = await apiFetch<SubjectResponse>(`/v1/subjects/${subjectId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ new_color: newColor }),
   })
   return res.subject
 }

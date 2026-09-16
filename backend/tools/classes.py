@@ -145,7 +145,7 @@ class ClassTools:
             raise ScheduleNotFound
 
         new_valid_from = valid_from or datetime.date.today()
-        if new_valid_from <= schedule.valid_from:
+        if new_valid_from < schedule.valid_from:
             raise InvalidRescheduleDate
         if schedule.valid_until is not None and new_valid_from > schedule.valid_until:
             raise InvalidRescheduleDate

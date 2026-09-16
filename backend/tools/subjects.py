@@ -1,4 +1,4 @@
-from models.subject import Subject, SafeSubject, SubjectIcon
+from models.subject import Subject, SafeSubject, SubjectIcon, SubjectColor
 from utils.database import Database
 import uuid
 from pymongo import ReturnDocument
@@ -12,8 +12,8 @@ class SubjectTools:
         self.db = Database()
         pass
 
-    def create_subject(self, user_id: uuid.UUID, name: str, icon: SubjectIcon) -> SafeSubject:
-        subject = Subject(user_id=user_id, name=name, icon=icon)
+    def create_subject(self, user_id: uuid.UUID, name: str, icon: SubjectIcon, color: SubjectColor = SubjectColor.BLUE) -> SafeSubject:
+        subject = Subject(user_id=user_id, name=name, icon=icon, color=color)
 
         subject_dict = subject.model_dump()
         subject_dict["_id"] = subject.id

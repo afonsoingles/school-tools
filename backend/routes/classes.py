@@ -58,7 +58,7 @@ def _parse_schedule(schedule: dict) -> dict:
 
 
 def _safe_class(class_event):
-    return SafeClassEvent(**class_event.model_dump()).model_dump()
+    return SafeClassEvent(**class_event.model_dump()).model_dump(mode="json")
 
 
 # Class Schedule
@@ -96,7 +96,7 @@ async def get_classes(request: Request) -> JSONResponse:
     return JSONResponse(jsonable_encoder({
         "success": True,
         "classes": [_safe_class(cls) for cls in classes],
-        "day_cancellations": [SafeDayCancellation(**dc.model_dump()).model_dump() for dc in day_cancellations],
+        "day_cancellations": [SafeDayCancellation(**dc.model_dump()).model_dump(mode="json") for dc in day_cancellations],
     }))
 
 

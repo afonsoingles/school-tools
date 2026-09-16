@@ -54,12 +54,27 @@ class SubjectIcon(str, Enum):
     CODE = "Code"
 
 
+class SubjectColor(str, Enum):
+    BLUE = "blue"
+    EMERALD = "emerald"
+    VIOLET = "violet"
+    AMBER = "amber"
+    CYAN = "cyan"
+    FUCHSIA = "fuchsia"
+    INDIGO = "indigo"
+    TEAL = "teal"
+    ROSE = "rose"
+    ORANGE = "orange"
+    LIME = "lime"
+    SKY = "sky"
+
 class SafeSubject(BaseModel):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
-                              
+                               
     id: uuid.UUID =  Field(default_factory=uuid.uuid4)
     name: str
     icon: SubjectIcon
+    color: SubjectColor = SubjectColor.BLUE
 
 class Subject(SafeSubject):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")

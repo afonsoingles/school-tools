@@ -125,7 +125,15 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
           end_time: row.end_time,
         }
         if (row.id) {
-          await reschedule(cls.id, row.id, payload)
+          const original = cls.schedules.find((s) => s.id === row.id)
+          if (
+            !original ||
+            original.scheduled_weekday !== payload.scheduled_weekday ||
+            original.start_time !== payload.start_time ||
+            original.end_time !== payload.end_time
+          ) {
+            await reschedule(cls.id, row.id, payload)
+          }
         } else {
           await addSchedule(cls.id, payload)
         }

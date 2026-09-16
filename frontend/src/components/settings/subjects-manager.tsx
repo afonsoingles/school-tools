@@ -38,6 +38,7 @@ import {
   deleteSubject,
   getSubjects,
   renameSubject,
+  updateSubjectColor,
   updateSubjectIcon,
 } from "@/lib/api/settings"
 import {
@@ -46,6 +47,11 @@ import {
   SUBJECT_ICONS,
   getSubjectIcons,
 } from "@/lib/icons"
+import {
+  DEFAULT_SUBJECT_COLOR,
+  SUBJECT_COLORS,
+  getSubjectSwatchClass,
+} from "@/lib/subjects"
 import type { Subject } from "@/types"
 
 export function SubjectsManager() {
@@ -56,12 +62,14 @@ export function SubjectsManager() {
   const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState("")
   const [createIcon, setCreateIcon] = useState(DEFAULT_SUBJECT_ICON)
+  const [createColor, setCreateColor] = useState(DEFAULT_SUBJECT_COLOR)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
   const [editIcon, setEditIcon] = useState(DEFAULT_SUBJECT_ICON)
+  const [editColor, setEditColor] = useState(DEFAULT_SUBJECT_COLOR)
   const [savingId, setSavingId] = useState<string | null>(null)
 
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -81,10 +89,11 @@ export function SubjectsManager() {
     setCreating(true)
 
     try {
-      const subject = await createSubject(name.trim(), createIcon)
+      const subject = await createSubject(name.trim(), createIcon, createColor)
       setSubjects((prev) => [...prev, subject])
       setName("")
       setCreateIcon(DEFAULT_SUBJECT_ICON)
+      setCreateColor(DEFAULT_SUBJECT_COLOR)
       setCreateOpen(false)
     } catch (err) {
       setError(errorMessage(err))
@@ -97,6 +106,7 @@ export function SubjectsManager() {
     setEditingId(subject.id)
     setEditValue(subject.name)
     setEditIcon(subject.icon)
+    setEditColor(subject.color ?? DEFAULT_SUBJECT_COLOR)
   }
 
   function stopEditing() {
@@ -106,7 +116,10 @@ export function SubjectsManager() {
 
   async function handleSave(subject: Subject) {
     const trimmed = editValue.trim()
-    if (!trimmed || (trimmed === subject.name && editIcon === subject.icon)) {
+    if (
+      !trimmed ||
+      (trimmed === subject.name && editIcon === subject.icon && editColor === subject.color)
+    ) {
       stopEditing()
       return
     }
@@ -120,6 +133,9 @@ export function SubjectsManager() {
       }
       if (editIcon !== subject.icon) {
         updated = await updateSubjectIcon(subject.id, editIcon)
+      }
+      if (editColor !== subject.color) {
+        updated = await updateSubjectColor(subject.id, editColor)
       }
       setSubjects((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
       stopEditing()
@@ -186,6 +202,8 @@ export function SubjectsManager() {
           onNameChange={setName}
           icon={createIcon}
           onIconChange={setCreateIcon}
+          color={createColor}
+          onColorChange={setCreateColor}
           creating={creating}
           error={error}
           onErrorChange={setError}
@@ -220,13 +238,23 @@ export function SubjectsManager() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {editingId === subject.id ? (
-                        <IconPicker
-                          value={editIcon}
-                          onChange={setEditIcon}
-                          disabled={savingId === subject.id}
-                        />
+                        <>
+                          <IconPicker
+                            value={editIcon}
+                            onChange={setEditIcon}
+                            disabled={savingId === subject.id}
+                          />
+                          <ColorPicker
+                            value={editColor}
+                            onChange={setEditColor}
+                            disabled={savingId === subject.id}
+                          />
+                        </>
                       ) : (
-                        <IconButton icon={subject.icon} />
+                        <>
+                          <ColorSwatch color={subject.color} />
+                          <IconButton icon={subject.icon} />
+                        </>
                       )}
                       {editingId === subject.id ? (
                         <Input
@@ -318,6 +346,8 @@ export function SubjectsManager() {
         onNameChange={setName}
         icon={createIcon}
         onIconChange={setCreateIcon}
+        color={createColor}
+        onColorChange={setCreateColor}
         creating={creating}
         error={error}
         onErrorChange={setError}
@@ -356,6 +386,8 @@ interface CreateSubjectDialogProps {
   onNameChange: (name: string) => void
   icon: string
   onIconChange: (icon: string) => void
+  color: string
+  onColorChange: (color: string) => void
   creating: boolean
   error: string | null
   onErrorChange: (error: string | null) => void
@@ -369,6 +401,8 @@ function CreateSubjectDialog({
   onNameChange,
   icon,
   onIconChange,
+  color,
+  onColorChange,
   creating,
   error,
   onErrorChange,
@@ -399,17 +433,21 @@ function CreateSubjectDialog({
             minLength={3}
           />
 
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Icon</span>
-            <IconPicker value={icon} onChange={onIconChange} />
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Icon</span>
+              <IconPicker value={icon} onChange={onIconChange} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Color</span>
+              <ColorPicker value={color} onChange={onColorChange} />
+            </div>
           </div>
 
           {error && (
             <ErrorBox>{error}</ErrorBox>
           )}
 
-          
-            
           <Button type="submit" disabled={creating || name.trim().length < 3} className="gap-1.5">
             {creating && <Loader2 className="size-4 animate-spin" />}
             Create
@@ -428,6 +466,64 @@ function SubjectIcon({ icon, className }: { icon: string; className?: string }) 
 
 function IconButton({ icon, className }: { icon: string; className?: string }) {
   return <SubjectIcon icon={icon} className={cn("size-4 shrink-0 text-muted-foreground", className)} />
+}
+
+function ColorSwatch({ color, className }: { color?: string; className?: string }) {
+  return <span className={cn("size-3 rounded-full shrink-0", getSubjectSwatchClass(color), className)} />
+}
+
+function ColorPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (color: string) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={disabled}
+            className="hover:bg-foreground/10!"
+            aria-label="Choose color"
+          />
+        }
+      >
+        <ColorSwatch color={value} className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-fit">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Color</DropdownMenuLabel>
+          <div className="grid grid-cols-4 gap-3 p-2.5">
+            {SUBJECT_COLORS.map((c) => (
+              <Button
+                key={c.name}
+                variant="ghost"
+                onClick={() => {
+                  onChange(c.name)
+                  setOpen(false)
+                }}
+                className={cn(
+                  "size-8 p-0! rounded-lg",
+                  c.name === value ? "bg-foreground/10!" : "hover:bg-foreground/10!"
+                )}
+                aria-label={`Select ${c.name} color`}
+              >
+                <span className={cn("size-4 rounded-full", c.swatch)} />
+              </Button>
+            ))}
+          </div>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 function IconPicker({

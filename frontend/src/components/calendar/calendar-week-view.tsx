@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DAY_FULL, DAY_NAMES, formatInTz, getTzParts, timeToMinutes, tzDateFromParts, weekdayFromDateStr } from "@/lib/date-time"
-import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
+import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap, subjectColorMap as buildSubjectColorMap, getSubjectBlockClass } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
@@ -38,16 +38,6 @@ import { EditClassDialog } from "./edit-class-dialog"
 import { DayCancelDialog } from "./day-cancel-dialog"
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
-const CLASS_COLORS = [
-  "bg-blue-600 text-white hover:bg-blue-500",
-  "bg-emerald-600 text-white hover:bg-emerald-500",
-  "bg-violet-600 text-white hover:bg-violet-500",
-  "bg-amber-500 text-white hover:bg-amber-400",
-  "bg-cyan-600 text-white hover:bg-cyan-500",
-  "bg-fuchsia-600 text-white hover:bg-fuchsia-500",
-  "bg-indigo-600 text-white hover:bg-indigo-500",
-  "bg-teal-600 text-white hover:bg-teal-500",
-]
 
 function DayHeaderAction({
   dateStr,
@@ -141,7 +131,6 @@ interface DayBlock {
   key: string
   cls: ClassEvent
   schedule: ClassSchedule
-  colorIndex: number
 }
 
 export function CalendarWeekView() {
@@ -225,6 +214,7 @@ export function CalendarWeekView() {
 
   const subjectMap = buildSubjectNameMap(subjects)
   const subjectIcon = buildSubjectIconMap(subjects)
+  const subjectColor = buildSubjectColorMap(subjects)
 
   const fetchData = useCallback(() => {
     Promise.all([getClassSchedule(), getEvaluations(), getSubjects()])
@@ -242,12 +232,10 @@ export function CalendarWeekView() {
 
   function dayBlocks(dateStr: string): DayBlock[] {
     const blocks: DayBlock[] = []
-    let colorIndex = 0
     for (const cls of classes) {
       const schedule = activeScheduleFor(cls, dateStr)
       if (schedule) {
-        blocks.push({ key: `${cls.id}:${schedule.id}`, cls, schedule, colorIndex })
-        colorIndex++
+        blocks.push({ key: `${cls.id}:${schedule.id}`, cls, schedule })
       }
     }
     return blocks
@@ -293,7 +281,7 @@ export function CalendarWeekView() {
     })
   }
 
-  function blockLayout(dayBlocks: DayBlock[]): Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }> {
+  function blockLayout(dayBlocks: DayBlock[]): Map<string, { topMin: number; endMin: number; col: number; total: number }> {
     const sorted = [...dayBlocks].sort((a, b) => {
       const sa = timeToMinutes(a.schedule.start_time)
       const sb = timeToMinutes(b.schedule.start_time)
@@ -315,7 +303,7 @@ export function CalendarWeekView() {
       }
     }
 
-    const layout = new Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }>()
+    const layout = new Map<string, { topMin: number; endMin: number; col: number; total: number }>()
     for (const cluster of clusters) {
       const sortedCluster = [...cluster].sort(
         (a, b) => timeToMinutes(a.schedule.start_time) - timeToMinutes(b.schedule.start_time)
@@ -344,7 +332,7 @@ export function CalendarWeekView() {
           .sort((a, b) => a - b)[0]
         const topMin = start
         const endMin = Math.max(topMin, Math.min(end, nextSameCol ?? end))
-        layout.set(block.key, { topMin, endMin, col, total, colorIndex: block.colorIndex })
+        layout.set(block.key, { topMin, endMin, col, total })
       }
     }
     return layout
@@ -499,7 +487,7 @@ export function CalendarWeekView() {
           const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
           const isCancelled = !!cancellation || !!dayOff
           const hasEvaluation = !!evaluation
-          const band = layout.get(block.key) ?? { topMin: 0, endMin: 60, col: 0, total: 1, colorIndex: 0 }
+          const band = layout.get(block.key) ?? { topMin: 0, endMin: 60, col: 0, total: 1 }
           const top = (band.topMin / 15) * SLOT_HEIGHT
           const height = Math.max(((band.endMin - band.topMin) / 15) * SLOT_HEIGHT, 20)
           const widthPct = 100 / band.total
@@ -515,7 +503,7 @@ export function CalendarWeekView() {
                     ? "bg-red-500 text-white hover:bg-red-400"
                     : isCancelled
                       ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                      : CLASS_COLORS[band.colorIndex % CLASS_COLORS.length],
+                      : getSubjectBlockClass(subjectColor.get(cls.subject_id)),
                 )}
                 style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
               >

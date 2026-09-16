@@ -66,6 +66,7 @@ export interface Subject {
   id: string
   name: string
   icon: string
+  color: string
 }
 
 export type CancellationReason = "break" | "public_holiday" | "other"
