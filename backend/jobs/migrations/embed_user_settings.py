@@ -47,5 +47,5 @@ def migrate():
     for key in db.redis.scan_iter("users.lookup.email:*"):
         db.redis.delete(key)
 
-    db
+    db.mongo.calendar_feed_settings.drop()
     print(f"[MIGRATIONS][{MIGRATION_ID}] Embedded calendar settings into users for {migrated} legacy docs.")
