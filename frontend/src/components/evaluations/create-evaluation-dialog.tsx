@@ -26,8 +26,8 @@ import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { SubjectIcon } from "@/components/ui/subject-icon"
 import { subjectIconMap, subjectNameMap } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
-import { getTzParts, toDateTimeInput } from "@/lib/date-time"
-import type { ClassEvent, Subject } from "@/types"
+import { datePart, getTzParts, toDateTimeInput } from "@/lib/date-time"
+import type { ClassEvent, ClassSchedule, Subject } from "@/types"
 import { EVALUATION_TYPE_LABELS } from "./constants"
 
 interface CreateEvaluationDialogProps {
@@ -53,18 +53,39 @@ export function CreateEvaluationDialog({
   const [error, setError] = useState<string | null>(null)
 
   const weekday = date ? getTzParts(timezone, date).weekday : null
+  const dateStr = date ? datePart(toDateTimeInput(date, timezone)) : null
   const classSubjectMap = subjectNameMap(subjects)
   const subjectIcon = subjectIconMap(subjects)
   const subjectIds = new Set(subjects.map((s) => s.id))
 
-  const availableClasses = weekday
-    ? classes.filter((c) => c.weekday === weekday && subjectIds.has(c.subject_id))
+  function isScheduleActiveOn(s: ClassSchedule, day: string): boolean {
+    return s.valid_from <= day && (!s.valid_until || day <= s.valid_until)
+  }
+
+  function activeSchedule(c: ClassEvent, day: string, wd: number): ClassSchedule | undefined {
+    return c.schedules.find(
+      (s) => s.scheduled_weekday === wd && isScheduleActiveOn(s, day)
+    )
+  }
+
+  function timeRangeFor(c: ClassEvent, day: string, wd: number): string | null {
+    const s = activeSchedule(c, day, wd)
+    return s ? `${s.start_time} – ${s.end_time}` : null
+  }
+
+  const availableClasses = weekday && dateStr
+    ? classes.filter(
+        (c) => subjectIds.has(c.subject_id) && !!activeSchedule(c, dateStr, weekday)
+      )
     : []
 
   const selectedClass = classes.find((c) => c.id === classId)
   const selectedIcon = selectedClass ? subjectIcon.get(selectedClass.subject_id) ?? "" : ""
+  const selectedTimeRange = selectedClass && weekday && dateStr
+    ? timeRangeFor(selectedClass, dateStr, weekday)
+    : null
   const selectedLabel = selectedClass
-    ? `${classSubjectMap.get(selectedClass.subject_id) ?? "Unknown"} · ${selectedClass.start_time} – ${selectedClass.end_time}`
+    ? `${classSubjectMap.get(selectedClass.subject_id) ?? "Unknown"}${selectedTimeRange ? ` · ${selectedTimeRange}` : ""}`
     : null
 
   function reset() {
@@ -148,7 +169,8 @@ export function CreateEvaluationDialog({
                           icon={subjectIcon.get(c.subject_id) ?? ""}
                           className="size-3.5 shrink-0 text-muted-foreground"
                         />
-                        {classSubjectMap.get(c.subject_id) ?? "Unknown"} · {c.start_time} – {c.end_time}
+                        {classSubjectMap.get(c.subject_id) ?? "Unknown"}
+                        {weekday && dateStr ? ` · ${timeRangeFor(c, dateStr, weekday) ?? ""}` : ""}
                       </span>
                     </SelectItem>
                   ))}

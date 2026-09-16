@@ -63,6 +63,12 @@ export function datePart(iso: string): string {
   return iso.includes("T") ? iso.split("T")[0] : iso
 }
 
+export function weekdayFromDateStr(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const day = new Date(y, m - 1, d).getDay()
+  return day === 0 ? 7 : day
+}
+
 export function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number)
   if (Number.isNaN(h) || Number.isNaN(m)) return 0

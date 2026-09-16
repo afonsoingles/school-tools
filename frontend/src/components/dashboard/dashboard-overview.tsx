@@ -25,7 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getClasses, getCancellations } from "@/lib/api/calendar"
+import { getClassSchedule } from "@/lib/api/calendar"
 import { getEvaluations } from "@/lib/api/evaluations"
 import { getHomework } from "@/lib/api/homework"
 import { getSubjects } from "@/lib/api/settings"
@@ -40,9 +40,10 @@ import {
   formatDateWeekday,
   getTzParts,
   timeToMinutes,
+  weekdayFromDateStr,
 } from "@/lib/date-time"
 import { useTimezone } from "@/components/layout/timezone-provider"
-import type { ClassEvent, CancelledClassEvent, Evaluation, Homework, Subject } from "@/types"
+import type { ClassEvent, ClassSchedule, DayCancellation, Evaluation, Homework, Subject } from "@/types"
 import { cn } from "@/lib/utils"
 
 function toDateString(tz: string, date: Date): string {
@@ -108,7 +109,7 @@ function SummaryChip({ icon, children }: { icon: React.ReactNode; children: Reac
 
 export function DashboardOverview() {
   const [classes, setClasses] = useState<ClassEvent[]>([])
-  const [cancellations, setCancellations] = useState<CancelledClassEvent[]>([])
+  const [dayCancellations, setDayCancellations] = useState<DayCancellation[]>([])
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [homeworks, setHomeworks] = useState<Homework[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -117,10 +118,10 @@ export function DashboardOverview() {
   const [scheduleOverflow, setScheduleOverflow] = useState(false)
 
   useEffect(() => {
-    Promise.all([getClasses(), getCancellations(), getEvaluations(), getHomework(), getSubjects()])
-      .then(([c, canc, ev, hw, s]) => {
-        setClasses(c)
-        setCancellations(canc)
+    Promise.all([getClassSchedule(), getEvaluations(), getHomework(), getSubjects()])
+      .then(([schedule, ev, hw, s]) => {
+        setClasses(schedule.classes)
+        setDayCancellations(schedule.dayCancellations)
         setEvaluations(ev)
         setHomeworks(hw)
         setSubjects(s)
@@ -133,20 +134,35 @@ export function DashboardOverview() {
 
   const now = new Date()
   const todayStr = toDateString(timezone, now)
-  const backendWeekday = getTzParts(timezone, now).weekday
 
   const subjectMap = buildSubjectNameMap(subjects)
   const classSubjectMap = new Map(classes.map((c) => [c.id, c.subject_id]))
   const subjectIcons = buildSubjectIconMap(subjects)
 
+  function activeScheduleOn(c: ClassEvent, dateStr: string): ClassSchedule | undefined {
+    const weekday = weekdayFromDateStr(dateStr)
+    return c.schedules.find(
+      (s) =>
+        s.scheduled_weekday === weekday &&
+        s.valid_from <= dateStr &&
+        (!s.valid_until || dateStr <= s.valid_until)
+    )
+  }
+
+  const dayOff = dayCancellations.find((d) => datePart(d.date) === todayStr)
+
   const todaysClasses = classes
-    .filter((c) => c.weekday === backendWeekday)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .filter((c) => !!activeScheduleOn(c, todayStr))
+    .map((c) => ({ cls: c, schedule: activeScheduleOn(c, todayStr) as ClassSchedule }))
+    .sort((a, b) => a.schedule.start_time.localeCompare(b.schedule.start_time))
 
   const cancelledToday = new Map(
-    cancellations
-      .filter((c) => datePart(c.date) === todayStr)
-      .map((c) => [c.class_id, c] as const)
+    classes
+      .flatMap((c) =>
+        c.cancellations
+          .filter((can) => datePart(can.date) === todayStr)
+          .map((can) => [c.id, can] as const)
+      )
   )
 
   const activeHomeworks = homeworks.filter((hw) => hw.status !== "finished")
@@ -156,7 +172,7 @@ export function DashboardOverview() {
     .filter((hw) => datePart(hw.due_date) === todayStr)
     .sort((a, b) => dueMinutes(a.due_date, timezone) - dueMinutes(b.due_date, timezone))
 
-  const classRows = todaysClasses.map((cls) => {
+  const classRows = todaysClasses.map(({ cls, schedule }) => {
     const cancellation = cancelledToday.get(cls.id)
     const evaluation = evaluations.find((e) => {
       const eDate = datePart(e.date)
@@ -166,9 +182,11 @@ export function DashboardOverview() {
       key: `class-${cls.id}`,
       kind: "class" as const,
       cls,
+      schedule,
       cancellation,
+      dayOff: !!dayOff,
       evaluation,
-      minute: timeToMinutes(cls.start_time),
+      minute: timeToMinutes(schedule.start_time),
       isToday: true,
       overdue: false,
     }
@@ -194,7 +212,7 @@ export function DashboardOverview() {
     for (const row of timed) {
       if (row.kind === "class") {
         const start = row.minute
-        const end = timeToMinutes(row.cls.end_time)
+        const end = timeToMinutes(row.schedule.end_time)
         if (currentMinute >= start && currentMinute < end) return row.key
       }
     }
@@ -212,7 +230,7 @@ export function DashboardOverview() {
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [homeworks, classes, evaluations, cancellations, subjects])
+  }, [homeworks, classes, evaluations, dayCancellations, subjects])
 
   useEffect(() => {
     const el = scheduleScrollRef.current
@@ -229,7 +247,7 @@ export function DashboardOverview() {
     if (!target) return
     const top = target.offsetTop - el.clientHeight / 2
     el.scrollTop = Math.max(0, top)
-  }, [scheduleOverflow, homeworks, classes, evaluations, cancellations, subjects, timezone])
+  }, [scheduleOverflow, homeworks, classes, evaluations, dayCancellations, subjects, timezone])
 
   const upcoming = evaluations
     .filter((e) => datePart(e.date) >= todayStr)
@@ -257,7 +275,9 @@ export function DashboardOverview() {
 
   const weekdayCounts = [0, 0, 0, 0, 0, 0, 0]
   classes.forEach((c) => {
-    weekdayCounts[c.weekday - 1] += 1
+    c.schedules.forEach((s) => {
+      if (!s.valid_until) weekdayCounts[s.scheduled_weekday - 1] += 1
+    })
   })
   const busiestIndex = weekdayCounts.indexOf(Math.max(...weekdayCounts))
 
@@ -354,7 +374,7 @@ export function DashboardOverview() {
                   const isLast = index === scheduleRows.length - 1
                   const timeSlot = row.isToday
                     ? row.kind === "class"
-                      ? row.cls.start_time
+                      ? row.schedule.start_time
                       : dueTimeLabel(row.hw.due_date, timezone)
                     : row.kind === "homework"
                       ? ""
@@ -431,7 +451,7 @@ export function DashboardOverview() {
                     )
                   }
 
-                  const { cls, cancellation, evaluation } = row
+                  const { cls, schedule, cancellation, dayOff: isDayOff, evaluation } = row
                   const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
                   return (
                     <div key={row.key} data-min={row.minute} className="flex items-stretch gap-3">
@@ -441,7 +461,7 @@ export function DashboardOverview() {
                           row.key === currentRowKey && "font-bold"
                         )}
                       >
-                        {cls.start_time}
+                        {schedule.start_time}
                       </span>
 
                       <div className="flex flex-col items-center pt-1.5">
@@ -458,21 +478,21 @@ export function DashboardOverview() {
 
                       <div className="flex items-center justify-between gap-2 flex-1 pb-5 pt-0.5">
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className={cn("flex items-center gap-1.5 text-sm font-medium", cancellation && "text-muted-foreground line-through", row.key === currentRowKey && "font-bold")}>
+                          <span className={cn("flex items-center gap-1.5 text-sm font-medium", (cancellation || isDayOff) && "text-muted-foreground line-through", row.key === currentRowKey && "font-bold")}>
                             <span className="truncate">{subjectName}</span>
                             {evaluation && (
                               <Badge variant="destructive" className="text-[11px] shrink-0">
                                 {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
                               </Badge>
                             )}
-                            {cancellation && (
+                            {(cancellation || isDayOff) && (
                               <Badge variant="outline" className="text-[11px] text-muted-foreground shrink-0">
                                 Cancelled
                               </Badge>
                             )}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {cls.start_time} – {cls.end_time}
+                            {schedule.start_time} – {schedule.end_time}
                           </span>
                         </div>
                       </div>

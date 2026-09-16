@@ -76,7 +76,7 @@ import {
   isOverdueHomework,
 } from "@/components/homework/constants"
 import { errorMessage } from "@/lib/errors"
-import { WEEKDAY_NAMES } from "@/lib/date-time"
+import { DAY_NAMES, timeToMinutes } from "@/lib/date-time"
 import { REASON_LABELS } from "@/components/calendar/constants"
 import {
   getUserContent,
@@ -91,7 +91,6 @@ import type { PromoteRole } from "@/lib/api/admin"
 import type {
   AdminUserContent,
   AdminUserContentType,
-  CancelledClassEvent,
   ClassEvent,
   Evaluation,
   Homework,
@@ -300,7 +299,6 @@ export function UserDetails({
   const [user, setUser] = useState<User>(initial)
   const [subjects, setSubjects] = useState<Subject[] | null>(null)
   const [classes, setClasses] = useState<ClassEvent[] | null>(null)
-  const [cancellations, setCancellations] = useState<CancelledClassEvent[] | null>(null)
   const [evaluations, setEvaluations] = useState<Evaluation[] | null>(null)
   const [homeworks, setHomeworks] = useState<Homework[] | null>(null)
   const [sectionErrors, setSectionErrors] = useState<Partial<Record<AdminUserContentType, string>>>(
@@ -354,7 +352,6 @@ export function UserDetails({
 
     loadSection("subjects", setSubjects)
     loadSection("classes", setClasses)
-    loadSection("cancellations", setCancellations)
     loadSection("evaluations", setEvaluations)
     loadSection("homework", setHomeworks)
 
@@ -891,12 +888,10 @@ export function UserDetails({
         <h2 className="text-sm font-semibold text-muted-foreground">
           Classes{classes !== null ? ` (${classes.length})` : ""}
         </h2>
-        {classes === null || cancellations === null ? (
+        {classes === null ? (
           <SectionLoading label="classes" />
         ) : sectionErrors.classes ? (
           <SectionError error={sectionErrors.classes} onRetry={retrySections} />
-        ) : sectionErrors.cancellations ? (
-          <SectionError error={sectionErrors.cancellations} onRetry={retrySections} />
         ) : classes.length === 0 ? (
           <SectionEmpty label="classes" />
         ) : (
@@ -905,63 +900,70 @@ export function UserDetails({
               <TableHeader>
                 <TableRow>
                   <TableHead>Subject</TableHead>
-                  <TableHead>Weekday</TableHead>
-                  <TableHead>Time</TableHead>
+                  <TableHead>Schedules</TableHead>
                   <TableHead>Cancellations</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...classes]
-                  .sort(
-                    (a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time)
-                  )
-                  .map((cls) => {
-                    const classCancellations = cancellations.filter(
-                      (cancellation) => cancellation.class_id === cls.id
-                    )
-                    return (
-                      <TableRow key={cls.id}>
-                        <TableCell className="font-medium">
-                          <span className="flex items-center gap-1.5">
-                            <SubjectIcon
-                              icon={subjectIcons.get(cls.subject_id) ?? ""}
-                              className="size-3.5 shrink-0 text-muted-foreground"
-                            />
-                            {subjectNames.get(cls.subject_id) ?? "Unknown subject"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{WEEKDAY_NAMES[cls.weekday]}</Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {cls.start_time} – {cls.end_time}
-                        </TableCell>
-                        <TableCell>
-                          {classCancellations.length === 0 ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <ul className="flex flex-col gap-1.5">
-                              {[...classCancellations]
-                                .sort((a, b) => b.date.localeCompare(a.date))
-                                .map((cancellation) => (
-                                  <li
-                                    key={cancellation.id}
-                                    className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
-                                  >
-                                    <CalendarX2 className="size-3.5 shrink-0 text-red-400" />
-                                    <span>{formatISODate(cancellation.date)}</span>
-                                    <span className="text-muted-foreground/60">·</span>
-                                    <span>
-                                      {REASON_LABELS[cancellation.reason] ?? cancellation.reason}
-                                    </span>
-                                  </li>
-                                ))}
-                            </ul>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                  .sort((a, b) => {
+                    const keyOf = (cls: ClassEvent) => {
+                      const act = cls.schedules.filter((s) => !s.valid_until)
+                      if (act.length === 0) return Number.MAX_SAFE_INTEGER
+                      return act.reduce(
+                        (m, s) => Math.min(m, (s.scheduled_weekday - 1) * 1024 + timeToMinutes(s.start_time)),
+                        Number.MAX_SAFE_INTEGER
+                      )
+                    }
+                    return keyOf(a) - keyOf(b)
+                  })
+                  .map((cls) => (
+                    <TableRow key={cls.id}>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <SubjectIcon
+                            icon={subjectIcons.get(cls.subject_id) ?? ""}
+                            className="size-3.5 shrink-0 text-muted-foreground"
+                          />
+                          {subjectNames.get(cls.subject_id) ?? "Unknown subject"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <ul className="flex flex-col gap-1">
+                          {[...cls.schedules]
+                            .sort((a, b) => a.scheduled_weekday - b.scheduled_weekday || a.start_time.localeCompare(b.start_time))
+                            .map((s) => (
+                              <li key={s.id} className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                                <Badge variant="outline" className="shrink-0">{DAY_NAMES[s.scheduled_weekday - 1]}</Badge>
+                                <span className="tabular-nums">{s.start_time} – {s.end_time}</span>
+                                {s.valid_until && (
+                                  <span className="text-xs">ended {formatISODate(s.valid_until)}</span>
+                                )}
+                              </li>
+                            ))}
+                        </ul>
+                      </TableCell>
+                      <TableCell>
+                        {cls.cancellations.length === 0 ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <ul className="flex flex-col gap-1.5">
+                            {[...cls.cancellations]
+                              .sort((a, b) => b.date.localeCompare(a.date))
+                              .map((cancellation) => (
+                                <li key={cancellation.id} className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                                  <CalendarX2 className="size-3.5 shrink-0 text-red-400" />
+                                  <span>{formatISODate(cancellation.date)}</span>
+                                  <span className="text-muted-foreground/60">·</span>
+                                  <span>{REASON_LABELS[cancellation.reason] ?? cancellation.reason}</span>
+                                  {cancellation.note && <span className="text-xs">— {cancellation.note}</span>}
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </div>

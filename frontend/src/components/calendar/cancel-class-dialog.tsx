@@ -34,8 +34,15 @@ interface CancelClassDialogProps {
 
 export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }: CancelClassDialogProps) {
   const [reason, setReason] = useState<string>("")
+  const [note, setNote] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function reset() {
+    setReason("")
+    setNote("")
+    setError(null)
+  }
 
   async function handleCancel() {
     if (!cls || !reason) return
@@ -44,10 +51,10 @@ export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }
     setError(null)
 
     try {
-      await cancelClass(cls.id, formatDateDdMmYyyy(date), reason)
+      await cancelClass(cls.id, formatDateDdMmYyyy(date), reason, note.trim() || undefined)
       onCancelled()
       onOpenChange(false)
-      setReason("")
+      reset()
     } catch (err) {
       const body = (err as { body?: { message?: string } }).body
       setError(body?.message ?? "Something went wrong.")
@@ -57,7 +64,7 @@ export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { setReason(""); setError(null) } onOpenChange(next) }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { reset(); onOpenChange(next) } else onOpenChange(next) }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Cancel class</DialogTitle>
@@ -81,6 +88,21 @@ export function CancelClassDialog({ open, onOpenChange, cls, date, onCancelled }
           </SelectContent>
         </Select>
         </div>
+
+        {reason === "other" && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Note</Label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              rows={3}
+              required
+              placeholder="Describe the reason…"
+              className="w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-hidden placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+            />
+          </div>
+        )}
 
         {error && (
           <ErrorBox>{error}</ErrorBox>

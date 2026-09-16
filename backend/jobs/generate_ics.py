@@ -3,7 +3,7 @@ import datetime
 from zoneinfo import ZoneInfo
 from utils.ics import CalendarGenerator, ICAL_PRODID_CLASSES, ICAL_PRODID_EVENTS
 from tools.subjects import SubjectTools
-from tools.classes import ClassTools
+from tools.classes import ClassTools, _active_schedule
 from tools.calendar import CalendarTools
 from tools.evaluations import EvaluationTools
 from tools.users import UserTools
@@ -39,7 +39,8 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     eval_by_class: dict[uuid.UUID, list[datetime.datetime]] = {}
     evaluations = evaluation_tools.get_user_evaluations(user)
     classes = class_tools.get_user_class_schedule(user)
-    cancellations = class_tools.get_user_cancelled_classes(user)
+    day_cancellations = class_tools.get_user_day_cancellations(user)
+    day_cancelled_dates = {dc.date for dc in day_cancellations}
     subject_map = {subject.id: subject.name for subject in subject_tools.get_user_subjects(user)}
     evaluations_map = {
         "exam": "Exam",
@@ -51,8 +52,11 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         if evaluation_class is None:
             continue
         evaluation_date = evaluation.date
-        start = datetime.datetime.combine(evaluation_date, evaluation_class.start_time, tzinfo=user_tz)
-        end = datetime.datetime.combine(evaluation_date, evaluation_class.end_time, tzinfo=user_tz)
+        schedule = _active_schedule(evaluation_class, evaluation_date.date())
+        if schedule is None:
+            continue
+        start = datetime.datetime.combine(evaluation_date, schedule.start_time, tzinfo=user_tz)
+        end = datetime.datetime.combine(evaluation_date, schedule.end_time, tzinfo=user_tz)
         evaluations_calendar.build_event(
             uid=str(evaluation.id),
             summary=f"{evaluations_map[evaluation.type]} - {subject_map[evaluation_class.subject_id]}",
@@ -71,33 +75,51 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     END_GENERATING_AT = datetime.datetime(2027, 6, 30, tzinfo=user_tz)
     #TODO: ^ the above are temp values. It shall use user settings later.
 
-    def _first_occurrence(start_from: datetime.datetime, weekday: int, time_value: datetime.time) -> datetime.datetime:
-        days_ahead = (weekday - start_from.weekday()) % 7
-        first_date = start_from.date() + datetime.timedelta(days=days_ahead)
-        first_occurrence = datetime.datetime.combine(first_date, time_value, tzinfo=user_tz)
-        if first_occurrence < start_from:
-            first_occurrence += datetime.timedelta(days=7)
-        return first_occurrence
+    def _first_occurrence(start_date: datetime.date, weekday_index: int, time_value: datetime.time) -> datetime.datetime:
+        days_ahead = (weekday_index - start_date.weekday()) % 7
+        first_date = start_date + datetime.timedelta(days=days_ahead)
+        return datetime.datetime.combine(first_date, time_value, tzinfo=user_tz)
 
     for cls in classes:
-        weekday = cls.weekday.value - 1 
+        for schedule in cls.schedules:
+            schedule_weekday_index = schedule.scheduled_weekday.value - 1
 
-        first_start = _first_occurrence(START_GENERATING_FROM, int(weekday), cls.start_time)
-        first_end = datetime.datetime.combine(first_start.date(), cls.end_time, tzinfo=user_tz)
-        exdates = [
-            datetime.datetime.combine(d, cls.start_time, tzinfo=user_tz)
-            for d in sorted(
-                set(eval_by_class.get(cls.id, []) + [c.date for c in cancellations if c.class_id == cls.id])
+            # Effective window for this schedule entry: past dates are preserved by
+            # each schedule's own valid_from/valid_until, so reschedules never rewrite history.
+            eff_start = max(START_GENERATING_FROM.date(), schedule.valid_from)
+            eff_end = schedule.valid_until if schedule.valid_until is not None else END_GENERATING_AT.date()
+            if eff_end < eff_start:
+                continue
+
+            first_start = _first_occurrence(eff_start, schedule_weekday_index, schedule.start_time)
+            first_end = datetime.datetime.combine(first_start.date(), schedule.end_time, tzinfo=user_tz)
+
+            evaluation_dates = [
+                d.date() for d in eval_by_class.get(cls.id, [])
+                if eff_start <= d.date() <= eff_end and d.date().weekday() == schedule_weekday_index
+            ]
+            cancellation_dates = [
+                c.date for c in cls.cancellations
+                if eff_start <= c.date <= eff_end and c.date.weekday() == schedule_weekday_index
+            ]
+            day_off_dates = [
+                d for d in day_cancelled_dates
+                if eff_start <= d <= eff_end and d.weekday() == schedule_weekday_index
+            ]
+
+            exdates = [
+                datetime.datetime.combine(d, schedule.start_time, tzinfo=user_tz)
+                for d in sorted(set(evaluation_dates + cancellation_dates + day_off_dates))
+            ]
+            until = (eff_end + datetime.timedelta(days=1)).strftime("%Y%m%dT000000")
+            classes_calendar.build_event(
+                uid=f"{cls.id}:{schedule.id}",
+                summary=subject_map[cls.subject_id],
+                start=first_start,
+                end=first_end,
+                exdates=exdates,
+                rrule=f"FREQ=WEEKLY;UNTIL={until}",
             )
-        ]
-        classes_calendar.build_event(
-            uid=str(cls.id),
-            summary=subject_map[cls.subject_id],
-            start=first_start,
-            end=first_end,
-            exdates=exdates,
-            rrule=f"FREQ=WEEKLY;UNTIL={END_GENERATING_AT.strftime('%Y%m%dT%H%M%S')}",
-        )
 
     classes_ics = classes_calendar.cal.to_ical().decode("utf-8")
     calendar_tools.save_calendar_feed(user, CalendarFeedType.CLASSES, classes_ics)

@@ -1,9 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ChevronLeft, ChevronRight, Plus, Loader2, AlertTriangle } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Loader2,
+  AlertTriangle,
+  CalendarMinus2,
+  CalendarOff,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
-import { DAY_FULL, DAY_NAMES, formatInTz, getTzParts, timeToMinutes, tzDateFromParts } from "@/lib/date-time"
+import { DAY_FULL, DAY_NAMES, formatInTz, getTzParts, timeToMinutes, tzDateFromParts, weekdayFromDateStr } from "@/lib/date-time"
 import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -16,16 +24,18 @@ import {
   PopoverDescription,
 } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
-import { getClasses, getCancellations, uncancelClass } from "@/lib/api/calendar"
+import { getClassSchedule, uncancelClass, uncancelDay } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
-import type { ClassEvent, CancelledClassEvent, Subject, Evaluation } from "@/types"
+import type { ClassEvent, ClassSchedule, DayCancellation, Subject, Evaluation } from "@/types"
 import { SubjectIcon } from "@/components/ui/subject-icon"
 import { REASON_LABELS, SLOT_HEIGHT } from "./constants"
 import { CancelClassDialog } from "./cancel-class-dialog"
 import { DeleteClassDialog } from "./delete-class-dialog"
 import { CreateClassDialog } from "./create-class-dialog"
+import { EditClassDialog } from "./edit-class-dialog"
+import { DayCancelDialog } from "./day-cancel-dialog"
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const CLASS_COLORS = [
@@ -38,6 +48,55 @@ const CLASS_COLORS = [
   "bg-indigo-600 text-white hover:bg-indigo-500",
   "bg-teal-600 text-white hover:bg-teal-500",
 ]
+
+function DayHeaderAction({
+  dateStr,
+  dayOff,
+  busyId,
+  onUndoDay,
+  onCancelDay,
+}: {
+  dateStr: string
+  dayOff?: DayCancellation
+  busyId: string | null
+  onUndoDay: (id: string) => Promise<void>
+  onCancelDay: (dateStr: string) => void
+}) {
+  const [busy, setBusy] = useState(false)
+
+  if (dayOff) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="hover:bg-foreground/10!"
+        aria-label="This day is cancelled. Tap to undo."
+        disabled={busy || busyId === dayOff.id}
+        onClick={async () => {
+          setBusy(true)
+          try {
+            await onUndoDay(dayOff.id)
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        {busy ? <Loader2 className="size-3.5 animate-spin" /> : <CalendarOff className="size-3.5 text-destructive" />}
+      </Button>
+    )
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className="hover:bg-foreground/10!"
+      aria-label="Cancel this day"
+      onClick={() => onCancelDay(dateStr)}
+    >
+      <CalendarMinus2 className="size-3.5 text-muted-foreground" />
+    </Button>
+  )
+}
 
 function formatHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`
@@ -69,6 +128,22 @@ function tzDateString(p: { y: number; m: number; d: number }): string {
   return `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`
 }
 
+function isScheduleActiveOn(s: ClassSchedule, dateStr: string): boolean {
+  return s.valid_from <= dateStr && (!s.valid_until || dateStr <= s.valid_until)
+}
+
+function activeScheduleFor(cls: ClassEvent, dateStr: string): ClassSchedule | undefined {
+  const weekday = weekdayFromDateStr(dateStr)
+  return cls.schedules.find((s) => isScheduleActiveOn(s, dateStr) && s.scheduled_weekday === weekday)
+}
+
+interface DayBlock {
+  key: string
+  cls: ClassEvent
+  schedule: ClassSchedule
+  colorIndex: number
+}
+
 export function CalendarWeekView() {
   const scrollDesktopRef = useRef<HTMLDivElement>(null)
   const scrollMobileRef = useRef<HTMLDivElement>(null)
@@ -77,15 +152,17 @@ export function CalendarWeekView() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [mobileDayOffset, setMobileDayOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
-  const [cancellations, setCancellations] = useState<CancelledClassEvent[]>([])
+  const [dayCancellations, setDayCancellations] = useState<DayCancellation[]>([])
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
 
   const [cancelDialog, setCancelDialog] = useState<{ cls: ClassEvent; date: string } | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ cls: ClassEvent; subjectName: string } | null>(null)
+  const [editDialog, setEditDialog] = useState<{ cls: ClassEvent; subjectName: string } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createDefaults, setCreateDefaults] = useState<{ weekday?: number; time?: string }>({})
+  const [dayCancelTarget, setDayCancelTarget] = useState<string | null>(null)
   const [uncancelingId, setUncancelingId] = useState<string | null>(null)
   const [deletingEvalId, setDeletingEvalId] = useState<string | null>(null)
   const scrolledWeekRef = useRef<number | null>(null)
@@ -150,10 +227,10 @@ export function CalendarWeekView() {
   const subjectIcon = buildSubjectIconMap(subjects)
 
   const fetchData = useCallback(() => {
-    Promise.all([getClasses(), getCancellations(), getEvaluations(), getSubjects()])
-      .then(([c, canc, ev, s]) => {
-        setClasses(c)
-        setCancellations(canc)
+    Promise.all([getClassSchedule(), getEvaluations(), getSubjects()])
+      .then(([schedule, ev, s]) => {
+        setClasses(schedule.classes)
+        setDayCancellations(schedule.dayCancellations)
         setEvaluations(ev)
         setSubjects(s)
       })
@@ -163,92 +240,50 @@ export function CalendarWeekView() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  function dayBlocks(dateStr: string): DayBlock[] {
+    const blocks: DayBlock[] = []
+    let colorIndex = 0
+    for (const cls of classes) {
+      const schedule = activeScheduleFor(cls, dateStr)
+      if (schedule) {
+        blocks.push({ key: `${cls.id}:${schedule.id}`, cls, schedule, colorIndex })
+        colorIndex++
+      }
+    }
+    return blocks
+  }
+
+  const earliestWeekTime = (() => {
+    let min = Infinity
+    for (const day of weekDays) {
+      for (const block of dayBlocks(day.dateStr)) {
+        const t = timeToMinutes(block.schedule.start_time)
+        if (t < min) min = t
+      }
+    }
+    return min
+  })()
+
   useEffect(() => {
     if (loading) return
     if (scrolledWeekRef.current === weekOffset) return
     scrolledWeekRef.current = weekOffset
-    if (classes.length > 0) {
-      const earliest = classes.reduce((min, c) => {
-        const t = timeToMinutes(c.start_time)
-        return t < min ? t : min
-      }, Infinity)
-      const target = Math.max(0, ((earliest - 30) / 15) * SLOT_HEIGHT)
+    if (earliestWeekTime !== Infinity) {
+      const target = Math.max(0, ((earliestWeekTime - 30) / 15) * SLOT_HEIGHT)
       if (scrollDesktopRef.current) scrollDesktopRef.current.scrollTop = target
       if (scrollMobileRef.current) scrollMobileRef.current.scrollTop = target
     } else {
       if (scrollDesktopRef.current) scrollDesktopRef.current.scrollTop = 7 * 4 * SLOT_HEIGHT
       if (scrollMobileRef.current) scrollMobileRef.current.scrollTop = 7 * 4 * SLOT_HEIGHT
     }
-  }, [weekOffset, loading, classes])
+  }, [weekOffset, loading, earliestWeekTime])
 
-  function classesForDay(weekday: number): ClassEvent[] {
-    return classes.filter((c) => c.weekday === weekday)
+  function classCancellationFor(cls: ClassEvent, dateStr: string) {
+    return cls.cancellations.find((c) => c.date === dateStr)
   }
 
-  function dayClassLayout(dayClasses: ClassEvent[]): Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }> {
-    const sorted = [...dayClasses].sort((a, b) => {
-      const sa = timeToMinutes(a.start_time)
-      const sb = timeToMinutes(b.start_time)
-      if (sa !== sb) return sa - sb
-      return timeToMinutes(b.end_time) - timeToMinutes(a.end_time)
-    })
-
-    const clusters: ClassEvent[][] = []
-    for (const cls of sorted) {
-      const start = timeToMinutes(cls.start_time)
-      const last = clusters[clusters.length - 1]
-      const lastMaxEnd = last
-        ? Math.max(...last.map((c) => timeToMinutes(c.end_time)))
-        : -1
-      if (last && start < lastMaxEnd) {
-        last.push(cls)
-      } else {
-        clusters.push([cls])
-      }
-    }
-
-    const layout = new Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }>()
-    for (const cluster of clusters) {
-      const sortedCluster = [...cluster].sort(
-        (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
-      )
-
-      const columnEnds: number[] = []
-      const perClass: { cls: ClassEvent; col: number }[] = []
-      for (const cls of sortedCluster) {
-        const start = timeToMinutes(cls.start_time)
-        let col = columnEnds.findIndex((endMin) => endMin <= start)
-        if (col === -1) {
-          col = columnEnds.length
-          columnEnds.push(0)
-        }
-        columnEnds[col] = Math.max(columnEnds[col], timeToMinutes(cls.end_time))
-        perClass.push({ cls, col })
-      }
-      const total = columnEnds.length
-
-      let colorIndex = 0
-      for (const { cls, col } of perClass) {
-        const start = timeToMinutes(cls.start_time)
-        const end = timeToMinutes(cls.end_time)
-        const nextSameCol = perClass
-          .filter((p) => p.col === col && timeToMinutes(p.cls.start_time) > start)
-          .map((p) => timeToMinutes(p.cls.start_time))
-          .sort((a, b) => a - b)[0]
-        const topMin = start
-        const endMin = Math.max(topMin, Math.min(end, nextSameCol ?? end))
-        layout.set(cls.id, { topMin, endMin, col, total, colorIndex })
-        colorIndex++
-      }
-    }
-    return layout
-  }
-
-  function cancelledForDay(classId: string, dateStr: string): CancelledClassEvent | undefined {
-    return cancellations.find((c) => {
-      const cDate = c.date.includes("T") ? c.date.split("T")[0] : c.date
-      return c.class_id === classId && cDate === dateStr
-    })
+  function dayOffFor(dateStr: string): DayCancellation | undefined {
+    return dayCancellations.find((d) => d.date === dateStr)
   }
 
   function evaluationForDay(classId: string, dateStr: string): Evaluation | undefined {
@@ -258,10 +293,77 @@ export function CalendarWeekView() {
     })
   }
 
-  async function handleUncancel(cancellationId: string) {
+  function blockLayout(dayBlocks: DayBlock[]): Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }> {
+    const sorted = [...dayBlocks].sort((a, b) => {
+      const sa = timeToMinutes(a.schedule.start_time)
+      const sb = timeToMinutes(b.schedule.start_time)
+      if (sa !== sb) return sa - sb
+      return timeToMinutes(b.schedule.end_time) - timeToMinutes(a.schedule.end_time)
+    })
+
+    const clusters: DayBlock[][] = []
+    for (const block of sorted) {
+      const start = timeToMinutes(block.schedule.start_time)
+      const last = clusters[clusters.length - 1]
+      const lastMaxEnd = last
+        ? Math.max(...last.map((b) => timeToMinutes(b.schedule.end_time)))
+        : -1
+      if (last && start < lastMaxEnd) {
+        last.push(block)
+      } else {
+        clusters.push([block])
+      }
+    }
+
+    const layout = new Map<string, { topMin: number; endMin: number; col: number; total: number; colorIndex: number }>()
+    for (const cluster of clusters) {
+      const sortedCluster = [...cluster].sort(
+        (a, b) => timeToMinutes(a.schedule.start_time) - timeToMinutes(b.schedule.start_time)
+      )
+
+      const columnEnds: number[] = []
+      const perBlock: { block: DayBlock; col: number }[] = []
+      for (const block of sortedCluster) {
+        const start = timeToMinutes(block.schedule.start_time)
+        let col = columnEnds.findIndex((endMin) => endMin <= start)
+        if (col === -1) {
+          col = columnEnds.length
+          columnEnds.push(0)
+        }
+        columnEnds[col] = Math.max(columnEnds[col], timeToMinutes(block.schedule.end_time))
+        perBlock.push({ block, col })
+      }
+      const total = columnEnds.length
+
+      for (const { block, col } of perBlock) {
+        const start = timeToMinutes(block.schedule.start_time)
+        const end = timeToMinutes(block.schedule.end_time)
+        const nextSameCol = perBlock
+          .filter((p) => p.col === col && timeToMinutes(p.block.schedule.start_time) > start)
+          .map((p) => timeToMinutes(p.block.schedule.start_time))
+          .sort((a, b) => a - b)[0]
+        const topMin = start
+        const endMin = Math.max(topMin, Math.min(end, nextSameCol ?? end))
+        layout.set(block.key, { topMin, endMin, col, total, colorIndex: block.colorIndex })
+      }
+    }
+    return layout
+  }
+
+  async function handleUncancelClass(classId: string, cancellationId: string) {
     setUncancelingId(cancellationId)
     try {
-      await uncancelClass(cancellationId)
+      await uncancelClass(classId, cancellationId)
+      fetchData()
+    } finally {
+      setUncancelingId(null)
+    }
+  }
+
+  async function handleUncancelDay(dayCancellationId: string) {
+    setUncancelingId(dayCancellationId)
+    try {
+      await uncancelDay(dayCancellationId)
       fetchData()
     } finally {
       setUncancelingId(null)
@@ -351,12 +453,17 @@ export function CalendarWeekView() {
   }
 
   function renderDayCell(day: { weekday: number; dateStr: string; full: string }) {
+    const dayOff = dayOffFor(day.dateStr)
+    const blocks = dayBlocks(day.dateStr)
+    const layout = blockLayout(blocks)
+
     return (
       <div
         key={day.dateStr}
         className="relative min-w-0 flex-1 border-l border-border/50"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("[data-slot]")) return
+          if (dayOff) return
           handleGridClick(e, day.weekday)
         }}
       >
@@ -376,130 +483,164 @@ export function CalendarWeekView() {
           </div>
         ))}
 
-        {(() => {
-          const dayClasses = classesForDay(day.weekday)
-          const layout = dayClassLayout(dayClasses)
+        {dayOff && (
+          <div className="pointer-events-none absolute inset-0 z-[5] flex items-start justify-center pt-6">
+            <span className="flex items-center gap-1 rounded-full bg-destructive/15 px-3 py-1 text-xs font-medium text-destructive">
+              <CalendarOff className="size-3.5" />
+              Day off
+            </span>
+          </div>
+        )}
 
-          return dayClasses.map((cls) => {
-            const cancel = cancelledForDay(cls.id, day.dateStr)
-            const evaluation = evaluationForDay(cls.id, day.dateStr)
-            const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
-            const isCancelled = !!cancel
-            const hasEvaluation = !!evaluation
-            const band = layout.get(cls.id) ?? { topMin: 0, endMin: 60, col: 0, total: 1, colorIndex: 0 }
-            const top = (band.topMin / 15) * SLOT_HEIGHT
-            const height = Math.max(((band.endMin - band.topMin) / 15) * SLOT_HEIGHT, 20)
-            const widthPct = 100 / band.total
-            const leftPct = band.col * widthPct
+        {blocks.map((block) => {
+          const cls = block.cls
+          const cancellation = classCancellationFor(cls, day.dateStr)
+          const evaluation = evaluationForDay(cls.id, day.dateStr)
+          const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
+          const isCancelled = !!cancellation || !!dayOff
+          const hasEvaluation = !!evaluation
+          const band = layout.get(block.key) ?? { topMin: 0, endMin: 60, col: 0, total: 1, colorIndex: 0 }
+          const top = (band.topMin / 15) * SLOT_HEIGHT
+          const height = Math.max(((band.endMin - band.topMin) / 15) * SLOT_HEIGHT, 20)
+          const widthPct = 100 / band.total
+          const leftPct = band.col * widthPct
+          const times = `${block.schedule.start_time} – ${block.schedule.end_time}`
 
-            return (
-              <Popover key={cls.id}>
-                <PopoverTrigger
-                  className={cn(
-                    "absolute flex flex-col justify-start rounded px-2 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
-                    hasEvaluation
-                      ? "bg-red-500 text-white hover:bg-red-400"
-                      : isCancelled
-                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                        : CLASS_COLORS[band.colorIndex % CLASS_COLORS.length],
-                  )}
-                  style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
-                >
-                  <span className="flex items-center gap-1 font-semibold text-sm leading-tight truncate text-left">
-                    <SubjectIcon
-                      icon={subjectIcon.get(cls.subject_id) ?? ""}
-                      className="size-3.5 shrink-0"
-                    />
-                    <span className="truncate">{subjectName}</span>
+          return (
+            <Popover key={block.key}>
+              <PopoverTrigger
+                className={cn(
+                  "absolute flex flex-col justify-start rounded px-2 pt-1.5 cursor-pointer transition-colors z-10 overflow-hidden",
+                  hasEvaluation
+                    ? "bg-red-500 text-white hover:bg-red-400"
+                    : isCancelled
+                      ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                      : CLASS_COLORS[band.colorIndex % CLASS_COLORS.length],
+                )}
+                style={{ top: `${top}px`, height: `${height}px`, left: `${leftPct}%`, width: `${widthPct}%` }}
+              >
+                <span className="flex items-center gap-1 font-semibold text-sm leading-tight truncate text-left">
+                  <SubjectIcon
+                    icon={subjectIcon.get(cls.subject_id) ?? ""}
+                    className="size-3.5 shrink-0"
+                  />
+                  <span className="truncate">{subjectName}</span>
+                </span>
+                {height >= 40 && (
+                  <span className="text-xs leading-tight opacity-90 text-left">
+                    {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : times}
                   </span>
-                  {height >= 40 && (
-                    <span className="text-xs leading-tight opacity-90 text-left">
-                      {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : `${cls.start_time} – ${cls.end_time}`}
-                    </span>
-                  )}
-                </PopoverTrigger>
-                <PopoverContent side="right" align="start" collisionPadding={16}>
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      <PopoverTitle>{subjectName}</PopoverTitle>
-                      {hasEvaluation ? (
-                        <PopoverDescription>
-                          {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
-                        </PopoverDescription>
-                      ) : isCancelled ? (
-                        <div className="flex items-center gap-1 text-destructive mt-1">
-                          <AlertTriangle className="size-3.5 shrink-0" />
-                          <span className="text-sm">This class was cancelled.</span>
-                        </div>
-                      ) : (
-                        <PopoverDescription>
-                          {day.full} · {cls.start_time} – {cls.end_time}
-                        </PopoverDescription>
-                      )}
-                    </div>
-                    {(isCancelled || hasEvaluation) && (
-                      <>
-                        <div className="text-sm text-muted-foreground">
-                          {day.full} · {cls.start_time} – {cls.end_time}
-                        </div>
-                        {isCancelled && (
-                          <div className="text-sm text-muted-foreground">
-                            Reason: {REASON_LABELS[cancel.reason] ?? cancel.reason}
-                          </div>
-                        )}
-                      </>
+                )}
+              </PopoverTrigger>
+              <PopoverContent side="right" align="start" collisionPadding={16}>
+                <div className="flex flex-col gap-2">
+                  <div>
+                    <PopoverTitle>{subjectName}</PopoverTitle>
+                    {hasEvaluation ? (
+                      <PopoverDescription>
+                        {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                      </PopoverDescription>
+                    ) : isCancelled ? (
+                      <div className="flex items-center gap-1 text-destructive mt-1">
+                        <AlertTriangle className="size-3.5 shrink-0" />
+                        <span className="text-sm">
+                          {dayOff ? "This day was cancelled." : "This class was cancelled."}
+                        </span>
+                      </div>
+                    ) : (
+                      <PopoverDescription>
+                        {day.full} · {times}
+                      </PopoverDescription>
                     )}
-                    <Separator />
-                    <div className="flex gap-2">
-                      {hasEvaluation ? (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="flex-1"
-                          disabled={deletingEvalId === evaluation.id}
-                          onClick={() => handleDeleteEvaluation(evaluation.id)}
-                        >
-                          {deletingEvalId === evaluation.id && <Loader2 className="size-3.5 animate-spin" />}
-                          Delete evaluation
-                        </Button>
-                      ) : isCancelled ? (
+                  </div>
+                  {(isCancelled || hasEvaluation) && (
+                    <>
+                      <div className="text-sm text-muted-foreground">
+                        {day.full} · {times}
+                      </div>
+                      {cancellation && (
+                        <div className="text-sm text-muted-foreground">
+                          Reason: {REASON_LABELS[cancellation.reason] ?? cancellation.reason}
+                          {cancellation.note ? ` — ${cancellation.note}` : ""}
+                        </div>
+                      )}
+                      {dayOff && (
+                        <div className="text-sm text-muted-foreground">
+                          Reason: {REASON_LABELS[dayOff.reason] ?? dayOff.reason}
+                          {dayOff.note ? ` — ${dayOff.note}` : ""}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <Separator />
+                  <div className="flex gap-2">
+                    {hasEvaluation ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                        disabled={deletingEvalId === evaluation.id}
+                        onClick={() => handleDeleteEvaluation(evaluation.id)}
+                      >
+                        {deletingEvalId === evaluation.id && <Loader2 className="size-3.5 animate-spin" />}
+                        Delete evaluation
+                      </Button>
+                    ) : cancellation ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        disabled={uncancelingId === cancellation.id}
+                        onClick={() => handleUncancelClass(cls.id, cancellation.id)}
+                      >
+                        {uncancelingId === cancellation.id && <Loader2 className="size-3.5 animate-spin" />}
+                        Uncancel
+                      </Button>
+                    ) : dayOff ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        disabled={uncancelingId === dayOff.id}
+                        onClick={() => handleUncancelDay(dayOff.id)}
+                      >
+                        {uncancelingId === dayOff.id && <Loader2 className="size-3.5 animate-spin" />}
+                        Uncancel day
+                      </Button>
+                    ) : (
+                      <>
                         <Button
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          disabled={uncancelingId === cancel.id}
-                          onClick={() => handleUncancel(cancel.id)}
+                          onClick={() => setCancelDialog({ cls, date: day.dateStr })}
                         >
-                          {uncancelingId === cancel.id && <Loader2 className="size-3.5 animate-spin" />}
-                          Uncancel
+                          Cancel
                         </Button>
-                      ) : (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => setCancelDialog({ cls, date: day.dateStr })}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => setDeleteDialog({ cls, subjectName })}
-                          >
-                            Delete
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setEditDialog({ cls, subjectName })}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setDeleteDialog({ cls, subjectName })}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
                   </div>
-                </PopoverContent>
-              </Popover>
-            )
-          })
-        })()}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )
+        })}
       </div>
     )
   }
@@ -558,21 +699,36 @@ export function CalendarWeekView() {
               {weekDays.map((day) => (
                 <div
                   key={day.dateStr}
-                  className="flex-1 min-w-0 border-l border-border/50 px-2 py-2 text-center"
+                  className="flex flex-col items-center gap-0.5 flex-1 min-w-0 border-l border-border/50 px-2 py-2"
                 >
                   <div className="text-xs text-muted-foreground">{day.name}</div>
-                  <div className={cn("text-lg font-medium", day.today && "text-primary")}>
+                  <div className={cn("flex items-center gap-1 text-lg font-medium", day.today && "text-primary")}>
                     {day.dayNum}
+                    {day.today && <span className="size-1.5 rounded-full bg-primary" />}
                   </div>
+                  <DayHeaderAction
+                    dateStr={day.dateStr}
+                    dayOff={dayOffFor(day.dateStr)}
+                    busyId={uncancelingId}
+                    onUndoDay={handleUncancelDay}
+                    onCancelDay={(ds) => setDayCancelTarget(ds)}
+                  />
                 </div>
               ))}
             </div>
             <div className="flex md:hidden">
-              <div className="flex-1 border-l border-border/50 px-2 py-2 text-center">
+              <div className="flex flex-col items-center gap-0.5 flex-1 border-l border-border/50 px-2 py-2">
                 <div className="text-xs text-muted-foreground">{mobileDay.name}</div>
-                <div className={cn("text-lg font-medium", mobileDay.today && "text-primary")}>
+                <div className={cn("flex items-center gap-1 text-lg font-medium", mobileDay.today && "text-primary")}>
                   {mobileDay.dayNum} {formatInTz(mobileDayDate, timezone, { month: "short" })}
                 </div>
+                <DayHeaderAction
+                    dateStr={mobileDay.dateStr}
+                    dayOff={dayOffFor(mobileDay.dateStr)}
+                    busyId={uncancelingId}
+                    onUndoDay={handleUncancelDay}
+                    onCancelDay={(ds) => setDayCancelTarget(ds)}
+                  />
               </div>
             </div>
           </div>
@@ -627,6 +783,15 @@ export function CalendarWeekView() {
         onDeleted={fetchData}
       />
 
+      <EditClassDialog
+        key={editDialog?.cls.id ?? "none"}
+        open={editDialog !== null}
+        onOpenChange={(open) => { if (!open) setEditDialog(null) }}
+        cls={editDialog?.cls ?? null}
+        subjects={subjects}
+        onUpdated={fetchData}
+      />
+
       <CreateClassDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
@@ -634,6 +799,13 @@ export function CalendarWeekView() {
         defaultWeekday={createDefaults.weekday}
         defaultTime={createDefaults.time}
         onCreated={fetchData}
+      />
+
+      <DayCancelDialog
+        open={dayCancelTarget !== null}
+        onOpenChange={(open) => { if (!open) setDayCancelTarget(null) }}
+        date={dayCancelTarget ?? ""}
+        onCancelled={fetchData}
       />
     </div>
   )

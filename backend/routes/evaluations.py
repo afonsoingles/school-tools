@@ -42,7 +42,12 @@ async def add_evaluation(request: Request) -> JSONResponse:
         user_classes = class_tools.get_user_class_schedule(request.state.user.id)
         cancellations = class_tools.get_user_cancelled_classes(request.state.user.id)
         if not any(
-            cls.id == class_id and int(getattr(cls.weekday, "value", cls.weekday)) == date_weekday + 1
+            cls.id == class_id and any(
+                int(getattr(schedule.scheduled_weekday, "value", schedule.scheduled_weekday)) == date_weekday + 1
+                and schedule.valid_from <= date_obj.date()
+                and (schedule.valid_until is None or schedule.valid_until >= date_obj.date())
+                for schedule in cls.schedules
+            )
             for cls in user_classes
         ):
             raise ClassNotFound

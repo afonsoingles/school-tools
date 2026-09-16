@@ -1,5 +1,5 @@
 import { apiFetch, mockResolve } from "@/lib/api/client"
-import type { AppSettings, ClassEvent, CancelledClassEvent, Subject } from "@/types"
+import type { AppSettings, ClassEvent, DayCancellation, Subject } from "@/types"
 
 export async function getSettings(): Promise<AppSettings> {
   return mockResolve({
@@ -36,36 +36,48 @@ export async function deleteSubject(subjectId: string): Promise<void> {
   })
 }
 
+export interface ClassScheduleData {
+  classes: ClassEvent[]
+  dayCancellations: DayCancellation[]
+}
+
+export async function getClassSchedule(): Promise<ClassScheduleData> {
+  const res = await apiFetch<{ success: boolean; classes: ClassEvent[]; day_cancellations: DayCancellation[] }>("/v1/classes")
+  return { classes: res.classes, dayCancellations: res.day_cancellations }
+}
+
 export async function getClasses(): Promise<ClassEvent[]> {
-  const res = await apiFetch<{ success: boolean; classes: ClassEvent[] }>("/v1/classes/schedule")
-  return res.classes
+  const { classes } = await getClassSchedule()
+  return classes
 }
 
-function normalizeDate(d: string): string {
-  return d.includes("T") ? d.split("T")[0] : d
-}
-
-export async function getCancellations(): Promise<CancelledClassEvent[]> {
-  const res = await apiFetch<{ success: boolean; cancellations: CancelledClassEvent[] }>("/v1/classes/cancellations")
-  return res.cancellations.map((c) => ({ ...c, date: normalizeDate(c.date) }))
-}
-
-interface CreateClassPayload {
-  subject_id: string
-  weekday: number
+export interface NewSchedulePayload {
+  scheduled_weekday: number
   start_time: string
   end_time: string
 }
 
-export async function createClass(payload: CreateClassPayload): Promise<ClassEvent> {
+export async function createClass(payload: {
+  subject_id: string
+  schedules: NewSchedulePayload[]
+}): Promise<ClassEvent> {
   const res = await apiFetch<{ success: boolean; class: ClassEvent }>("/v1/classes", {
     method: "POST",
     body: JSON.stringify({
       subject_id: payload.subject_id,
-      weekday: String(payload.weekday),
-      start_time: payload.start_time,
-      end_time: payload.end_time,
+      schedules: payload.schedules.map((s) => ({
+        ...s,
+        scheduled_weekday: String(s.scheduled_weekday),
+      })),
     }),
+  })
+  return res.class
+}
+
+export async function updateClassSubject(classId: string, subjectId: string): Promise<ClassEvent> {
+  const res = await apiFetch<{ success: boolean; class: ClassEvent }>(`/v1/classes/${classId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ subject_id: subjectId }),
   })
   return res.class
 }
@@ -76,21 +88,86 @@ export async function deleteClass(classId: string): Promise<void> {
   })
 }
 
-export async function cancelClass(classId: string, date: string, reason: string): Promise<CancelledClassEvent> {
-  const res = await apiFetch<{ success: boolean; cancellation: CancelledClassEvent }>(
+export async function addSchedule(classId: string, payload: NewSchedulePayload): Promise<ClassEvent> {
+  const res = await apiFetch<{ success: boolean; class: ClassEvent }>(
+    `/v1/classes/${classId}/schedules`,
+    {
+      method: "POST",
+      body: JSON.stringify({ ...payload, scheduled_weekday: String(payload.scheduled_weekday) }),
+    }
+  )
+  return res.class
+}
+
+export async function reschedule(
+  classId: string,
+  scheduleId: string,
+  payload: NewSchedulePayload & { date?: string }
+): Promise<ClassEvent> {
+  const res = await apiFetch<{ success: boolean; class: ClassEvent }>(
+    `/v1/classes/${classId}/schedules/${scheduleId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        ...payload,
+        scheduled_weekday: String(payload.scheduled_weekday),
+        ...(payload.date ? { date: payload.date } : {}),
+      }),
+    }
+  )
+  return res.class
+}
+
+export async function deleteSchedule(classId: string, scheduleId: string): Promise<ClassEvent> {
+  const res = await apiFetch<{ success: boolean; class: ClassEvent }>(
+    `/v1/classes/${classId}/schedules/${scheduleId}`,
+    { method: "DELETE" }
+  )
+  return res.class
+}
+
+export interface ClassCancellationResult {
+  id: string
+  date: string
+  reason: string
+  note?: string | null
+}
+
+export async function cancelClass(
+  classId: string,
+  date: string,
+  reason: string,
+  note?: string
+): Promise<ClassCancellationResult> {
+  const res = await apiFetch<{ success: boolean; cancellation: ClassCancellationResult }>(
     `/v1/classes/${classId}/cancel`,
     {
       method: "POST",
-      body: JSON.stringify({ date, reason }),
+      body: JSON.stringify({ date, reason, ...(note ? { note } : {}) }),
     }
   )
-  const c = res.cancellation
-  return { ...c, date: normalizeDate(c.date) }
+  return res.cancellation
 }
 
-export async function uncancelClass(cancellationId: string): Promise<void> {
-  await apiFetch<{ success: boolean }>("/v1/classes/uncancel", {
-    method: "POST",
-    body: JSON.stringify({ cancellation_id: cancellationId }),
+export async function uncancelClass(classId: string, cancellationId: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/v1/classes/${classId}/cancellations/${cancellationId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function cancelDay(date: string, reason: string, note?: string): Promise<DayCancellation> {
+  const res = await apiFetch<{ success: boolean; day_cancellation: DayCancellation }>(
+    "/v1/classes/cancel-day",
+    {
+      method: "POST",
+      body: JSON.stringify({ date, reason, ...(note ? { note } : {}) }),
+    }
+  )
+  return res.day_cancellation
+}
+
+export async function uncancelDay(dayCancellationId: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/v1/classes/cancel-day/${dayCancellationId}`, {
+    method: "DELETE",
   })
 }

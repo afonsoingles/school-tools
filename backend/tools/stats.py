@@ -16,6 +16,14 @@ class StatisticTools:
         pipeline.append({"$count": "users"})
         result = list(self.db.mongo[collection_name].aggregate(pipeline))
         return result[0]["users"] if result else 0
+
+    def _count_embedded_cancellations(self) -> int:
+        result = list(self.db.mongo.classes.aggregate([
+            {"$match": {"cancellations.0": {"$exists": True}}},
+            {"$project": {"n": {"$size": "$cancellations"}}},
+            {"$group": {"_id": None, "total": {"$sum": "$n"}}}
+        ]))
+        return result[0]["total"] if result else 0
     
     def get_user_stats(self, force_refresh: bool = False) -> UserStats:
         cached = self.db.redis.get("stats.users")
@@ -63,7 +71,9 @@ class StatisticTools:
             evaluations=self._count_docs_users("evaluations"),
             subjects=self._count_docs_users("subjects"),
             classes=self._count_docs_users("classes"),
-            cancellations=self._count_docs_users("class_cancellations"),
+            cancellations=self._count_docs_users(
+                "classes", {"cancellations.0": {"$exists": True}}
+            ) + self._count_docs_users("day_cancellations"),
             ics=self.db.mongo.users.count_documents({"settings.calendar.is_enabled": True})
         )
 
@@ -83,7 +93,7 @@ class StatisticTools:
             evaluations=self.db.mongo.evaluations.count_documents({}),
             subjects=self.db.mongo.subjects.count_documents({}),
             classes=self.db.mongo.classes.count_documents({}),
-            cancellations=self.db.mongo.class_cancellations.count_documents({})
+            cancellations=self._count_embedded_cancellations() + self.db.mongo.day_cancellations.count_documents({})
         )
 
         self.db.redis.set("stats.functionality", stats.model_dump_json(), ex=3600)

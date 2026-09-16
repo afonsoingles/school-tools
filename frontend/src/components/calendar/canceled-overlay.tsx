@@ -31,7 +31,7 @@ export function CancelledOverlay({ cancellation, startTime, endTime, onUncancell
   async function handleUncancel() {
     setUncanceling(true)
     try {
-      await uncancelClass(cancellation.id)
+      await uncancelClass(cancellation.class_id ?? "", cancellation.id)
       onUncancelled()
     } finally {
       setUncanceling(false)

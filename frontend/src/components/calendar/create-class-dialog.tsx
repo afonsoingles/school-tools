@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Plus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -11,13 +11,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select"
 import type { Subject } from "@/types"
 import { createClass } from "@/lib/api/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ErrorBox } from "@/components/ui/error-box"
 import { SubjectSelect } from "@/components/ui/subject-select"
-import { DAY_NAMES } from "@/lib/date-time"
+import { DAY_NAMES, timeToMinutes } from "@/lib/date-time"
 
 interface CreateClassDialogProps {
   open: boolean
@@ -26,6 +32,18 @@ interface CreateClassDialogProps {
   defaultWeekday?: number
   defaultTime?: string
   onCreated: () => void
+}
+
+interface ScheduleRow {
+  weekday: string
+  start_time: string
+  end_time: string
+}
+
+function defaultEndTime(fromTime?: string): string {
+  if (!fromTime) return "09:00"
+  const min = timeToMinutes(fromTime) + 60
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`
 }
 
 export function CreateClassDialog({
@@ -37,30 +55,41 @@ export function CreateClassDialog({
   onCreated,
 }: CreateClassDialogProps) {
   const [subjectId, setSubjectId] = useState("")
-  const [weekday, setWeekday] = useState<string>(defaultWeekday ? String(defaultWeekday) : "")
-  const [startTime, setStartTime] = useState(defaultTime ?? "08:00")
-  const [endTime, setEndTime] = useState(() => {
-    if (defaultTime) {
-      const [h, m] = defaultTime.split(":").map(Number)
-      const endMin = h * 60 + m + 60
-      return `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`
-    }
-    return "09:00"
-  })
+  const [rows, setRows] = useState<ScheduleRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function reset() {
     setSubjectId("")
-    setWeekday("")
-    setStartTime("08:00")
-    setEndTime("09:00")
+    setRows([
+      {
+        weekday: defaultWeekday ? String(defaultWeekday) : "",
+        start_time: defaultTime ?? "08:00",
+        end_time: defaultEndTime(defaultTime),
+      },
+    ])
     setError(null)
+  }
+
+  function updateRow(index: number, patch: Partial<ScheduleRow>) {
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+
+  function addRow() {
+    setRows((prev) => [
+      ...prev,
+      { weekday: "", start_time: "08:00", end_time: "09:00" },
+    ])
+  }
+
+  function removeRow(index: number) {
+    setRows((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!subjectId || !weekday) return
+    if (!subjectId || rows.length === 0) return
+    if (rows.some((r) => !r.weekday)) return
 
     setLoading(true)
     setError(null)
@@ -68,9 +97,11 @@ export function CreateClassDialog({
     try {
       await createClass({
         subject_id: subjectId,
-        weekday: Number(weekday),
-        start_time: startTime,
-        end_time: endTime,
+        schedules: rows.map((r) => ({
+          scheduled_weekday: Number(r.weekday),
+          start_time: r.start_time,
+          end_time: r.end_time,
+        })),
       })
       onCreated()
       onOpenChange(false)
@@ -104,59 +135,80 @@ export function CreateClassDialog({
               </p>
             </div>
           ) : (
-          <>
-          <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} placeholder="Select a subject" />
+            <>
+              <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} placeholder="Select a subject" />
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Day</Label>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+              <div className="flex flex-col gap-2">
+                <Label>Schedules</Label>
+                {rows.map((row, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Select
+                      value={row.weekday}
+                      onValueChange={(v) => updateRow(index, { weekday: String(v) })}
+                    >
+                      <SelectTrigger className="w-28 shrink-0 justify-center">
+                        {row.weekday
+                          ? DAY_NAMES[Number(row.weekday) - 1]
+                          : <span className="text-muted-foreground">Day</span>}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAY_NAMES.map((name, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)} label={name}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="time"
+                      value={row.start_time}
+                      onChange={(e) => updateRow(index, { start_time: e.target.value })}
+                      required
+                      aria-label={`Start time for schedule ${index + 1}`}
+                      className="max-md:px-2 max-md:text-sm"
+                    />
+                    <span className="text-muted-foreground">–</span>
+                    <Input
+                      type="time"
+                      value={row.end_time}
+                      onChange={(e) => updateRow(index, { end_time: e.target.value })}
+                      required
+                      aria-label={`End time for schedule ${index + 1}`}
+                      className="max-md:px-2 max-md:text-sm"
+                    />
+                    {rows.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="shrink-0 hover:bg-foreground/10!"
+                        onClick={() => removeRow(index)}
+                        aria-label="Remove schedule"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
                 <Button
-                  key={d}
                   type="button"
-                  variant={weekday === String(d) ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
-                  className="flex-1 text-xs"
-                  onClick={() => setWeekday(String(d))}
+                  className="self-start gap-1.5"
+                  onClick={addRow}
                 >
-                  {DAY_NAMES[d - 1]}
+                  <Plus className="size-3.5" />
+                  Add schedule
                 </Button>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Start time</Label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-                className="max-md:px-2 max-md:text-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>End time</Label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-                className="max-md:px-2 max-md:text-sm"
-              />
-            </div>
-          </div>
+              {error && (
+                <ErrorBox>{error}</ErrorBox>
+              )}
 
-          {error && (
-            <ErrorBox>{error}</ErrorBox>
-          )}
-
-          <Button type="submit" disabled={loading || !subjectId || !weekday} className="gap-1.5">
-            {loading && <Loader2 className="size-4 animate-spin" />}
-            Create
-          </Button>
-          </>
+              <Button type="submit" disabled={loading || !subjectId || rows.some((r) => !r.weekday)} className="gap-1.5">
+                {loading && <Loader2 className="size-4 animate-spin" />}
+                Create
+              </Button>
+            </>
           )}
         </form>
       </DialogContent>

@@ -68,19 +68,45 @@ export interface Subject {
   icon: string
 }
 
+export type CancellationReason = "break" | "public_holiday" | "other"
+
+export interface ClassSchedule {
+  id: string
+  chain_id: string
+  scheduled_weekday: number // 1=Mon…7=Sun
+  start_time: string // "HH:MM"
+  end_time: string // "HH:MM"
+  valid_from: string // "YYYY-MM-DD"
+  valid_until: string | null // "YYYY-MM-DD"; null = still active
+}
+
+export interface ClassCancellation {
+  id: string
+  date: string // "YYYY-MM-DD"
+  reason: CancellationReason
+  note?: string | null
+}
+
 export interface ClassEvent {
   id: string
   subject_id: string
-  weekday: number  // 1=Mon…7=Sun
-  start_time: string  // "HH:MM"
-  end_time: string  // "HH:MM"
+  schedules: ClassSchedule[]
+  cancellations: ClassCancellation[]
+}
+
+export interface DayCancellation {
+  id: string
+  date: string // "YYYY-MM-DD"
+  reason: CancellationReason
+  note?: string | null
 }
 
 export interface CancelledClassEvent {
   id: string
-  class_id: string
-  date: string  // "YYYY-MM-DD"
-  reason: "break" | "public_holiday" | "other"
+  class_id: string | null
+  date: string // "YYYY-MM-DD"
+  reason: CancellationReason
+  note?: string | null
 }
 
 export interface DashboardSummary {
