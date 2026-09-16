@@ -9,6 +9,16 @@ class CalendarTools:
         self.db = Database()
         pass
 
+    def _write_settings(self, user_id: uuid.UUID, settings: CalendarFeedSettings) -> None:
+        """Persist calendar settings into the embedded users.settings.calendar."""
+        self.db.mongo.users.update_one(
+            {"id": user_id},
+            {"$set": {"settings.calendar": settings.model_dump()}},
+        )
+        self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)
+        # The settings now live inside the users document, so the user cache is stale.
+        self.db.redis.delete(f"users.user:{user_id}")
+
     def save_calendar_feed(self, user_id: uuid.UUID, calendar_type: CalendarFeedType, ics_content: str) -> None:
 
         calendar = CalendarFeed(
@@ -39,14 +49,11 @@ class CalendarTools:
             existing = self.get_calendar_tokens(user_id)
             is_enabled = existing.is_enabled if existing is not None else True
         settings = CalendarFeedSettings(
-            user_id=user_id,
             token_classes=secrets.token_urlsafe(64),
             token_evaluations=secrets.token_urlsafe(64),
             is_enabled=is_enabled
         )
-        settings_dict = settings.model_dump()
-        self.db.mongo.calendar_feed_settings.update_one({"user_id": user_id}, {"$set": settings_dict}, upsert=True)
-        self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)
+        self._write_settings(user_id, settings)
 
         return settings
 
@@ -55,11 +62,12 @@ class CalendarTools:
         if cached:
             return CalendarFeedSettings.model_validate(json.loads(cached))
 
-        settings = self.db.mongo.calendar_feed_settings.find_one({"user_id": user_id})
-        if not settings:
+        raw_user = self.db.mongo.users.find_one({"id": user_id})
+        if not raw_user:
             return None
 
-        settings = CalendarFeedSettings.model_validate(settings)
+        calendar = raw_user.get("settings", {}).get("calendar", {})
+        settings = CalendarFeedSettings.model_validate(calendar)
         self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)
 
         return settings
@@ -99,6 +107,4 @@ class CalendarTools:
             return
 
         settings.is_enabled = is_enabled
-        settings_dict = settings.model_dump()
-        self.db.mongo.calendar_feed_settings.update_one({"user_id": user_id}, {"$set": settings_dict}, upsert=True)
-        self.db.redis.set(f"users.calendar.settings:{user_id}", settings.model_dump_json(), ex=21600)
+        self._write_settings(user_id, settings)

@@ -1,11 +1,19 @@
 from pydantic import BaseModel, EmailStr, SecretStr, AwareDatetime, Field, PlainSerializer, ConfigDict, field_serializer
 from pydantic_extra_types.timezone_name import TimeZoneName
 from typing_extensions import Annotated
+from models.calendar import CalendarFeedSettings
 import datetime
 import uuid
 
 
+class UserSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore", revalidate_instances="always")
+
+    calendar: CalendarFeedSettings = Field(default_factory=CalendarFeedSettings)
+
+
 class SafeUser(BaseModel):
+    """API-facing user payload. Internal-only fields (settings, password) stay out."""
 
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
                              
@@ -21,7 +29,10 @@ class SafeUser(BaseModel):
     updated_at: Annotated[AwareDatetime, PlainSerializer(lambda v: v.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z"), return_type=str)] = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 class User(SafeUser):
+    """Full users document: password + embedded settings live only server-side."""
+
     password: SecretStr
+    settings: UserSettings = Field(default_factory=UserSettings)
 
     @field_serializer("password")
     def serialize_password(self, value: SecretStr) -> str:

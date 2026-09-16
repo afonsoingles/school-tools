@@ -64,7 +64,7 @@ class StatisticTools:
             subjects=self._count_docs_users("subjects"),
             classes=self._count_docs_users("classes"),
             cancellations=self._count_docs_users("class_cancellations"),
-            ics=self.db.mongo.calendar_feed_settings.count_documents({"is_enabled": True})
+            ics=self.db.mongo.users.count_documents({"settings.calendar.is_enabled": True})
         )
 
 
