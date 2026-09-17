@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { getClassSchedule, uncancelClass, uncancelDay } from "@/lib/api/calendar"
+import { overrideHoliday } from "@/lib/api/holidays"
 import { getSubjects } from "@/lib/api/settings"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
@@ -142,6 +143,7 @@ export function CalendarWeekView() {
   const [mobileDayOffset, setMobileDayOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
   const [dayCancellations, setDayCancellations] = useState<DayCancellation[]>([])
+  const [autoHolidayOffs, setAutoHolidayOffs] = useState<string[]>([])
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -221,6 +223,7 @@ export function CalendarWeekView() {
       .then(([schedule, ev, s]) => {
         setClasses(schedule.classes)
         setDayCancellations(schedule.dayCancellations)
+        setAutoHolidayOffs(schedule.autoHolidayOffs)
         setEvaluations(ev)
         setSubjects(s)
       })
@@ -271,7 +274,12 @@ export function CalendarWeekView() {
   }
 
   function dayOffFor(dateStr: string): DayCancellation | undefined {
-    return dayCancellations.find((d) => d.date === dateStr)
+    const stored = dayCancellations.find((d) => d.date === dateStr)
+    if (stored) return stored
+    if (autoHolidayOffs.includes(dateStr)) {
+      return { id: `holiday:${dateStr}`, date: dateStr, reason: "public_holiday" }
+    }
+    return undefined
   }
 
   function evaluationForDay(classId: string, dateStr: string): Evaluation | undefined {
@@ -351,7 +359,12 @@ export function CalendarWeekView() {
   async function handleUncancelDay(dayCancellationId: string) {
     setUncancelingId(dayCancellationId)
     try {
-      await uncancelDay(dayCancellationId)
+      if (dayCancellationId.startsWith("holiday:")) {
+        const dateStr = dayCancellationId.slice("holiday:".length)
+        await overrideHoliday(dateStr)
+      } else {
+        await uncancelDay(dayCancellationId)
+      }
       fetchData()
     } finally {
       setUncancelingId(null)

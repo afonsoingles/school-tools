@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, SecretStr, AwareDatetime, Field, Plain
 from pydantic_extra_types.timezone_name import TimeZoneName
 from typing_extensions import Annotated
 from models.calendar import CalendarFeedSettings
+from models.holidays import HolidaySettings
 import datetime
 import uuid
 
@@ -10,10 +11,10 @@ class UserSettings(BaseModel):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
 
     calendar: CalendarFeedSettings = Field(default_factory=CalendarFeedSettings)
+    holidays: HolidaySettings = Field(default_factory=HolidaySettings)
 
 
 class SafeUser(BaseModel):
-    """API-facing user payload. Internal-only fields (settings, password) stay out."""
 
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")
                              

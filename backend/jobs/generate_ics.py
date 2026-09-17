@@ -6,6 +6,7 @@ from tools.subjects import SubjectTools
 from tools.classes import ClassTools, _active_schedule
 from tools.calendar import CalendarTools
 from tools.evaluations import EvaluationTools
+from tools.holidays import HolidayTools
 from tools.users import UserTools
 from models.calendar import CalendarFeedType
 import sentry_sdk
@@ -17,6 +18,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     evaluation_tools = EvaluationTools()
     calendar_tools = CalendarTools()
     user_tools = UserTools()
+    holiday_tools = HolidayTools()
 
     user_tz_raw = user_tools.get_user_by_id(str(user)).timezone
     calendar_tokens = calendar_tools.get_calendar_tokens(user)
@@ -79,6 +81,15 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         days_ahead = (weekday_index - start_date.weekday()) % 7
         first_date = start_date + datetime.timedelta(days=days_ahead)
         return datetime.datetime.combine(first_date, time_value, tzinfo=user_tz)
+
+    # Auto-cancel public holidays
+    day_cancelled_dates.update(
+        datetime.date.fromisoformat(d) for d in holiday_tools.get_auto_holiday_dates(
+            user,
+            START_GENERATING_FROM.date(),
+            END_GENERATING_AT.date(),
+        )
+    )
 
     for cls in classes:
         for schedule in cls.schedules:

@@ -8,6 +8,7 @@ from decorators.valid_json import valid_json
 from errors.classes import *
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
+from tools.holidays import HolidayTools
 from models.time_field import is_valid_hhmm_string
 from models.classes import Weekday, SafeClassEvent, SafeClassCancellation, SafeDayCancellation, CancellationReason
 import datetime
@@ -17,6 +18,7 @@ import uuid
 router = APIRouter()
 subject_tools = SubjectTools()
 class_tools = ClassTools()
+holiday_tools = HolidayTools()
 
 
 def _parse_weekday(value) -> Weekday:
@@ -61,6 +63,28 @@ def _safe_class(class_event):
     return SafeClassEvent(**class_event.model_dump()).model_dump(mode="json")
 
 
+def _auto_holiday_offs(user_id, classes: list) -> list[str]:
+    
+    if not classes:
+        return []
+
+    horizon = datetime.date.today() + datetime.timedelta(days=366)
+    holiday_dates: set[str] = set()
+
+    for cls in classes:
+        for s in cls.schedules:
+            if s.valid_until is not None and s.valid_until < s.valid_from:
+                continue
+            window_end = s.valid_until if s.valid_until is not None else horizon
+            if window_end < s.valid_from:
+                continue
+            holiday_dates.update(
+                holiday_tools.get_auto_holiday_dates(user_id, s.valid_from, window_end)
+            )
+
+    return sorted(holiday_dates)
+
+
 # Class Schedule
 @router.post("/v1/classes")
 @require_auth
@@ -92,11 +116,13 @@ async def add_class(request: Request) -> JSONResponse:
 async def get_classes(request: Request) -> JSONResponse:
     classes = class_tools.get_user_class_schedule(request.state.user.id)
     day_cancellations = class_tools.get_user_day_cancellations(request.state.user.id)
+    auto_holiday_offs = _auto_holiday_offs(request.state.user.id, classes)
 
     return JSONResponse(jsonable_encoder({
         "success": True,
         "classes": [_safe_class(cls) for cls in classes],
         "day_cancellations": [SafeDayCancellation(**dc.model_dump()).model_dump(mode="json") for dc in day_cancellations],
+        "auto_holiday_offs": auto_holiday_offs,
     }))
 
 

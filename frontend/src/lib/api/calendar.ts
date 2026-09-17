@@ -39,11 +39,21 @@ export async function deleteSubject(subjectId: string): Promise<void> {
 export interface ClassScheduleData {
   classes: ClassEvent[]
   dayCancellations: DayCancellation[]
+  autoHolidayOffs: string[]
 }
 
 export async function getClassSchedule(): Promise<ClassScheduleData> {
-  const res = await apiFetch<{ success: boolean; classes: ClassEvent[]; day_cancellations: DayCancellation[] }>("/v1/classes")
-  return { classes: res.classes, dayCancellations: res.day_cancellations }
+  const res = await apiFetch<{
+    success: boolean
+    classes: ClassEvent[]
+    day_cancellations: DayCancellation[]
+    auto_holiday_offs: string[]
+  }>("/v1/classes")
+  return {
+    classes: res.classes,
+    dayCancellations: res.day_cancellations,
+    autoHolidayOffs: res.auto_holiday_offs,
+  }
 }
 
 export async function getClasses(): Promise<ClassEvent[]> {
