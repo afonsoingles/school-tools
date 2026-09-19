@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { AccountSettingsForm } from "@/components/settings/account-settings-form"
+import { DangerZoneSection } from "@/components/settings/danger-zone-section"
 import { getCurrentUser } from "@/lib/api/auth"
 
 export default async function AccountSettingsPage() {
@@ -13,5 +14,10 @@ export default async function AccountSettingsPage() {
     redirect("/api/auth/clear-session")
   }
 
-  return <AccountSettingsForm userName={userName} userEmail={userEmail} />
+  return (
+    <div className="flex flex-col gap-6">
+      <AccountSettingsForm userName={userName} userEmail={userEmail} />
+      <DangerZoneSection />
+    </div>
+  )
 }

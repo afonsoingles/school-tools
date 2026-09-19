@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { safeNextPath } from "@/lib/utils"
 
@@ -11,6 +12,8 @@ import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations("auth")
+  const tCommon = useTranslations("common")
   const next = safeNextPath(searchParams.get("next") ?? "/dashboard")
 
   const [email, setEmail] = useState("")
@@ -19,16 +22,16 @@ export function LoginForm() {
 
   return (
     <AuthCard
-      title="Login"
-      description="Welcome back to School Tools"
+      title={t("loginForm.title")}
+      description={t("loginForm.description")}
       footer={
         <>
-          Don&apos;t have an account?{" "}
+          {t("loginForm.noAccount")}{" "}
           <Link
             href="/auth/signup"
             className="font-semibold underline text-foreground underline-offset-4"
           >
-            Sign up
+            {t("loginForm.signUp")}
           </Link>
         </>
       }
@@ -45,14 +48,14 @@ export function LoginForm() {
 
           if (!res.ok) {
             const body = await res.json().catch(() => null)
-            toast.error(body?.message ?? "Invalid email or password.")
+            toast.error(body?.message ?? t("loginForm.invalidCredentials"))
             return
           }
 
           router.push(next)
           router.refresh()
         } catch {
-          toast.error("Something went wrong. Please try again.")
+          toast.error(tCommon("state.error"))
         } finally {
           setIsSubmitting(false)
         }
@@ -60,9 +63,9 @@ export function LoginForm() {
     >
       <AuthField
         id="email"
-        label="Email"
+        label={tCommon("fields.email")}
         type="email"
-        placeholder="Email"
+        placeholder={tCommon("fields.email")}
         autoComplete="email"
         required
         value={email}
@@ -71,9 +74,9 @@ export function LoginForm() {
 
       <AuthField
         id="password"
-        label="Password"
+        label={t("password")}
         type="password"
-        placeholder="Password"
+        placeholder={t("password")}
         autoComplete="current-password"
         required
         value={password}
@@ -84,10 +87,10 @@ export function LoginForm() {
         href="/auth/reset/request"
         className="self-start text-sm text-muted-foreground hover:text-foreground underline-offset-4"
       >
-        Forgot password?
+        {t("loginForm.forgotPassword")}
       </Link>
 
-      <AuthSubmit loading={isSubmitting}>Login</AuthSubmit>
+      <AuthSubmit loading={isSubmitting}>{t("login")}</AuthSubmit>
     </AuthCard>
   )
 }

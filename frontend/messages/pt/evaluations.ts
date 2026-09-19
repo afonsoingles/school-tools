@@ -1,0 +1,55 @@
+const evaluations = {
+  page: {
+    title: "Avaliações",
+    subtitle: "testes, questões de aula e outras avaliações",
+  },
+  type: {
+    exam: "Teste",
+    quiz: "Questão Aula",
+    other: "Outro",
+  },
+  evaluation: "avaliação",
+  unknownSubject: "Desconhecida",
+  showFilter: "Mostrar",
+  allTypes: "Todos os tipos",
+  allSubjects: "Todas as disciplinas",
+  newEvaluation: "Nova avaliação",
+  noEvaluations: "Não tens avaliações.",
+  createClassFirst: "Cria uma aula antes de criares uma avaliação",
+  noMatches: "Nenhuma avaliação corresponde aos teus filtros.",
+  deleteAria: "Eliminar a avaliação de {subject}",
+  createdSuccess: "Avaliação criada com sucesso.",
+  grade: "Nota",
+  gradeLabel: "Nota (0-100)",
+  gradeSaved: "Nota guardada.",
+  gradeCleared: "Nota removida.",
+  gradeInvalid: "Insere uma nota inteira entre 0 e 100.",
+  editGrade: {
+    title: "Editar nota",
+    aria: "Editar nota de {subject}",
+    noGrade: "Sem nota",
+    clearGrade: "Limpar nota",
+  },
+  create: {
+    description: "Agenda um teste ou uma questão de aula numa das tuas aulas.",
+    selectDateFirst: "Escolhe primeiro uma data.",
+    noClassesWeekday: "Não há aulas neste dia da semana. Escolhe outra data ou adiciona uma aula primeiro.",
+    selectClass: "Escolhe uma aula",
+  },
+  delete: {
+    title: "Eliminar avaliação?",
+    description: "Isto vai remover o {type} de {subject}. Esta ação não pode ser desfeita.",
+    thisSubject: "esta disciplina",
+  },
+  reconcile: {
+    title: "Conciliar folhas de teste",
+    description: "Estas avaliações já aconteceram. Regista quantas folhas usaste para o teu stock continuar preciso.",
+    action: "Conciliar",
+    linedUsed: "Folhas de linhas usadas",
+    graphUsed: "Folhas quadriculadas usadas",
+    noSheetsUsed: "Sem folhas usadas",
+    reconciledSuccess: "Folhas de teste conciliadas.",
+  },
+}
+
+export default evaluations

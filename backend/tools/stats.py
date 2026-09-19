@@ -30,8 +30,8 @@ class StatisticTools:
         if cached and not force_refresh:
             return UserStats.model_validate(json.loads(cached))
 
-        cut_7d = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()
-        cut_30d = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).isoformat()
+        cut_7d = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat().replace("+00:00", "Z")
+        cut_30d = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).isoformat().replace("+00:00", "Z")
 
         try:
             row = self.db.mongo.users.aggregate([

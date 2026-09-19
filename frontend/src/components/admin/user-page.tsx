@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
+import Link from "next/link"
+import { useLocale } from "next-intl"
 import { toast } from "sonner"
 import {
   Ban,
@@ -29,6 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -58,12 +61,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { UserAvatar } from "@/components/layout/user-avatar"
 import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { SubjectIcon } from "@/components/ui/subject-icon"
@@ -76,8 +73,10 @@ import {
   isOverdueHomework,
 } from "@/components/homework/constants"
 import { errorMessage } from "@/lib/errors"
-import { DAY_NAMES, timeToMinutes } from "@/lib/date-time"
+import { dayNamesShort, timeToMinutes } from "@/lib/date-time"
 import { REASON_LABELS } from "@/components/calendar/constants"
+import { TestSheetsGrant } from "./test-sheets-grant"
+import { UserNotificationsCard } from "./user-notifications"
 import {
   getUserContent,
   promoteUser,
@@ -86,12 +85,15 @@ import {
   unsuspendUser,
   updateAdminUser,
   adminSendPasswordReset,
+  getActiveDeletionForUser,
+  nominateDeletion,
 } from "@/lib/api/admin"
 import type { PromoteRole } from "@/lib/api/admin"
 import type {
   AdminUserContent,
   AdminUserContentType,
   ClassEvent,
+  DeletionRequest,
   Evaluation,
   Homework,
   Subject,
@@ -136,11 +138,11 @@ function getIanaTimezones(): string[] {
   return FALLBACK_TIMEZONES
 }
 
-function formatISODate(value: string): string {
+function formatISODate(value: string, locale: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const [year, month, day] = value.split("-")
     const date = new Date(Number(year), Number(month) - 1, Number(day))
-    return date.toLocaleDateString("en-GB", {
+    return date.toLocaleDateString(locale, {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -148,14 +150,14 @@ function formatISODate(value: string): string {
   }
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+  return date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
 }
 
-function formatDateTimeTz(value: string, timezone: string): string {
+function formatDateTimeTz(value: string, timezone: string, locale: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat("en-GB", {
+    return new Intl.DateTimeFormat(locale, {
       timeZone: timezone,
       day: "numeric",
       month: "short",
@@ -164,7 +166,7 @@ function formatDateTimeTz(value: string, timezone: string): string {
       minute: "2-digit",
     }).format(date)
   } catch {
-    return formatISODate(value)
+    return formatISODate(value, locale)
   }
 }
 
@@ -217,22 +219,6 @@ function BoolSelect({
 
 function FieldError({ message }: { message: string }) {
   return <p className="text-sm text-red-400">{message}</p>
-}
-
-function StatusMessage({
-  message,
-}: {
-  message: { ok: boolean; text: string } | null
-}) {
-  if (!message) return null
-  if (message.ok) {
-    return (
-      <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/25 rounded-md px-3 py-2">
-        {message.text}
-      </p>
-    )
-  }
-  return <ErrorBox>{message.text}</ErrorBox>
 }
 
 function SectionLoading({ label }: { label: string }) {
@@ -297,6 +283,7 @@ export function UserDetails({
   viewerTimezone: string
 }) {
   const [user, setUser] = useState<User>(initial)
+  const locale = useLocale()
   const [subjects, setSubjects] = useState<Subject[] | null>(null)
   const [classes, setClasses] = useState<ClassEvent[] | null>(null)
   const [evaluations, setEvaluations] = useState<Evaluation[] | null>(null)
@@ -331,6 +318,13 @@ export function UserDetails({
   const [roleBusy, setRoleBusy] = useState(false)
   const [roleError, setRoleError] = useState<string | null>(null)
 
+  const [deletion, setDeletion] = useState<DeletionRequest | null>(null)
+  const [deletionError, setDeletionError] = useState<string | null>(null)
+  const [nominateOpen, setNominateOpen] = useState(false)
+  const [nominateReason, setNominateReason] = useState("")
+  const [nominating, setNominating] = useState(false)
+  const [nominateError, setNominateError] = useState<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
 
@@ -354,6 +348,14 @@ export function UserDetails({
     loadSection("classes", setClasses)
     loadSection("evaluations", setEvaluations)
     loadSection("homework", setHomeworks)
+
+    getActiveDeletionForUser(user.id)
+      .then((request) => {
+        if (!cancelled) setDeletion(request)
+      })
+      .catch((err) => {
+        if (!cancelled) setDeletionError(errorMessage(err))
+      })
 
     return () => {
       cancelled = true
@@ -439,7 +441,7 @@ export function UserDetails({
       setDraft(null)
       setFieldErrors({})
       setEditMode(false)
-      setSaveMessage({ ok: true, text: "User updated." })
+      toast.success("User updated.")
     } catch (err) {
       setSaveMessage({ ok: false, text: errorMessage(err) })
     } finally {
@@ -453,7 +455,8 @@ export function UserDetails({
 
     try {
       const message = await resendVerificationEmail(user.id)
-      setVerifyMessage({ ok: true, text: message })
+      toast.success(message)
+      setVerifyMessage(null)
     } catch (err) {
       setVerifyMessage({ ok: false, text: errorMessage(err) })
     } finally {
@@ -538,6 +541,23 @@ export function UserDetails({
     }
   }
 
+  async function handleNominate() {
+    setNominating(true)
+    setNominateError(null)
+
+    try {
+      const request = await nominateDeletion(user.id, nominateReason.trim())
+      toast.success("Deletion request created. Approve it from the Deletions page.")
+      setDeletion(request)
+      setNominateReason("")
+      setNominateOpen(false)
+    } catch (err) {
+      setNominateError(errorMessage(err))
+    } finally {
+      setNominating(false)
+    }
+  }
+
   function retrySections() {
     setSectionErrors({})
     setRetryKey((key) => key + 1)
@@ -553,6 +573,12 @@ export function UserDetails({
 
   const roleLabel = user.superadmin ? "Superadmin" : user.admin ? "Admin" : "User"
   const canChangeRole = isSuperadmin && user.id !== viewerId
+
+  const canNominate =
+    !deletion &&
+    user.id !== viewerId &&
+    !user.superadmin &&
+    (user.admin ? isSuperadmin : true)
 
   return (
     <div className="flex flex-col gap-8">
@@ -596,10 +622,10 @@ export function UserDetails({
                   {user.timezone}
                 </Detail>
                 <Detail label="Created" icon={<CalendarDays className="size-3.5" />}>
-                  {formatDateTimeTz(user.created_at, viewerTimezone)}
+                  {formatDateTimeTz(user.created_at, viewerTimezone, locale)}
                 </Detail>
                 <Detail label="Updated" icon={<Clock className="size-3.5" />}>
-                  {formatDateTimeTz(user.updated_at, viewerTimezone)}
+                  {formatDateTimeTz(user.updated_at, viewerTimezone, locale)}
                 </Detail>
               </div>
             ) : draft ? (
@@ -663,7 +689,7 @@ export function UserDetails({
               </div>
             ) : null}
 
-            <StatusMessage message={saveMessage} />
+            {saveMessage && <ErrorBox>{saveMessage.text}</ErrorBox>}
 
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
               {editMode ? (
@@ -822,24 +848,61 @@ export function UserDetails({
                 Send password reset
               </Button>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button variant="outline" size="sm" disabled className="gap-1.5">
-                        <Trash2 className="size-3.5" />
-                        Delete user
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>Not yet available</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {deletion ? (
+                <>
+                  <Badge
+                    variant={deletion.status === "approved" ? "destructive" : "secondary"}
+                    className="gap-1.5"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Deletion {deletion.status}
+                  </Badge>
+                  <Button
+                    render={<Link href="/admin/deletions" />}
+                    variant="outline"
+                    size="sm"
+                    nativeButton={false}
+                    className="gap-1.5"
+                  >
+                    Manage
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setNominateReason("")
+                    setNominateError(null)
+                    setNominateOpen(true)
+                  }}
+                  disabled={!canNominate}
+                  className="gap-1.5"
+                  title={
+                    canNominate
+                      ? "Create a deletion request for this account"
+                      : "This account can't be nominated for deletion (you can't nominate yourself, other admins unless you're superadmin, or superadmins)."
+                  }
+                >
+                  <Trash2 className="size-3.5" />
+                  Nominate for deletion
+                </Button>
+              )}
             </div>
 
-            <StatusMessage message={verifyMessage} />
+            {verifyMessage && <ErrorBox>{verifyMessage.text}</ErrorBox>}
+
+            {deletionError && <ErrorBox>{deletionError}</ErrorBox>}
           </CardContent>
         </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">Features</h2>
+        <div className="grid items-start gap-4 md:grid-cols-2">
+          <TestSheetsGrant userId={user.id} />
+          <UserNotificationsCard userId={user.id} />
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -934,10 +997,10 @@ export function UserDetails({
                             .sort((a, b) => a.scheduled_weekday - b.scheduled_weekday || a.start_time.localeCompare(b.start_time))
                             .map((s) => (
                               <li key={s.id} className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                                <Badge variant="outline" className="shrink-0">{DAY_NAMES[s.scheduled_weekday - 1]}</Badge>
+                                <Badge variant="outline" className="shrink-0">{dayNamesShort(locale)[s.scheduled_weekday - 1]}</Badge>
                                 <span className="tabular-nums">{s.start_time} – {s.end_time}</span>
                                 {s.valid_until && (
-                                  <span className="text-xs">ended {formatISODate(s.valid_until)}</span>
+                                  <span className="text-xs">ended {formatISODate(s.valid_until, locale)}</span>
                                 )}
                               </li>
                             ))}
@@ -953,7 +1016,7 @@ export function UserDetails({
                               .map((cancellation) => (
                                 <li key={cancellation.id} className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                                   <CalendarX2 className="size-3.5 shrink-0 text-red-400" />
-                                  <span>{formatISODate(cancellation.date)}</span>
+                                  <span>{formatISODate(cancellation.date, locale)}</span>
                                   <span className="text-muted-foreground/60">·</span>
                                   <span>{REASON_LABELS[cancellation.reason] ?? cancellation.reason}</span>
                                   {cancellation.note && <span className="text-xs">— {cancellation.note}</span>}
@@ -1009,7 +1072,7 @@ export function UserDetails({
                         {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatISODate(evaluation.date)}
+                        {formatISODate(evaluation.date, locale)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1085,7 +1148,7 @@ export function UserDetails({
                                   : "text-muted-foreground"
                               }
                             >
-                              {formatDateTimeTz(homework.due_date, viewerTimezone)}
+                              {formatDateTimeTz(homework.due_date, viewerTimezone, locale)}
                               {overdue && (
                                 <span className="ml-1.5 text-xs text-red-400">· Overdue</span>
                               )}
@@ -1128,7 +1191,7 @@ export function UserDetails({
                     <span className="flex items-center gap-1.5">
                       <CalendarDays className="size-3.5 text-muted-foreground" />
                       <span className={overdue ? "font-medium text-red-400" : ""}>
-                        {formatDateTimeTz(homework.due_date, viewerTimezone)}
+                        {formatDateTimeTz(homework.due_date, viewerTimezone, locale)}
                         {overdue && (
                           <span className="ml-1.5 text-xs text-red-400">· Overdue</span>
                         )}
@@ -1180,12 +1243,12 @@ export function UserDetails({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="suspend-reason">Reason</Label>
-            <textarea
+            <Textarea
               id="suspend-reason"
               value={suspendReason}
               onChange={(event) => setSuspendReason(event.target.value)}
               placeholder="Why are you suspending this user?"
-              className="h-24 w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+              className="h-24 resize-none"
             />
           </div>
 
@@ -1266,6 +1329,56 @@ export function UserDetails({
             >
               {resetting && <Loader2 className="size-4 animate-spin" />}
               Send reset link
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={nominateOpen}
+        onOpenChange={(next) => {
+          if (!next) {
+            setNominateReason("")
+            setNominateError(null)
+          }
+          setNominateOpen(next)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nominate for deletion</DialogTitle>
+            <DialogDescription>
+              Create a deletion request for <span className="font-medium">{user.name}</span> (
+              {user.email}). Another admin must approve it from the Deletions page before the
+              account is deactivated. You can still reverse the request until then.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="nominate-reason">Reason (optional)</Label>
+            <Textarea
+              id="nominate-reason"
+              value={nominateReason}
+              onChange={(event) => setNominateReason(event.target.value)}
+              placeholder="Why should this account be deleted?"
+              className="h-24 resize-none"
+            />
+          </div>
+
+          {nominateError && <ErrorBox>{nominateError}</ErrorBox>}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setNominateOpen(false)} disabled={nominating}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleNominate}
+              disabled={nominating}
+              className="gap-1.5"
+            >
+              {nominating && <Loader2 className="size-4 animate-spin" />}
+              Nominate for deletion
             </Button>
           </div>
         </DialogContent>

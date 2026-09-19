@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowDown,
   ArrowUp,
@@ -42,41 +43,35 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SubjectIcon } from "@/components/ui/subject-icon"
 import { useTimezone } from "@/components/layout/timezone-provider"
+import { formatInTz } from "@/lib/date-time"
 import { getSubjects } from "@/lib/api/settings"
 import { getHomework } from "@/lib/api/homework"
 import type { Homework, Subject } from "@/types"
-import { HOMEWORK_STATUS_BADGE, HOMEWORK_STATUS_ICON, HOMEWORK_STATUS_LABELS, HOMEWORK_STATUS_ORDER, isOverdueHomework } from "./constants"
+import { HOMEWORK_STATUS_BADGE, HOMEWORK_STATUS_ICON, HOMEWORK_STATUS_ORDER, isOverdueHomework } from "./constants"
 import { CreateHomeworkDialog } from "./create-homework-dialog"
 import { DeleteHomeworkDialog } from "./delete-homework-dialog"
 
 type SortKey = "due_date" | "title" | "subject" | "status"
-
-const SORT_KEY_LABELS: Record<SortKey, string> = {
-  due_date: "Due date",
-  title: "Title",
-  subject: "Subject",
-  status: "Status",
-}
 
 function isUpcoming(hw: Homework): boolean {
   if (hw.status === "finished") return false
   return true
 }
 
-function formatDate(iso: string, tz: string): string {
+function formatDate(iso: string, tz: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString("en-GB", {
-    timeZone: tz,
+  return formatInTz(d, tz, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-  })
+  }, locale)
 }
 
 export function HomeworkManager() {
   const timezone = useTimezone()
+  const locale = useLocale()
   const [homeworks, setHomeworks] = useState<Homework[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,6 +87,19 @@ export function HomeworkManager() {
   const [deleteTarget, setDeleteTarget] = useState<Homework | null>(null)
 
   const router = useRouter()
+
+  const t = useTranslations("homework")
+  const sortLabels: Record<SortKey, string> = {
+    due_date: t("sortDueDate"),
+    title: t("sortTitle"),
+    subject: t("sortSubject"),
+    status: t("sortStatus"),
+  }
+  const statusLabels: Record<string, string> = {
+    not_started: t("statusNotStarted"),
+    ongoing: t("statusOngoing"),
+    finished: t("statusFinished"),
+  }
 
   const fetchData = () => {
     Promise.all([getHomework(), getSubjects()])
@@ -128,7 +136,7 @@ export function HomeworkManager() {
 
     const mapped = filtered.map((hw) => ({
       homework: hw,
-      subjectName: subjectNameMap.get(hw.subject_id) ?? "Unknown",
+      subjectName: subjectNameMap.get(hw.subject_id) ?? t("unknownSubject"),
       subjectIcon: subjectIconMap.get(hw.subject_id) ?? "",
     }))
 
@@ -147,7 +155,7 @@ export function HomeworkManager() {
     })
 
     return mapped
-  }, [homeworks, search, subjectFilter, timeFilter, sortKey, sortDir, subjectNameMap, subjectIconMap])
+  }, [homeworks, search, subjectFilter, timeFilter, sortKey, sortDir, subjectNameMap, subjectIconMap, t])
 
   const hasFilters =
     search.trim() !== "" ||
@@ -175,15 +183,15 @@ export function HomeworkManager() {
   if (homeworks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center rounded-lg">
-        <p className="text-sm text-muted-foreground">You have no homework.</p>
+        <p className="text-sm text-muted-foreground">{t("noHomework")}</p>
         {subjects.length === 0 ? (
           <Button size="sm" disabled>
-            Please create a subject before creating homework
+            {t("createSubjectFirst")}
           </Button>
         ) : (
           <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-3.5" />
-            New homework
+            {t("newHomework")}
           </Button>
         )}
 
@@ -191,7 +199,7 @@ export function HomeworkManager() {
           open={createOpen}
           onOpenChange={setCreateOpen}
           subjects={subjects}
-          onCreated={() => { toast.success("Homework created successfully."); fetchData() }}
+          onCreated={() => { toast.success(t("createdSuccess")); fetchData() }}
         />
       </div>
     )
@@ -208,7 +216,7 @@ export function HomeworkManager() {
             className={cn("gap-1.5 px-3", timeFilter !== "all" && "text-muted-foreground hover:text-foreground")}
           >
             <LayoutGrid className="size-3.5" />
-            All
+            {t("all")}
           </Button>
           <Button
             variant={timeFilter === "upcoming" ? "default" : "ghost"}
@@ -217,7 +225,7 @@ export function HomeworkManager() {
             className={cn("gap-1.5 px-3", timeFilter !== "upcoming" && "text-muted-foreground hover:text-foreground")}
           >
             <Clock3 className="size-3.5" />
-            Upcoming
+            {t("upcoming")}
           </Button>
           <Button
             variant={timeFilter === "overdue" ? "default" : "ghost"}
@@ -226,7 +234,7 @@ export function HomeworkManager() {
             className={cn("gap-1.5 px-3", timeFilter !== "overdue" && "text-muted-foreground hover:text-foreground")}
           >
             <CalendarClock className="size-3.5" />
-            Overdue
+            {t("overdueFilter")}
           </Button>
         </div>
 
@@ -235,7 +243,7 @@ export function HomeworkManager() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search title or description…"
+            placeholder={t("searchPlaceholder")}
             className="h-9 pl-8"
           />
         </div>
@@ -244,7 +252,7 @@ export function HomeworkManager() {
           value={subjectFilter}
           onValueChange={setSubjectFilter}
           subjects={subjects}
-          placeholder="All subjects"
+          placeholder={t("allSubjects")}
           className="w-52"
           variant="filter"
         />
@@ -257,18 +265,18 @@ export function HomeworkManager() {
             <SelectTrigger className="h-9 w-44">
               <span className="flex min-w-0 flex-1 items-center gap-1.5">
                 <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="text-muted-foreground">Sort</span>
+                <span className="text-muted-foreground">{t("sortBy")}</span>
                 <span className="select-none text-muted-foreground">·</span>
                 <SelectValue className="truncate">
-                  {(value) => SORT_KEY_LABELS[String(value) as SortKey] ?? "Due date"}
+                  {(value) => sortLabels[String(value) as SortKey] ?? t("sortDueDate")}
                 </SelectValue>
               </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="due_date" label="Due date">Due date</SelectItem>
-              <SelectItem value="title" label="Title">Title</SelectItem>
-              <SelectItem value="subject" label="Subject">Subject</SelectItem>
-              <SelectItem value="status" label="Status">Status</SelectItem>
+              <SelectItem value="due_date" label={t("sortDueDate")}>{t("sortDueDate")}</SelectItem>
+              <SelectItem value="title" label={t("sortTitle")}>{t("sortTitle")}</SelectItem>
+              <SelectItem value="subject" label={t("sortSubject")}>{t("sortSubject")}</SelectItem>
+              <SelectItem value="status" label={t("sortStatus")}>{t("sortStatus")}</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -276,7 +284,7 @@ export function HomeworkManager() {
             size="icon-sm"
             className="h-9"
             onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-            aria-label={sortDir === "asc" ? "Sort descending" : "Sort ascending"}
+            aria-label={sortDir === "asc" ? t("sortDescending") : t("sortAscending")}
           >
             {sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
           </Button>
@@ -286,7 +294,7 @@ export function HomeworkManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         {hasFilters ? (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground">
-            Clear filters
+            {t("clearFilters")}
           </Button>
         ) : (
           <span />
@@ -294,24 +302,24 @@ export function HomeworkManager() {
 
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
           <Plus className="size-3.5" />
-          New homework
+          {t("newHomework")}
         </Button>
       </div>
 
       <div className="border rounded-lg border-border bg-background">
         {rows.length === 0 ? (
           <div className="py-16 text-sm text-center text-muted-foreground">
-            No homework matches your filters.
+            {t("noMatches")}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Due</TableHead>
-                <TableHead className="text-right w-28">Actions</TableHead>
+                <TableHead>{t("colSubject")}</TableHead>
+                <TableHead>{t("colTitle")}</TableHead>
+                <TableHead>{t("colStatus")}</TableHead>
+                <TableHead>{t("colDue")}</TableHead>
+                <TableHead className="text-right w-28">{t("colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -335,13 +343,13 @@ export function HomeworkManager() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge icon={HOMEWORK_STATUS_ICON[homework.status]} className={HOMEWORK_STATUS_BADGE[homework.status]}>
-                        {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
+                        {statusLabels[homework.status] ?? homework.status}
                       </StatusBadge>
                     </TableCell>
                     <TableCell>
                       <span className={cn("text-sm", overdue ? "font-medium text-red-400" : "text-muted-foreground")}>
-                        {formatDate(homework.due_date, timezone)}
-                        {overdue && <span className="ml-1.5 text-xs text-red-400">· Overdue</span>}
+                        {formatDate(homework.due_date, timezone, locale)}
+                        {overdue && <span className="ml-1.5 text-xs text-red-400">· {t("overdue")}</span>}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -352,7 +360,7 @@ export function HomeworkManager() {
                           className="hover:bg-foreground/10!"
                           render={<Link href={`/homework/${homework.id}`} />}
                           nativeButton={false}
-                          aria-label={`View ${homework.title}`}
+                          aria-label={t("viewAria", { title: homework.title })}
                         >
                           <Eye className="size-3.5" />
                         </Button>
@@ -360,7 +368,7 @@ export function HomeworkManager() {
                           variant="destructive"
                           size="icon-sm"
                           onClick={(e) => { e.stopPropagation(); setDeleteTarget(homework) }}
-                          aria-label={`Delete ${homework.title}`}
+                          aria-label={t("deleteAria", { title: homework.title })}
                         >
                           <Trash2 className="size-3.5" />
                         </Button>
@@ -378,14 +386,14 @@ export function HomeworkManager() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         subjects={subjects}
-        onCreated={() => { toast.success("Homework created successfully."); fetchData() }}
+        onCreated={() => { toast.success(t("createdSuccess")); fetchData() }}
       />
 
       <DeleteHomeworkDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
         homework={deleteTarget}
-        onDeleted={() => { toast.success("Homework deleted successfully."); fetchData() }}
+        onDeleted={() => { toast.success(t("deletedSuccess")); fetchData() }}
       />
     </div>
   )

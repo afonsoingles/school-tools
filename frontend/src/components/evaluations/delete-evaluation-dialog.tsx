@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -14,8 +15,8 @@ import {
 import { ErrorBox } from "@/components/ui/error-box"
 import { errorMessage } from "@/lib/errors"
 import { deleteEvaluation } from "@/lib/api/evaluations"
+import { evaluationTypeLabel } from "@/lib/evaluations"
 import type { Evaluation } from "@/types"
-import { EVALUATION_TYPE_LABELS } from "./constants"
 
 interface DeleteEvaluationDialogProps {
   open: boolean
@@ -32,6 +33,8 @@ export function DeleteEvaluationDialog({
   subjectName,
   onDeleted,
 }: DeleteEvaluationDialogProps) {
+  const t = useTranslations("evaluations")
+  const tCommon = useTranslations("common")
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -62,9 +65,12 @@ export function DeleteEvaluationDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete evaluation?</DialogTitle>
+          <DialogTitle>{t("delete.title")}</DialogTitle>
           <DialogDescription>
-            This will remove the {evaluation ? (EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type) : "evaluation"} for {subjectName || "this subject"}. This can&apos;t be undone.
+            {t("delete.description", {
+              type: evaluation ? evaluationTypeLabel(t, evaluation.type) : t("evaluation"),
+              subject: subjectName || t("delete.thisSubject"),
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +80,7 @@ export function DeleteEvaluationDialog({
 
           <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-1.5">
             {deleting && <Loader2 className="size-4 animate-spin" />}
-            Delete
+            {tCommon("actions.delete")}
           </Button>
       </DialogContent>
     </Dialog>

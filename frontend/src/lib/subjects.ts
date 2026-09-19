@@ -35,6 +35,10 @@ export function subjectColorMap(subjects: Subject[]): Map<string, string> {
   return new Map(subjects.map((s) => [s.id, s.color ?? DEFAULT_SUBJECT_COLOR]))
 }
 
+export function classSubjectMap(classes: { id: string; subject_id: string }[]): Map<string, string> {
+  return new Map(classes.map((c) => [c.id, c.subject_id]))
+}
+
 export function getSubjectBlockClass(color?: string | null): string {
   return SUBJECT_COLORS.find((c) => c.name === color)?.block ?? SUBJECT_COLORS[0].block
 }

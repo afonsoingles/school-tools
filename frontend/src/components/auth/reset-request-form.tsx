@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { requestPasswordReset } from "@/lib/api/auth-client"
@@ -9,27 +10,31 @@ import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
 import { MailCheck, Mail } from "lucide-react"
 
 export function ResetRequestForm() {
+  const t = useTranslations("auth")
+  const tCommon = useTranslations("common")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sent, setSent] = useState(false)
 
   if (sent) {
     return (
-      <AuthCard title="Check your email" footer={<>Back to{" "}
-          <Link
-            href="/auth/login"
-            className="font-semibold underline text-foreground underline-offset-4"
-          >
-            login
-          </Link>
-        </>}
+      <AuthCard
+        title={t("resetRequest.sentTitle")}
+        footer={
+          <>
+            {t("resetRequest.backTo")}{" "}
+            <Link
+              href="/auth/login"
+              className="font-semibold underline text-foreground underline-offset-4"
+            >
+              {t("resetRequest.loginLink")}
+            </Link>
+          </>
+        }
       >
         <div className="flex flex-col items-center gap-3 text-center">
           <MailCheck className="size-8 text-foreground" />
-          <p className="text-sm text-muted-foreground">
-            If an account exists for that email, we sent you a link to reset your password. Check
-            your inbox.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("resetRequest.sentBody")}</p>
         </div>
       </AuthCard>
     )
@@ -37,16 +42,16 @@ export function ResetRequestForm() {
 
   return (
     <AuthCard
-      title="Reset password"
-      description="Enter your email and we&apos;ll send you a reset link."
+      title={t("resetPasswordLink")}
+      description={t("resetRequest.description")}
       footer={
         <>
-          Remembered it?{" "}
+          {t("resetRequest.rememberedIt")}{" "}
           <Link
             href="/auth/login"
             className="font-semibold underline text-foreground underline-offset-4"
           >
-            Login
+            {t("login")}
           </Link>
         </>
       }
@@ -58,7 +63,7 @@ export function ResetRequestForm() {
           await requestPasswordReset(email)
           setSent(true)
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.")
+          toast.error(err instanceof Error ? err.message : tCommon("state.error"))
         } finally {
           setIsSubmitting(false)
         }
@@ -66,9 +71,9 @@ export function ResetRequestForm() {
     >
       <AuthField
         id="email"
-        label="Email"
+        label={tCommon("fields.email")}
         type="email"
-        placeholder="Email"
+        placeholder={tCommon("fields.email")}
         autoComplete="email"
         required
         value={email}
@@ -77,7 +82,7 @@ export function ResetRequestForm() {
 
       <AuthSubmit loading={isSubmitting}>
         <Mail className="size-4" />
-        Send reset link
+        {t("resetRequest.sendResetLink")}
       </AuthSubmit>
     </AuthCard>
   )

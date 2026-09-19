@@ -16,6 +16,7 @@ dependencies = [
     "pyjwt>=2.13.0",
     "pymongo>=4.17.0",
     "python-dotenv>=1.2.2",
+    "pywebpush>=2.5.0",
     "redis>=8.1.0",
     "requests>=2.34.2",
     "sentry-sdk>=2.66.1",

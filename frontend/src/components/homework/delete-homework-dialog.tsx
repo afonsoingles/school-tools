@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,6 +32,9 @@ export function DeleteHomeworkDialog({
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const t = useTranslations("homework")
+  const tCommon = useTranslations("common.actions")
+
   async function handleDelete() {
     if (!homework) return
 
@@ -52,9 +56,9 @@ export function DeleteHomeworkDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete {homework?.title || "homework"}?</DialogTitle>
+          <DialogTitle>{t("deleteTitle", { title: homework?.title || t("pageTitle") })}</DialogTitle>
           <DialogDescription>
-            This can&apos;t be undone.
+            {t("deleteCantUndo")}
           </DialogDescription>
         </DialogHeader>
 
@@ -65,7 +69,7 @@ export function DeleteHomeworkDialog({
         <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-1.5">
           {deleting && <Loader2 className="size-4 animate-spin" />}
           {!deleting && <Trash2 className="size-4" />}
-          Delete
+          {tCommon("delete")}
         </Button>
       </DialogContent>
     </Dialog>

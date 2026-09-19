@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,7 +12,7 @@ import {
   CalendarOff,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { DAY_FULL, DAY_NAMES, formatInTz, getTzParts, timeToMinutes, tzDateFromParts, weekdayFromDateStr } from "@/lib/date-time"
+import { datePart, dayNamesFull, dayNamesShort, formatInTz, getTzParts, isoDateString, timeToMinutes, tzDateFromParts, weekdayFromDateStr } from "@/lib/date-time"
 import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap, subjectColorMap as buildSubjectColorMap, getSubjectBlockClass } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -31,7 +32,7 @@ import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
 import type { ClassEvent, ClassSchedule, DayCancellation, Subject, Evaluation } from "@/types"
 import { SubjectIcon } from "@/components/ui/subject-icon"
-import { REASON_LABELS, SLOT_HEIGHT } from "./constants"
+import { SLOT_HEIGHT } from "./constants"
 import { CancelClassDialog } from "./cancel-class-dialog"
 import { DeleteClassDialog } from "./delete-class-dialog"
 import { CreateClassDialog } from "./create-class-dialog"
@@ -39,6 +40,12 @@ import { EditClassDialog } from "./edit-class-dialog"
 import { DayCancelDialog } from "./day-cancel-dialog"
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
+
+const REASON_MESSAGE_KEYS: Record<string, string> = {
+  break: "reasons.break",
+  public_holiday: "reasons.publicHoliday",
+  other: "reasons.other",
+}
 
 function DayHeaderAction({
   dateStr,
@@ -54,6 +61,7 @@ function DayHeaderAction({
   onCancelDay: (dateStr: string) => void
 }) {
   const [busy, setBusy] = useState(false)
+  const t = useTranslations("calendar")
 
   if (dayOff) {
     return (
@@ -61,7 +69,7 @@ function DayHeaderAction({
         variant="ghost"
         size="icon-sm"
         className="hover:bg-foreground/10!"
-        aria-label="This day is cancelled. Tap to undo."
+        aria-label={t("dayHeader.cancelledUndo")}
         disabled={busy || busyId === dayOff.id}
         onClick={async () => {
           setBusy(true)
@@ -81,7 +89,7 @@ function DayHeaderAction({
       variant="ghost"
       size="icon-sm"
       className="hover:bg-foreground/10!"
-      aria-label="Cancel this day"
+      aria-label={t("dayHeader.cancelDay")}
       onClick={() => onCancelDay(dateStr)}
     >
       <CalendarMinus2 className="size-3.5 text-muted-foreground" />
@@ -111,12 +119,12 @@ function getWeekStart(offset: number, tz: string): Date {
   return addDaysTz(tz, today, -mondayDelta)
 }
 
-function formatDateShort(date: Date, tz: string): string {
-  return formatInTz(date, tz, { day: "numeric", month: "short" })
+function formatDateShort(date: Date, tz: string, locale: string): string {
+  return formatInTz(date, tz, { day: "numeric", month: "short" }, locale)
 }
 
 function tzDateString(p: { y: number; m: number; d: number }): string {
-  return `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`
+  return isoDateString(p.y, p.m, p.d)
 }
 
 function isScheduleActiveOn(s: ClassSchedule, dateStr: string): boolean {
@@ -160,6 +168,7 @@ export function CalendarWeekView() {
   const syncRef = useRef(false)
 
   const timezone = useTimezone()
+  const locale = useLocale()
 
   const weekStart = getWeekStart(weekOffset, timezone)
   const todayTz = getTzCurrentDate(timezone)
@@ -170,14 +179,21 @@ export function CalendarWeekView() {
       weekday: i + 1,
       date,
       dateStr: tzDateString(p),
-      name: DAY_NAMES[i],
-      full: DAY_FULL[i],
+      name: dayNamesShort(locale)[i],
+      full: dayNamesFull(locale)[i],
       dayNum: p.d,
       today: p.y === todayTz.y && p.m === todayTz.m && p.d === todayTz.d,
     }
   })
 
   const isMobile = useIsMobile()
+  const t = useTranslations("calendar")
+  const tCommon = useTranslations("common")
+
+  function reasonLabel(value: string): string {
+    const key = REASON_MESSAGE_KEYS[value]
+    return key ? (t.has(key) ? t(key) : value) : value
+  }
 
   const mobileDayDate = addDaysTz(
     timezone,
@@ -190,8 +206,8 @@ export function CalendarWeekView() {
     return {
       weekday,
       dateStr: tzDateString(p),
-      name: DAY_NAMES[weekday - 1],
-      full: DAY_FULL[weekday - 1],
+      name: dayNamesShort(locale)[weekday - 1],
+      full: dayNamesFull(locale)[weekday - 1],
       dayNum: p.d,
       today: p.y === todayTz.y && p.m === todayTz.m && p.d === todayTz.d,
     }
@@ -284,7 +300,7 @@ export function CalendarWeekView() {
 
   function evaluationForDay(classId: string, dateStr: string): Evaluation | undefined {
     return evaluations.find((e) => {
-      const eDate = e.date.includes("T") ? e.date.split("T")[0] : e.date
+      const eDate = datePart(e.date)
       return e.class_id === classId && eDate === dateStr
     })
   }
@@ -386,9 +402,9 @@ export function CalendarWeekView() {
     const s = getTzParts(timezone, weekStart)
     const e = getTzParts(timezone, end)
     if (s.m === e.m && s.y === e.y) {
-      return `${formatDateShort(weekStart, timezone)} – ${e.d} ${formatInTz(end, timezone, { month: "short", year: "numeric" })}`
+      return `${formatDateShort(weekStart, timezone, locale)} – ${e.d} ${formatInTz(end, timezone, { month: "short", year: "numeric" }, locale)}`
     }
-    return `${formatDateShort(weekStart, timezone)} – ${formatDateShort(end, timezone)} ${e.y}`
+    return `${formatDateShort(weekStart, timezone, locale)} – ${formatDateShort(end, timezone, locale)} ${e.y}`
   }
 
   function syncGridScroll() {
@@ -488,7 +504,7 @@ export function CalendarWeekView() {
           <div className="pointer-events-none absolute inset-0 z-[5] flex items-start justify-center pt-6">
             <span className="flex items-center gap-1 rounded-full bg-destructive/15 px-3 py-1 text-xs font-medium text-destructive">
               <CalendarOff className="size-3.5" />
-              Day off
+              {t("dayOff")}
             </span>
           </div>
         )}
@@ -497,7 +513,7 @@ export function CalendarWeekView() {
           const cls = block.cls
           const cancellation = classCancellationFor(cls, day.dateStr)
           const evaluation = evaluationForDay(cls.id, day.dateStr)
-          const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
+          const subjectName = subjectMap.get(cls.subject_id) ?? t("unknownSubject")
           const isCancelled = !!cancellation || !!dayOff
           const hasEvaluation = !!evaluation
           const band = layout.get(block.key) ?? { topMin: 0, endMin: 60, col: 0, total: 1 }
@@ -545,7 +561,7 @@ export function CalendarWeekView() {
                       <div className="flex items-center gap-1 text-destructive mt-1">
                         <AlertTriangle className="size-3.5 shrink-0" />
                         <span className="text-sm">
-                          {dayOff ? "This day was cancelled." : "This class was cancelled."}
+                          {dayOff ? t("popover.dayCancelled") : t("popover.classCancelled")}
                         </span>
                       </div>
                     ) : (
@@ -561,13 +577,13 @@ export function CalendarWeekView() {
                       </div>
                       {cancellation && (
                         <div className="text-sm text-muted-foreground">
-                          Reason: {REASON_LABELS[cancellation.reason] ?? cancellation.reason}
+                          {t("reasons.line", { reason: reasonLabel(cancellation.reason) })}
                           {cancellation.note ? ` — ${cancellation.note}` : ""}
                         </div>
                       )}
                       {dayOff && (
                         <div className="text-sm text-muted-foreground">
-                          Reason: {REASON_LABELS[dayOff.reason] ?? dayOff.reason}
+                          {t("reasons.line", { reason: reasonLabel(dayOff.reason) })}
                           {dayOff.note ? ` — ${dayOff.note}` : ""}
                         </div>
                       )}
@@ -584,7 +600,7 @@ export function CalendarWeekView() {
                         onClick={() => handleDeleteEvaluation(evaluation.id)}
                       >
                         {deletingEvalId === evaluation.id && <Loader2 className="size-3.5 animate-spin" />}
-                        Delete evaluation
+                        {t("deleteEvaluation")}
                       </Button>
                     ) : cancellation ? (
                       <Button
@@ -595,7 +611,7 @@ export function CalendarWeekView() {
                         onClick={() => handleUncancelClass(cls.id, cancellation.id)}
                       >
                         {uncancelingId === cancellation.id && <Loader2 className="size-3.5 animate-spin" />}
-                        Uncancel
+                        {t("uncancel")}
                       </Button>
                     ) : dayOff ? (
                       <Button
@@ -606,7 +622,7 @@ export function CalendarWeekView() {
                         onClick={() => handleUncancelDay(dayOff.id)}
                       >
                         {uncancelingId === dayOff.id && <Loader2 className="size-3.5 animate-spin" />}
-                        Uncancel day
+                        {t("uncancelDay")}
                       </Button>
                     ) : (
                       <>
@@ -616,7 +632,7 @@ export function CalendarWeekView() {
                           className="flex-1"
                           onClick={() => setCancelDialog({ cls, date: day.dateStr })}
                         >
-                          Cancel
+                          {tCommon("actions.cancel")}
                         </Button>
                         <Button
                           variant="outline"
@@ -624,7 +640,7 @@ export function CalendarWeekView() {
                           className="flex-1"
                           onClick={() => setEditDialog({ cls, subjectName })}
                         >
-                          Edit
+                          {tCommon("actions.edit")}
                         </Button>
                         <Button
                           variant="destructive"
@@ -632,7 +648,7 @@ export function CalendarWeekView() {
                           className="flex-1"
                           onClick={() => setDeleteDialog({ cls, subjectName })}
                         >
-                          Delete
+                          {tCommon("actions.delete")}
                         </Button>
                       </>
                     )}
@@ -666,14 +682,14 @@ export function CalendarWeekView() {
             <ChevronLeft className="size-4" />
           </Button>
           <span className="text-sm font-medium min-w-32 text-center">
-            {isMobile ? `${mobileDay.full}, ${formatDateShort(mobileDayDate, timezone)}` : weekLabel()}
+            {isMobile ? `${mobileDay.full}, ${formatDateShort(mobileDayDate, timezone, locale)}` : weekLabel()}
           </span>
           <Button variant="ghost" size="icon" className="size-8 bg-foreground/5 hover:bg-foreground/10!" onClick={goNext}>
             <ChevronRight className="size-4" />
           </Button>
           {showToday && (
             <Button variant="outline" size="sm" onClick={goToday}>
-              Today
+              {tCommon("filters.today")}
             </Button>
           )}
         </div>
@@ -681,10 +697,10 @@ export function CalendarWeekView() {
           size="sm"
           onClick={() => { setCreateDefaults({}); setCreateOpen(true) }}
           className={cn("gap-1.5", showToday && "max-md:size-9 max-md:p-0")}
-          aria-label="New class"
+          aria-label={t("newClass")}
         >
           <Plus className="size-3.5" />
-          {showToday && <span className="max-md:hidden">New class</span>}
+          {showToday && <span className="max-md:hidden">{t("newClass")}</span>}
         </Button>
       </div>
 
@@ -721,7 +737,7 @@ export function CalendarWeekView() {
               <div className="flex flex-col items-center gap-0.5 flex-1 border-l border-border/50 px-2 py-2">
                 <div className="text-xs text-muted-foreground">{mobileDay.name}</div>
                 <div className={cn("flex items-center gap-1 text-lg font-medium", mobileDay.today && "text-primary")}>
-                  {mobileDay.dayNum} {formatInTz(mobileDayDate, timezone, { month: "short" })}
+                  {mobileDay.dayNum} {formatInTz(mobileDayDate, timezone, { month: "short" }, locale)}
                 </div>
                 <DayHeaderAction
                     dateStr={mobileDay.dateStr}

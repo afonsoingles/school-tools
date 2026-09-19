@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useLocale, useTranslations } from "next-intl"
 import {
   CalendarDays,
   ClipboardList,
@@ -29,27 +30,28 @@ import { getClassSchedule } from "@/lib/api/calendar"
 import { getEvaluations } from "@/lib/api/evaluations"
 import { getHomework } from "@/lib/api/homework"
 import { getSubjects } from "@/lib/api/settings"
-import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
-import { HOMEWORK_STATUS_ICON, HOMEWORK_STATUS_LABELS, isOverdueHomework } from "@/components/homework/constants"
+import { HOMEWORK_STATUS_ICON, isOverdueHomework } from "@/components/homework/constants"
 import { SubjectIcon } from "@/components/ui/subject-icon"
-import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
 import {
-  DAY_FULL,
+  classSubjectMap as buildClassSubjectMap,
+  subjectIconMap as buildSubjectIconMap,
+  subjectNameMap as buildSubjectNameMap,
+} from "@/lib/subjects"
+import {
   datePart,
+  dayNamesFull,
   formatDateDdMmYyyy,
   formatDateWeekday,
+  formatInTz,
   getTzParts,
+  isUpcoming,
   timeToMinutes,
+  tzDateString,
   weekdayFromDateStr,
 } from "@/lib/date-time"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import type { ClassEvent, ClassSchedule, DayCancellation, Evaluation, Homework, Subject } from "@/types"
 import { cn } from "@/lib/utils"
-
-function toDateString(tz: string, date: Date): string {
-  const { y, m, d } = getTzParts(tz, date)
-  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
-}
 
 function daysUntil(dateStr: string, todayStr: string): number {
   const parse = (s: string) => {
@@ -59,10 +61,10 @@ function daysUntil(dateStr: string, todayStr: string): number {
   return Math.round((parse(dateStr) - parse(todayStr)) / 86400000)
 }
 
-function dueTimeLabel(iso: string, tz: string): string {
+function dueTimeLabel(iso: string, tz: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
-  return d.toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" })
+  return formatInTz(d, tz, { hour: "2-digit", minute: "2-digit" }, locale)
 }
 
 function dueMinutes(iso: string, tz: string): number {
@@ -72,26 +74,27 @@ function dueMinutes(iso: string, tz: string): number {
   return h * 60 + min
 }
 
-function shortDate(iso: string): string {
+function shortDate(iso: string, locale: string): string {
   const [y, m, d] = datePart(iso).split("-")
-  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-GB", {
+  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
   })
 }
 
 function OverdueIndicator() {
+  const t = useTranslations("dashboard")
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger
           className="inline-flex items-center rounded outline-hidden shrink-0 focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Overdue"
+          aria-label={t("overdue")}
         >
           <TriangleAlert className="size-3.5 text-destructive" />
         </TooltipTrigger>
         <TooltipContent side="top" align="center">
-          <span>Overdue</span>
+          <span>{t("overdue")}</span>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -130,13 +133,16 @@ export function DashboardOverview() {
       .finally(() => setLoading(false))
   }, [])
 
+  const t = useTranslations("dashboard")
+  const tHw = useTranslations("homework")
   const timezone = useTimezone()
+  const locale = useLocale()
 
   const now = new Date()
-  const todayStr = toDateString(timezone, now)
+  const todayStr = tzDateString(timezone, now)
 
   const subjectMap = buildSubjectNameMap(subjects)
-  const classSubjectMap = new Map(classes.map((c) => [c.id, c.subject_id]))
+  const classSubjectMap = buildClassSubjectMap(classes)
   const subjectIcons = buildSubjectIconMap(subjects)
 
   function activeScheduleOn(c: ClassEvent, dateStr: string): ClassSchedule | undefined {
@@ -250,7 +256,7 @@ export function DashboardOverview() {
   }, [scheduleOverflow, homeworks, classes, evaluations, dayCancellations, subjects, timezone])
 
   const upcoming = evaluations
-    .filter((e) => datePart(e.date) >= todayStr)
+    .filter((e) => isUpcoming(e.date, todayStr))
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 5)
 
@@ -264,12 +270,29 @@ export function DashboardOverview() {
   const quizCount = upcoming.filter((e) => e.type === "quiz").length
   const otherCount = upcoming.filter((e) => e.type === "other").length
 
+  const evalTypeLabels: Record<string, string> = {
+    exam: t("evalTypes.exam"),
+    quiz: t("evalTypes.quiz"),
+    other: t("evalTypes.other"),
+  }
+  const hwStatusLabels: Record<string, string> = {
+    not_started: tHw("statusNotStarted"),
+    ongoing: tHw("statusOngoing"),
+    finished: tHw("statusFinished"),
+  }
+  const evalCountParts = [
+    examCount > 0 ? t("examCount", { count: examCount }) : "",
+    quizCount > 0 ? t("quizCount", { count: quizCount }) : "",
+    otherCount > 0 ? t("otherCount", { count: otherCount }) : "",
+  ].filter(Boolean)
+  const evalBreakdown = evalCountParts.length > 0 ? ` (${evalCountParts.join(", ")})` : ""
+
   const nextEval = upcoming[0]
   const nextEvalDays = nextEval ? daysUntil(datePart(nextEval.date), todayStr) : null
   const nextEvalSubject = nextEval
     ? (() => {
         const subjectId = classSubjectMap.get(nextEval.class_id)
-        return (subjectId && subjectMap.get(subjectId)) ?? "Unknown"
+        return (subjectId && subjectMap.get(subjectId)) ?? t("unknownSubject")
       })()
     : null
 
@@ -305,41 +328,48 @@ export function DashboardOverview() {
       <div className="flex flex-wrap items-center gap-2">
         <SummaryChip icon={<CalendarDays className="size-4" />}>
           {todaysClasses.length === 0
-            ? "No classes today"
-            : `${todaysClasses.length} class${todaysClasses.length > 1 ? "es" : ""} today`}
+            ? t("noClassesToday")
+            : t("classesToday", { count: todaysClasses.length })}
         </SummaryChip>
 
         <SummaryChip icon={<ClipboardList className="size-4" />}>
           {upcomingEvalCount === 0 ? (
-            "No upcoming evaluations"
+            t("noUpcomingEvaluations")
           ) : (
             <>
-              {upcomingEvalCount} upcoming evaluation{upcomingEvalCount > 1 ? "s " : " "}
-              <span className="text-muted-foreground">
-                ({[examCount > 0 && `${examCount} exam${examCount > 1 ? "s" : ""}`, quizCount > 0 && `${quizCount} quiz${quizCount > 1 ? "zes" : ""}`, otherCount > 0 && `${otherCount} other`].filter(Boolean).join(", ")})
-              </span>
+              {t("upcomingEvaluations", { count: upcomingEvalCount })}
+              <span className="text-muted-foreground">{evalBreakdown}</span>
             </>
           )}
         </SummaryChip>
 
         <SummaryChip icon={<Timer className="size-4" />}>
           {!nextEval
-            ? "No exams scheduled"
+            ? t("noExamsScheduled")
             : nextEvalDays === 0
-              ? `Next ${EVALUATION_TYPE_LABELS[nextEval.type].toLowerCase()} today — ${nextEvalSubject}`
-              : `Next ${EVALUATION_TYPE_LABELS[nextEval.type].toLowerCase()} in ${nextEvalDays} day${nextEvalDays === 1 ? "" : "s"} — ${nextEvalSubject}`}
+              ? t("nextExamToday", {
+                  type: evalTypeLabels[nextEval.type] ?? nextEval.type,
+                  subject: nextEvalSubject ?? t("unknownSubject"),
+                })
+              : t("nextExamDays", {
+                  type: evalTypeLabels[nextEval.type] ?? nextEval.type,
+                  days: nextEvalDays ?? 0,
+                  subject: nextEvalSubject ?? t("unknownSubject"),
+                })}
         </SummaryChip>
 
         <SummaryChip icon={<FileText className="size-4" />}>
           {activeHomeworkCount === 0
-            ? "No homework to do"
-            : `${activeHomeworkCount} homework ${activeHomeworkCount > 1 ? "items" : "item"} to do`}
+            ? t("noHomeworkToDo")
+            : t("homeworkToDo", { count: activeHomeworkCount })}
         </SummaryChip>
 
         {classes.length > 0 && (
           <SummaryChip icon={<Flame className="size-4" />}>
-            Busiest day: {DAY_FULL[busiestIndex]} ({weekdayCounts[busiestIndex]} class
-            {weekdayCounts[busiestIndex] > 1 ? "es" : ""})
+            {t("busiestDay", {
+              day: dayNamesFull(locale)[busiestIndex],
+              count: weekdayCounts[busiestIndex],
+            })}
           </SummaryChip>
         )}
       </div>
@@ -350,21 +380,20 @@ export function DashboardOverview() {
             <CardTitle>
               <span className="flex items-center gap-1.5">
                 <CalendarDays className="size-4 text-muted-foreground" />
-                Today&apos;s schedule
+                {t("scheduleTitle")}
               </span>
             </CardTitle>
             <CardDescription>
-              {now.toLocaleDateString("en-GB", {
-                timeZone: timezone,
+              {formatInTz(now, timezone, {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
-              })}
+              }, locale)}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             {scheduleRows.length === 0 ? (
-              <p className="py-8 text-sm text-center text-muted-foreground">Nothing scheduled today.</p>
+              <p className="py-8 text-sm text-center text-muted-foreground">{t("nothingScheduled")}</p>
             ) : (
               <div
                 ref={scheduleScrollRef}
@@ -375,14 +404,14 @@ export function DashboardOverview() {
                   const timeSlot = row.isToday
                     ? row.kind === "class"
                       ? row.schedule.start_time
-                      : dueTimeLabel(row.hw.due_date, timezone)
+                      : dueTimeLabel(row.hw.due_date, timezone, locale)
                     : row.kind === "homework"
                       ? ""
                       : ""
 
                   if (row.kind === "homework") {
                     const hw = row.hw
-                    const subjectName = subjectMap.get(hw.subject_id) ?? "Unknown"
+                    const subjectName = subjectMap.get(hw.subject_id) ?? t("unknownSubject")
                     const StatusIcon = HOMEWORK_STATUS_ICON[hw.status]
                     return (
                       <Link
@@ -409,7 +438,7 @@ export function DashboardOverview() {
                                   : "bg-muted text-muted-foreground"
                               )}
                             >
-                              {row.overdue ? "Overdue" : shortDate(hw.due_date)}
+                              {row.overdue ? t("overdue") : shortDate(hw.due_date, locale)}
                             </span>
                           )}
                         </span>
@@ -443,7 +472,7 @@ export function DashboardOverview() {
                               <span className="truncate">{subjectName}</span>
                               <span className="text-muted-foreground/60">·</span>
                               <StatusIcon className="size-3 shrink-0" />
-                              <span>{HOMEWORK_STATUS_LABELS[hw.status]}</span>
+                              <span>{hwStatusLabels[hw.status] ?? hw.status}</span>
                             </span>
                           </div>
                         </div>
@@ -452,7 +481,7 @@ export function DashboardOverview() {
                   }
 
                   const { cls, schedule, cancellation, dayOff: isDayOff, evaluation } = row
-                  const subjectName = subjectMap.get(cls.subject_id) ?? "Unknown"
+                  const subjectName = subjectMap.get(cls.subject_id) ?? t("unknownSubject")
                   return (
                     <div key={row.key} data-min={row.minute} className="flex items-stretch gap-3">
                       <span
@@ -482,12 +511,12 @@ export function DashboardOverview() {
                             <span className="truncate">{subjectName}</span>
                             {evaluation && (
                               <Badge variant="destructive" className="text-[11px] shrink-0">
-                                {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                                {evalTypeLabels[evaluation.type] ?? evaluation.type}
                               </Badge>
                             )}
                             {(cancellation || isDayOff) && (
                               <Badge variant="outline" className="text-[11px] text-muted-foreground shrink-0">
-                                Cancelled
+                                {t("cancelled")}
                               </Badge>
                             )}
                           </span>
@@ -510,19 +539,19 @@ export function DashboardOverview() {
             <CardTitle>
               <span className="flex items-center gap-1.5">
                 <ClipboardList className="size-4 text-muted-foreground" />
-                Upcoming evaluations
+                {t("evaluationsTitle")}
               </span>
             </CardTitle>
-            <CardDescription>Next exams, quizzes and assessments</CardDescription>
+            <CardDescription>{t("evaluationsDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             {upcoming.length === 0 ? (
-              <p className="py-8 text-sm text-center text-muted-foreground">No upcoming evaluations.</p>
+              <p className="py-8 text-sm text-center text-muted-foreground">{t("noUpcomingEvaluationsCard")}</p>
             ) : (
               <div className="flex flex-col">
                 {upcoming.map((evaluation) => {
                   const subjectId = classSubjectMap.get(evaluation.class_id)
-                  const subjectName = (subjectId && subjectMap.get(subjectId)) ?? "Unknown"
+                  const subjectName = (subjectId && subjectMap.get(subjectId)) ?? t("unknownSubject")
 
                   return (
                     <div
@@ -537,7 +566,7 @@ export function DashboardOverview() {
                           <span className="truncate">{subjectName}</span>
                         </span>
                       <span className="hidden text-sm text-right w-28 text-muted-foreground sm:block">
-                        {formatDateWeekday(datePart(evaluation.date))}
+                        {formatDateWeekday(datePart(evaluation.date), locale)}
                       </span>
                       <Badge
                         variant={
@@ -548,7 +577,7 @@ export function DashboardOverview() {
                               : "outline"
                         }
                       >
-                        {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                        {evalTypeLabels[evaluation.type] ?? evaluation.type}
                       </Badge>
                     </div>
                   )
@@ -563,14 +592,14 @@ export function DashboardOverview() {
             <CardTitle>
               <span className="flex items-center gap-1.5">
                 <FileText className="size-4 text-muted-foreground" />
-                Homework
+                {t("homeworkTitle")}
               </span>
             </CardTitle>
-            <CardDescription>You don&apos;t want to miss those assignments</CardDescription>
+            <CardDescription>{t("homeworkDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             {upcomingHomework.length === 0 ? (
-              <p className="py-8 text-sm text-center text-muted-foreground">There is no homework!</p>
+              <p className="py-8 text-sm text-center text-muted-foreground">{t("noHomeworkCard")}</p>
             ) : (
               <div className="flex flex-col">
                 {upcomingHomework.map((hw) => {
@@ -592,7 +621,7 @@ export function DashboardOverview() {
                       </span>
                       <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                         <StatusIcon className="size-3" />
-                        <span>{HOMEWORK_STATUS_LABELS[hw.status]}</span>
+                        <span>{hwStatusLabels[hw.status] ?? hw.status}</span>
                       </span>
                       <span className="shrink-0 text-right text-sm tabular-nums text-muted-foreground sm:w-28">
                         {formatDateDdMmYyyy(datePart(hw.due_date))}

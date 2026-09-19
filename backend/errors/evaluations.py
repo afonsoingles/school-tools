@@ -10,3 +10,8 @@ class InvalidEvaluationType(BaseError):
     status_code = 400
     code = "invalid_evaluation_type"
     message = "The evaluation type you provided is invalid."
+
+class InvalidEvaluationGrade(BaseError):
+    status_code = 400
+    code = "invalid_evaluation_grade"
+    message = "The evaluation grade must be an integer between 0 and 100."

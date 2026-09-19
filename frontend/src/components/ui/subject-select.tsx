@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { BookOpen } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import {
@@ -17,7 +18,7 @@ export function SubjectSelect({
   value,
   onValueChange,
   subjects,
-  placeholder = "Select a subject",
+  placeholder,
   className,
   hideLabel = false,
   labelClassName,
@@ -32,6 +33,8 @@ export function SubjectSelect({
   labelClassName?: string
   variant?: "form" | "filter"
 }) {
+  const t = useTranslations("common")
+  const resolvedPlaceholder = placeholder ?? t("subjectSelect.placeholder")
   const selected = subjects.find((s) => s.id === value)
 
   if (variant === "filter") {
@@ -41,11 +44,11 @@ export function SubjectSelect({
           <SelectTrigger className="h-9 w-full">
             <span className="flex min-w-0 flex-1 items-center gap-1.5">
               <BookOpen className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="text-muted-foreground">Subject</span>
+              <span className="text-muted-foreground">{t("fields.subject")}</span>
               <span className="select-none text-muted-foreground">·</span>
               <SelectValue className="truncate">
                 {(v) =>
-                  selected ? selected.name : v === "all" || v === "" ? "All" : placeholder
+                  selected ? selected.name : v === "all" || v === "" ? t("filters.all") : resolvedPlaceholder
                 }
               </SelectValue>
             </span>
@@ -67,7 +70,7 @@ export function SubjectSelect({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      {!hideLabel && <Label className={labelClassName}>Subject</Label>}
+      {!hideLabel && <Label className={labelClassName}>{t("fields.subject")}</Label>}
       <Select value={value} onValueChange={(v) => onValueChange(String(v))}>
         <SelectTrigger className="w-full">
           {selected ? (
@@ -76,7 +79,7 @@ export function SubjectSelect({
               {selected.name}
             </span>
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-muted-foreground">{resolvedPlaceholder}</span>
           )}
         </SelectTrigger>
         <SelectContent>

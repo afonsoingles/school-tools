@@ -1,0 +1,12 @@
+Hello,
+
+A new account deletion request was submitted.
+
+Name: {name}
+Email: {email}
+Reason:
+{reason}
+
+Review it in the admin dashboard under Deletions.
+
+School Tools

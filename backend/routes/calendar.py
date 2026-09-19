@@ -57,14 +57,14 @@ async def get_feed_by_token(request: Request, type: str, token: str) -> Response
     type = CalendarFeedType(type)
     if not tools.is_valid_feed_request(user_id, token, type):
         raise InvalidFeedRequest
-    
+
+    tokens = tools.get_calendar_tokens(user_id)
+    enabled = tokens.is_enabled if tokens is not None else False
+    if not enabled:
+        raise FeedDisabled
+
     feed = tools.get_calendar_feed(user_id, type)
     if not feed:
-        tokens = tools.get_calendar_tokens(user_id)
-        enabled = tokens.is_enabled if tokens is not None else False
-        if not enabled:
-            raise FeedDisabled
-        
         await asyncio.to_thread(generate_and_publish_ics_feed, user_id)
         feed = tools.get_calendar_feed(user_id, type)
         if not feed:

@@ -27,3 +27,14 @@ export async function deleteEvaluation(evaluationId: string): Promise<void> {
     method: "DELETE",
   })
 }
+
+export async function updateEvaluationGrade(evaluationId: string, grade: number | null): Promise<Evaluation> {
+  const res = await apiFetch<{ success: boolean; evaluation: Evaluation }>(
+    `/v1/evaluations/${evaluationId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ grade }),
+    }
+  )
+  return res.evaluation
+}

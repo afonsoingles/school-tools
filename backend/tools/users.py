@@ -60,7 +60,10 @@ class UserTools:
         return User.model_validate(user_dict)
 
     def get_user_by_id(self, id) -> User:
-        user_id = id if isinstance(id, uuid.UUID) else uuid.UUID(str(id))
+        try:
+            user_id = id if isinstance(id, uuid.UUID) else uuid.UUID(str(id))
+        except (ValueError, TypeError, AttributeError):
+            raise UserNotFoundError
 
         redis_user = self.db.redis.get(f"users.user:{user_id}")
         if redis_user:

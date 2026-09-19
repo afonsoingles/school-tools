@@ -3,12 +3,15 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
 
 export function SignupForm() {
   const router = useRouter()
+  const t = useTranslations("auth")
+  const tCommon = useTranslations("common")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -16,16 +19,16 @@ export function SignupForm() {
 
   return (
     <AuthCard
-      title="Create account"
-      description="Let's get you started with School Tools"
+      title={t("signup.title")}
+      description={t("signup.description")}
       footer={
         <>
-          Already have an account?{" "}
+          {t("signup.alreadyHaveAccount")}{" "}
           <Link
             href="/auth/login"
             className="font-semibold underline text-foreground underline-offset-4"
           >
-            Login
+            {t("login")}
           </Link>
         </>
       }
@@ -49,8 +52,8 @@ export function SignupForm() {
             const body = await res.json().catch(() => null)
             toast.error(
               body?.code === "email_already_registered"
-                ? "This email is already registered."
-                : (body?.message ?? "Could not create account.")
+                ? t("signup.emailAlreadyRegistered")
+                : (body?.message ?? t("signup.couldNotCreateAccount"))
             )
             return
           }
@@ -69,7 +72,7 @@ export function SignupForm() {
           router.push("/auth/verify/pending")
           router.refresh()
         } catch {
-          toast.error("Something went wrong. Please try again.")
+          toast.error(tCommon("state.error"))
         } finally {
           setIsSubmitting(false)
         }
@@ -77,8 +80,8 @@ export function SignupForm() {
     >
       <AuthField
         id="name"
-        label="Name"
-        placeholder="Name"
+        label={tCommon("fields.name")}
+        placeholder={tCommon("fields.name")}
         autoComplete="name"
         required
         value={name}
@@ -87,28 +90,28 @@ export function SignupForm() {
 
       <AuthField
         id="email"
-        label="Email"
+        label={tCommon("fields.email")}
         type="email"
-        placeholder="Email"
+        placeholder={tCommon("fields.email")}
         autoComplete="email"
         required
-        hint="Please use a real email. You will need to verify it before using your account."
+        hint={t("signup.emailHint")}
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
 
       <AuthField
         id="password"
-        label="Password"
+        label={t("password")}
         type="password"
-        placeholder="Password"
+        placeholder={t("password")}
         autoComplete="new-password"
         required
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
 
-      <AuthSubmit loading={isSubmitting}>Create account</AuthSubmit>
+      <AuthSubmit loading={isSubmitting}>{t("signup.title")}</AuthSubmit>
     </AuthCard>
   )
 }

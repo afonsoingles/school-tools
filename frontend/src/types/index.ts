@@ -7,6 +7,7 @@ export interface User {
   admin: boolean
   superadmin: boolean
   timezone: string
+  locale: string
   created_at: string
   updated_at: string
 }
@@ -60,6 +61,7 @@ export interface Evaluation {
   class_id: string
   date: string 
   type: "exam" | "quiz" | "other"
+  grade?: number | null
 }
 
 export interface Subject {
@@ -176,4 +178,66 @@ export interface FunctionalityStats {
   classes: number
   cancellations: number
   computed_at: string
+}
+
+export interface ApiKey {
+  id: string
+  name: string
+  prefix: string
+  created_at: string
+  last_used_at: string | null
+  revoked: boolean
+}
+
+export type AuditVia = "web" | "api"
+
+export interface AuditLog {
+  id: string
+  user_id: string
+  action: string
+  resource: string
+  resource_id: string | null
+  summary: string
+  via: AuditVia
+  created_at: string
+}
+
+export type NotificationType =
+  | "evaluation"
+  | "homework"
+  | "holiday"
+  | "cancelled_class"
+  | "admin"
+  | "test_sheet_stock"
+  | "test_sheet_reconcile"
+  | "deletion"
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  body: string
+  deep_link: string | null
+  read: boolean
+  created_at: string
+  pushed_at: string | null
+}
+
+export type DeletionStatus = "pending" | "approved" | "reversed" | "completed"
+
+export interface DeletionRequest {
+  id: string
+  user_id: string
+  email: string
+  name: string
+  reason: string
+  status: DeletionStatus
+  nominated: boolean
+  requested_at: string
+  reviewed_at: string | null
+  reviewed_by: string | null
+  scheduled_purge_at: string | null
+  reversed_at: string | null
+  completed_at: string | null
 }

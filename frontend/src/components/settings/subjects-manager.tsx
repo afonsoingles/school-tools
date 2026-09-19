@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -55,6 +56,8 @@ import {
 import type { Subject } from "@/types"
 
 export function SubjectsManager() {
+  const t = useTranslations("settings.subjects")
+  const tCommon = useTranslations("common")
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -161,9 +164,7 @@ export function SubjectsManager() {
 
       if (code === "subject_in_use") {
         setDeleteOpen(false)
-        toast.error(
-          `"${deleteTarget.name}" is used by one or more resources (such as classes or homework) and can't be deleted.`
-        )
+        toast.error(t("deleteDialog.inUseError", { name: deleteTarget.name }))
       } else {
         setError(errorMessage(err))
       }
@@ -188,10 +189,10 @@ export function SubjectsManager() {
     return (
       <>
         <div className="flex flex-col items-center justify-center gap-3 py-24 text-center rounded-lg">
-          <p className="text-sm text-muted-foreground">No subjects yet.</p>
+          <p className="text-sm text-muted-foreground">{t("emptyState")}</p>
           <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-4" />
-            Create one
+            {t("createOne")}
           </Button>
         </div>
 
@@ -218,7 +219,7 @@ export function SubjectsManager() {
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
           <Plus className="size-3.5" />
-          New subject
+          {t("newSubject")}
         </Button>
       </div>
 
@@ -226,8 +227,8 @@ export function SubjectsManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead>{t("table.name")}</TableHead>
+              <TableHead className="w-24 text-right">{t("table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -283,7 +284,7 @@ export function SubjectsManager() {
                             onClick={() => handleSave(subject)}
                             disabled={savingId === subject.id}
                             className="hover:bg-foreground/10!"
-                            aria-label={`Save changes to ${subject.name}`}
+                            aria-label={t("ariaLabel.saveChanges", { name: subject.name })}
                           >
                             {savingId === subject.id ? (
                               <Loader2 className="size-3.5 animate-spin" />
@@ -297,7 +298,7 @@ export function SubjectsManager() {
                             onClick={stopEditing}
                             disabled={savingId === subject.id}
                             className="hover:bg-foreground/10!"
-                            aria-label="Cancel editing"
+                            aria-label={t("ariaLabel.cancelEdit")}
                           >
                             <X className="size-3.5" />
                           </Button>
@@ -309,7 +310,7 @@ export function SubjectsManager() {
                             size="icon-sm"
                             onClick={() => startEditing(subject)}
                             className="hover:bg-foreground/10!"
-                            aria-label={`Rename ${subject.name}`}
+                            aria-label={t("ariaLabel.rename", { name: subject.name })}
                           >
                             <Pencil className="size-3.5" />
                           </Button>
@@ -321,7 +322,7 @@ export function SubjectsManager() {
                               setDeleteTarget(subject)
                               setDeleteOpen(true)
                             }}
-                            aria-label={`Delete ${subject.name}`}
+                            aria-label={t("ariaLabel.delete", { name: subject.name })}
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -357,9 +358,9 @@ export function SubjectsManager() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete &ldquo;{deleteTarget?.name}&rdquo;?</DialogTitle>
+            <DialogTitle>{t("deleteDialog.title", { name: deleteTarget?.name ?? "" })}</DialogTitle>
             <DialogDescription>
-              This can&apos;t be undone. Anything using this subject may break.
+              {t("deleteDialog.description")}
             </DialogDescription>
           </DialogHeader>
             <Button
@@ -370,7 +371,7 @@ export function SubjectsManager() {
             >
               {deletingBusy && <Loader2 className="size-4 animate-spin" />}
               {!deletingBusy && <Trash2 className="size-4" />}
-              Delete
+              {tCommon("actions.delete")}
             </Button>
           
         </DialogContent>
@@ -408,6 +409,9 @@ function CreateSubjectDialog({
   onErrorChange,
   onSubmit,
 }: CreateSubjectDialogProps) {
+  const t = useTranslations("settings.subjects")
+  const tCommon = useTranslations("common")
+
   return (
     <Dialog
       open={open}
@@ -419,15 +423,15 @@ function CreateSubjectDialog({
       <DialogContent>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Create subject</DialogTitle>
-            <DialogDescription>Pick a name between 3 and 50 characters.</DialogDescription>
+            <DialogTitle>{t("createDialog.title")}</DialogTitle>
+            <DialogDescription>{t("createDialog.description")}</DialogDescription>
           </DialogHeader>
 
           <Input
             autoFocus
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
-            placeholder="Subject name..."
+            placeholder={t("createDialog.placeholder")}
             maxLength={50}
             required
             minLength={3}
@@ -435,11 +439,11 @@ function CreateSubjectDialog({
 
           <div className="flex items-center gap-6">
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Icon</span>
+              <span className="text-sm font-medium">{t("createDialog.iconLabel")}</span>
               <IconPicker value={icon} onChange={onIconChange} />
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Color</span>
+              <span className="text-sm font-medium">{t("createDialog.colorLabel")}</span>
               <ColorPicker value={color} onChange={onColorChange} />
             </div>
           </div>
@@ -450,7 +454,7 @@ function CreateSubjectDialog({
 
           <Button type="submit" disabled={creating || name.trim().length < 3} className="gap-1.5">
             {creating && <Loader2 className="size-4 animate-spin" />}
-            Create
+            {tCommon("actions.create")}
           </Button>
 
         </form>
@@ -481,6 +485,7 @@ function ColorPicker({
   onChange: (color: string) => void
   disabled?: boolean
 }) {
+  const t = useTranslations("settings.subjects")
   const [open, setOpen] = useState(false)
 
   return (
@@ -492,7 +497,7 @@ function ColorPicker({
             size="icon-sm"
             disabled={disabled}
             className="hover:bg-foreground/10!"
-            aria-label="Choose color"
+            aria-label={t("ariaLabel.chooseColor")}
           />
         }
       >
@@ -500,7 +505,7 @@ function ColorPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-fit">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Color</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("colorDropdownLabel")}</DropdownMenuLabel>
           <div className="grid grid-cols-4 gap-3 p-2.5">
             {SUBJECT_COLORS.map((c) => (
               <Button
@@ -514,7 +519,7 @@ function ColorPicker({
                   "size-8 p-0! rounded-lg",
                   c.name === value ? "bg-foreground/10!" : "hover:bg-foreground/10!"
                 )}
-                aria-label={`Select ${c.name} color`}
+                aria-label={t("ariaLabel.selectColor", { color: c.name })}
               >
                 <span className={cn("size-4 rounded-full", c.swatch)} />
               </Button>
@@ -535,6 +540,7 @@ function IconPicker({
   onChange: (icon: string) => void
   disabled?: boolean
 }) {
+  const t = useTranslations("settings.subjects")
   const [open, setOpen] = useState(false)
   const icons = getSubjectIcons()
 
@@ -547,7 +553,7 @@ function IconPicker({
             size="icon-sm"
             disabled={disabled}
             className="hover:bg-foreground/10!"
-            aria-label="Choose icon"
+            aria-label={t("ariaLabel.chooseIcon")}
           />
         }
       >
@@ -555,7 +561,7 @@ function IconPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64 pr-2 overflow-y-auto max-h-80">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Icon</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("iconDropdownLabel")}</DropdownMenuLabel>
           <div className="grid grid-cols-4 gap-3 p-2.5">
             {icons.map(({ name, Icon }) => (
               <Button
@@ -569,7 +575,7 @@ function IconPicker({
                   "size-10 p-0! rounded-lg",
                   name === value ? "bg-foreground/10!" : "hover:bg-foreground/10!"
                 )}
-                aria-label={`Select ${name} icon`}
+                aria-label={t("ariaLabel.selectIcon", { icon: name })}
               >
                 <Icon className="size-5" />
               </Button>

@@ -1,12 +1,17 @@
 import { PageHeader } from "@/components/layout/page-header"
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
 import { getCurrentUser } from "@/lib/api/auth"
+import type { Metadata } from "next"
+import { getTranslations, getLocale } from "next-intl/server"
 
-export const metadata = {
-  title: "Dashboard",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard")
+  return { title: t("pageTitle") }
 }
 
 export default async function DashboardPage() {
+  const t = await getTranslations("dashboard")
+  const locale = await getLocale()
   let userName = ""
   try {
     const user = await getCurrentUser()
@@ -15,7 +20,7 @@ export default async function DashboardPage() {
     // auth handled by the (app) layout
   }
 
-  const todayLabel = new Date().toLocaleDateString("en-GB", {
+  const todayLabel = new Date().toLocaleDateString(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -25,7 +30,7 @@ export default async function DashboardPage() {
     <>
       <PageHeader
         className="max-md:hidden"
-        title={userName ? `Hello, ${userName}` : "Hello"}
+        title={userName ? t("greetingName", { name: userName }) : t("greeting")}
         subtitle={todayLabel}
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

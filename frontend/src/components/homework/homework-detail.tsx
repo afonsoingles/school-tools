@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowLeft,
   CalendarClock,
@@ -19,13 +20,13 @@ import { LoadingState } from "@/components/ui/loading"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { errorMessage } from "@/lib/errors"
 import { useTimezone } from "@/components/layout/timezone-provider"
+import { formatInTz } from "@/lib/date-time"
 import { getSubjects } from "@/lib/api/settings"
 import { getHomework, updateHomework } from "@/lib/api/homework"
 import type { Homework, HomeworkStatus, Subject } from "@/types"
 import {
   HOMEWORK_STATUS_BADGE,
   HOMEWORK_STATUS_ICON,
-  HOMEWORK_STATUS_LABELS,
   HOMEWORK_STATUS_ORDER,
   isOverdueHomework,
 } from "./constants"
@@ -41,18 +42,17 @@ import {
 import { DeleteHomeworkDialog } from "./delete-homework-dialog"
 import { EditHomeworkDialog } from "./edit-homework-dialog"
 
-function formatDate(iso: string, tz: string): string {
+function formatDate(iso: string, tz: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString("en-GB", {
-    timeZone: tz,
+  return formatInTz(d, tz, {
     weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  })
+  }, locale)
 }
 
 interface HomeworkDetailProps {
@@ -62,6 +62,14 @@ interface HomeworkDetailProps {
 export function HomeworkDetail({ id }: HomeworkDetailProps) {
   const router = useRouter()
   const timezone = useTimezone()
+  const locale = useLocale()
+  const t = useTranslations("homework")
+  const tCommon = useTranslations("common.actions")
+  const statusLabels: Record<string, string> = {
+    not_started: t("statusNotStarted"),
+    ongoing: t("statusOngoing"),
+    finished: t("statusFinished"),
+  }
   const [homeworks, setHomeworks] = useState<Homework[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,7 +126,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
   }
 
   function handleDelete() {
-    toast.success("Homework deleted successfully.")
+    toast.success(t("deletedSuccess"))
     router.push("/homework")
   }
 
@@ -132,7 +140,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
         className="gap-1.5"
       >
         <ArrowLeft className="size-3.5" />
-        Back to homework
+        {t("backToHomework")}
       </Button>
 
       <Button
@@ -142,7 +150,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
         className="gap-1.5"
       >
         <Pencil className="size-3.5" />
-        Edit
+        {tCommon("edit")}
       </Button>
 
       <Button
@@ -152,7 +160,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
         className="gap-1.5"
       >
         <Trash2 className="size-3.5" />
-        Delete
+        {tCommon("delete")}
       </Button>
     </div>
   )
@@ -170,7 +178,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
     return (
       <>
         {control}
-        <ErrorBox>{loadError ?? "This homework could not be found."}</ErrorBox>
+        <ErrorBox>{loadError ?? t("notFound")}</ErrorBox>
       </>
     )
   }
@@ -186,12 +194,12 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
         <div className="flex flex-wrap items-center text-sm gap-x-4 gap-y-2 text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <SubjectIcon icon={subject?.icon ?? ""} className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="font-medium text-foreground">{subject?.name ?? "Unknown subject"}</span>
+            <span className="font-medium text-foreground">{subject?.name ?? t("unknownSubject")}</span>
           </span>
           <span className={overdue ? "font-medium text-red-400" : ""}>
             <CalendarClock className="mr-1 inline size-3.5" />
-            {formatDate(homework.due_date, timezone)}
-            {overdue && <span className="ml-1.5 text-xs text-red-400">· Overdue</span>}
+            {formatDate(homework.due_date, timezone, locale)}
+            {overdue && <span className="ml-1.5 text-xs text-red-400">· {t("overdue")}</span>}
           </span>
 
           <span aria-hidden="true" className="text-muted-foreground/40">·</span>
@@ -206,7 +214,7 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
                   })()}
                   <StatusBadge className={HOMEWORK_STATUS_BADGE[homework.status]}>
                     {changing && <Loader2 className="size-3 animate-spin" />}
-                    {HOMEWORK_STATUS_LABELS[homework.status] ?? homework.status}
+                    {statusLabels[homework.status] ?? homework.status}
                   </StatusBadge>
                   <ChevronDown className="size-3.5 text-muted-foreground" />
                 </Button>
@@ -214,14 +222,14 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
             />
             <DropdownMenuContent align="start">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Change status</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("changeStatus")}</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={homework.status}
                   onValueChange={(v) => changeStatus(v as HomeworkStatus)}
                 >
                   {HOMEWORK_STATUS_ORDER.map((s) => (
                     <DropdownMenuRadioItem key={s} value={s}>
-                      {HOMEWORK_STATUS_LABELS[s]}
+                      {statusLabels[s] ?? s}
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
@@ -234,9 +242,9 @@ export function HomeworkDetail({ id }: HomeworkDetailProps) {
       <div className="h-px bg-border" />
 
       <div>
-        <h2 className="mb-1.5 text-sm font-semibold text-muted-foreground">Description</h2>
+        <h2 className="mb-1.5 text-sm font-semibold text-muted-foreground">{t("description")}</h2>
         <p className="max-w-2xl text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-          {homework.description || "No description provided."}
+          {homework.description || t("noDescription")}
         </p>
       </div>
 

@@ -2,28 +2,34 @@ import {
   LayoutDashboard,
   Calendar,
   GraduationCap,
+  ChartNoAxesCombined,
   ClipboardList,
 } from "lucide-react";
 
 export const navigation = [
   {
-    title: "Dashboard",
+    key: "dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    title: "Calendar",
+    key: "calendar",
     href: "/calendar",
     icon: Calendar,
   },
   {
-    title: "Evaluations",
+    key: "evaluations",
     href: "/evaluations",
     icon: GraduationCap,
   },
   {
-    title: "Homework",
+    key: "grades",
+    href: "/grades",
+    icon: ChartNoAxesCombined,
+  },
+  {
+    key: "homework",
     href: "/homework",
     icon: ClipboardList,
   },
-];
+] as const;

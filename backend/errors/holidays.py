@@ -10,7 +10,7 @@ class InvalidHolidaySettings(BaseError):
 class InvalidHolidayDate(BaseError):
     status_code = 400
     code = "invalid_holiday_date"
-    message = "The provided date is invalid. Please provide a date in the DD/MM/YYYY format."
+    message = "The provided date is invalid. Please provide a date in the YYYY-MM-DD format."
 
 
 class HolidayCountryUnknown(BaseError):

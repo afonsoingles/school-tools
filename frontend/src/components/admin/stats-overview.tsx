@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { useLocale } from "next-intl"
 import {
   Activity,
   BookOpen,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ErrorBox } from "@/components/ui/error-box"
 import { GatedTooltip } from "@/components/admin/gated-tooltip"
 import { errorMessage } from "@/lib/errors"
@@ -62,10 +64,10 @@ function contentNodes(
   ]
 }
 
-function formatComputedAt(iso: string): string {
+function formatComputedAt(iso: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(d)
@@ -83,7 +85,7 @@ function Stat({
   strong?: boolean
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
+    <div className="flex items-center justify-between gap-3">
       <span className="flex min-w-0 items-center gap-2">
         <Icon className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="truncate text-sm text-muted-foreground">{label}</span>
@@ -113,21 +115,26 @@ function StatSection({ icon: Icon, title, description, items }: StatSectionProps
   const right = items.slice(mid)
 
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      </div>
-      <p className="text-xs text-muted-foreground">{description}</p>
-      <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">{left}</div>
-        <div className="flex flex-col gap-2">{right}</div>
-      </div>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="size-4 text-muted-foreground" />
+          <span>{title}</span>
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-3">{left}</div>
+          <div className="flex flex-col gap-3">{right}</div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
 export function StatsOverview({ isSuperadmin }: { isSuperadmin: boolean }) {
+  const locale = useLocale()
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [adoptionStats, setAdoptionStats] = useState<AdoptionStats | null>(null)
   const [functionalityStats, setFunctionalityStats] = useState<FunctionalityStats | null>(null)
@@ -212,7 +219,7 @@ export function StatsOverview({ isSuperadmin }: { isSuperadmin: boolean }) {
   }
 
   const computedAtMs = maxComputedAt(currentStats)
-  const asOf = computedAtMs > 0 ? formatComputedAt(new Date(computedAtMs).toISOString()) : null
+  const asOf = computedAtMs > 0 ? formatComputedAt(new Date(computedAtMs).toISOString(), locale) : null
 
   const hasData = userStats !== null || adoptionStats !== null || functionalityStats !== null
   const firstLoad = loading && !hasData
@@ -248,7 +255,7 @@ export function StatsOverview({ isSuperadmin }: { isSuperadmin: boolean }) {
   }
 
   return (
-    <div className="flex max-w-xl flex-1 flex-col gap-6">
+    <div className="flex w-full flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         {asOf ? (
           <>
@@ -291,33 +298,33 @@ export function StatsOverview({ isSuperadmin }: { isSuperadmin: boolean }) {
         )}
       </div>
 
-          {error && <ErrorBox>{error}</ErrorBox>}
+      {error && <ErrorBox>{error}</ErrorBox>}
 
-          {!hasData ? (
-            <div className="flex flex-col gap-2">
-              <ErrorBox>The statistics could not be loaded.</ErrorBox>
-              <Button variant="outline" size="sm" onClick={retryLoad} className="w-fit gap-1.5">
-                <RefreshCcw className="size-3.5" />
-                Retry
-              </Button>
-            </div>
-          ) : (
-            <>
-              <StatSection icon={Users} title="Users" description="Account information" items={userNodes} />
-              <StatSection
+      {!hasData ? (
+        <div className="flex flex-col gap-2">
+          <ErrorBox>The statistics could not be loaded.</ErrorBox>
+          <Button variant="outline" size="sm" onClick={retryLoad} className="w-fit gap-1.5">
+            <RefreshCcw className="size-3.5" />
+            Retry
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-6">
+          <StatSection icon={Users} title="Users" description="Account information" items={userNodes} />
+          <StatSection
             icon={Activity}
             title="Adoption"
             description="Users with at least one record"
             items={adoptionNodes}
           />
-              <StatSection
+          <StatSection
             icon={Database}
             title="Content volume"
             description="Total instances of each type of content"
             items={functionalityNodes}
           />
-            </>
-          )}
+        </div>
+      )}
     </div>
   )
 }

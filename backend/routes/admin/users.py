@@ -9,19 +9,30 @@ from tools.evaluations import EvaluationTools
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
 from tools.homework import HomeworkTools
+from tools.notifications import NotificationTools, push_subscription_dict
+from tools.audit import audit_request
 from models.user import *
 from errors.admin import AdminInvalidContentType
+from errors.user import UserNotFoundError
 import json
 import uuid
 
 
 router = APIRouter()
+
+
+def _parse_user_id(user_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(user_id)
+    except (ValueError, TypeError, AttributeError):
+        raise UserNotFoundError
 db = Database()
 user_tools = UserTools()
 evaluation_tools = EvaluationTools()
 subject_tools = SubjectTools()
 class_tools = ClassTools()
 homework_tools = HomeworkTools()
+notification_tools = NotificationTools()
 
 # Get user-related data
 
@@ -74,7 +85,7 @@ async def get_user(request: Request, user_id: str) -> JSONResponse:
 @require_auth(require_admin=True)
 async def get_user_content(request: Request, user_id: str, content_type: str) -> JSONResponse:
 
-    user_uuid = uuid.UUID(user_id)
+    user_uuid = _parse_user_id(user_id)
     user_tools.get_user_by_id(user_uuid)  # raises UserNotFoundError if the user does not exist
     match content_type:
         case "classes":
@@ -87,6 +98,14 @@ async def get_user_content(request: Request, user_id: str, content_type: str) ->
             content = subject_tools.get_user_subjects(user_uuid)
         case "homework":
             content = homework_tools.get_user_homeworks(user_uuid)
+        case "notifications":
+            content = {
+                "enabled": notification_tools.get_settings_enabled(user_uuid),
+                "devices": [
+                    push_subscription_dict(sub)
+                    for sub in notification_tools.list_subscriptions(user_uuid)
+                ],
+            }
         case _:
             raise AdminInvalidContentType
 
@@ -99,6 +118,7 @@ async def get_user_content(request: Request, user_id: str, content_type: str) ->
 async def resend_verification_email(request: Request, user_id: str) -> JSONResponse:
     user = user_tools.get_user_by_id(user_id)
     user_tools.send_verification_link(user.id, user.name, user.email)
+    audit_request(request, "resend_verification", "user", resource_id=user.id, summary=f"Resent verification email to {user.email}")
     
     return JSONResponse({"success": True, "message": "done! sent them a link to their email!"})
 
@@ -107,14 +127,16 @@ async def resend_verification_email(request: Request, user_id: str) -> JSONRespo
 @valid_json(["reason"])
 async def suspend_user(request: Request, user_id: str) -> JSONResponse:
     reason = request.state.json["reason"]
-    user_tools.suspend_user(uuid.UUID(user_id), reason, request.state.user)
+    user = user_tools.suspend_user(_parse_user_id(user_id), reason, request.state.user)
+    audit_request(request, "suspend", "user", resource_id=user.id, summary=f"Suspended {user.email}: {reason}")
 
     return JSONResponse({"success": True, "message": "The user has been suspended and notified via email."})
 
 @router.post("/v1/admin/users/{user_id}/actions/unsuspend")
 @require_auth(require_admin=True)
 async def unsuspend_user(request: Request, user_id: str) -> JSONResponse:
-    user_tools.unsuspend_user(uuid.UUID(user_id))
+    user = user_tools.unsuspend_user(_parse_user_id(user_id))
+    audit_request(request, "unsuspend", "user", resource_id=user.id, summary=f"Unsuspended {user.email}")
 
     return JSONResponse({"success": True, "message": "The user has been unsuspended. They have NOT been notified about this action."})
 
@@ -125,13 +147,15 @@ async def update_user(request: Request, user_id: str) -> JSONResponse:
     user = user_tools.update_user(user_id, safe_update=True, **data)
 
     safe_user = SafeUser.model_validate(user)
+    changed = ", ".join(sorted(data.keys()))
+    audit_request(request, "update", "user", resource_id=safe_user.id, summary=f"Updated {safe_user.email} ({changed})")
 
     return JSONResponse({"success": True, "user": safe_user.model_dump(mode="json")})
 
 @router.post("/v1/admin/users/{user_id}/actions/promote/{role}")
 @require_auth(require_superadmin=True)
 async def promote_user(request: Request, user_id: str, role: str) -> JSONResponse:
-    user_uuid = uuid.UUID(user_id)
+    user_uuid = _parse_user_id(user_id)
     match role:
         case "admin":
             user_tools.update_user(user_uuid, safe_update=False, admin=True)
@@ -142,6 +166,8 @@ async def promote_user(request: Request, user_id: str, role: str) -> JSONRespons
         case _:
             raise AdminInvalidContentType
 
+    audit_request(request, "promote", "user", resource_id=user_uuid, summary=f"Changed role of {user_uuid} to {role}")
+
     return JSONResponse({"success": True, "message": f"The user has been promoted to {role}."})
 
 @router.post("/v1/admin/users/{user_id}/actions/password_reset")
@@ -150,5 +176,6 @@ async def admin_request_password_reset(request: Request, user_id: str) -> JSONRe
     user = user_tools.get_user_by_id(user_id)
 
     user_tools.send_password_reset_link(user.email)
+    audit_request(request, "reset_password", "user", resource_id=user.id, summary=f"Sent password reset to {user.email}")
 
     return JSONResponse({"success": True, "message": "Password reset link sent"})

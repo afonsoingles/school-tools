@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
 import { AuthCard, AuthField, AuthSubmit } from "@/components/auth/auth-form"
 import { errorMessage } from "@/lib/errors"
 import { confirmPasswordReset, isValidPasswordResetToken } from "@/lib/api/auth-client"
-import { PASSWORD_HINT, PASSWORD_REGEX } from "@/lib/user-rules"
+import { PASSWORD_REGEX } from "@/lib/user-rules"
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter()
+  const t = useTranslations("auth")
+  const tCommon = useTranslations("common")
   const [status, setStatus] = useState<"validating" | "invalid" | "ready">(
     token ? "validating" : "invalid"
   )
@@ -51,13 +54,13 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   if (status === "invalid") {
     return (
-      <AuthCard title="Invalid reset link" description={invalidMessage ?? undefined}>
+      <AuthCard title={t("resetPassword.invalidTitle")} description={invalidMessage ?? undefined}>
         <div className="flex justify-center">
           <Link
             href="/auth/login"
             className="text-sm font-semibold text-foreground underline underline-offset-4"
           >
-            Back to login
+            {t("backToLogin")}
           </Link>
         </div>
       </AuthCard>
@@ -66,24 +69,24 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <AuthCard
-      title="Set a new password"
-      description="Choose a new password for your account."
+      title={t("resetPassword.setNewPasswordTitle")}
+      description={t("resetPassword.description")}
       onSubmit={async (event) => {
         event.preventDefault()
 
         if (!PASSWORD_REGEX.test(password)) {
-          toast.error(PASSWORD_HINT)
+          toast.error(tCommon("passwordHint"))
           return
         }
         if (password !== confirm) {
-          toast.error("Passwords do not match.")
+          toast.error(t("resetPassword.passwordsMismatch"))
           return
         }
 
         setIsSubmitting(true)
         try {
           await confirmPasswordReset(token, password)
-          toast.success("Your password has been reset successfully! Login with your new password.")
+          toast.success(t("resetPassword.resetSuccess"))
           router.push("/auth/login")
           router.refresh()
         } catch (err) {
@@ -95,9 +98,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
     >
       <AuthField
         id="password"
-        label="New password"
+        label={t("resetPassword.newPassword")}
         type="password"
-        placeholder="New password"
+        placeholder={t("resetPassword.newPassword")}
         autoComplete="new-password"
         required
         value={password}
@@ -106,16 +109,16 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
       <AuthField
         id="confirm-password"
-        label="Confirm password"
+        label={t("resetPassword.confirmPassword")}
         type="password"
-        placeholder="Confirm password"
+        placeholder={t("resetPassword.confirmPassword")}
         autoComplete="new-password"
         required
         value={confirm}
         onChange={(event) => setConfirm(event.target.value)}
       />
 
-      <AuthSubmit loading={isSubmitting}>Reset password</AuthSubmit>
+      <AuthSubmit loading={isSubmitting}>{t("resetPasswordLink")}</AuthSubmit>
     </AuthCard>
   )
 }

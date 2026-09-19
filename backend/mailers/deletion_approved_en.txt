@@ -1,0 +1,10 @@
+Hello {name},
+
+Your account deletion request has been approved.
+
+Your account and all associated data will be permanently deleted and cannot be recovered.
+
+If you wish to reverse this decision, please contact us at hi@afonsoingles.dev as soon as possible. Once the deletion is completed it is irreversible.
+
+Warmly,
+School Tools

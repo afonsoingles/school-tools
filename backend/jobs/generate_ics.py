@@ -61,7 +61,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         end = datetime.datetime.combine(evaluation_date, schedule.end_time, tzinfo=user_tz)
         evaluations_calendar.build_event(
             uid=str(evaluation.id),
-            summary=f"{evaluations_map[evaluation.type]} - {subject_map[evaluation_class.subject_id]}",
+            summary=f"{evaluations_map[evaluation.type]} - {subject_map.get(evaluation_class.subject_id, 'Unknown')}",
             start=start,
             end=end,
         )
@@ -125,7 +125,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
             until = (eff_end + datetime.timedelta(days=1)).strftime("%Y%m%dT000000")
             classes_calendar.build_event(
                 uid=f"{cls.id}:{schedule.id}",
-                summary=subject_map[cls.subject_id],
+                summary=subject_map.get(cls.subject_id, "Unknown"),
                 start=first_start,
                 end=first_end,
                 exdates=exdates,

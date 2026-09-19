@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Eye, EyeOff, Info, Loader2 } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -51,6 +52,7 @@ export function AuthCard({ title, description, footer, onSubmit, children }: Aut
 type AuthFieldProps = { label: string; hint?: string } & React.ComponentProps<"input">
 
 export function AuthField({ id, label, hint, type = "text", ...props }: AuthFieldProps) {
+  const t = useTranslations("auth")
   const [hintOpen, setHintOpen] = React.useState(false)
   const [visible, setVisible] = React.useState(false)
   const isPassword = type === "password"
@@ -66,7 +68,7 @@ export function AuthField({ id, label, hint, type = "text", ...props }: AuthFiel
             <Tooltip open={hintOpen} onOpenChange={setHintOpen}>
               <TooltipTrigger
                 className="inline-flex items-center justify-center transition-colors rounded-sm outline-hidden size-5 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="More information"
+                aria-label={t("form.moreInfo")}
                 onClick={() => setHintOpen((open) => !open)}
               >
                 <Info className="size-4" />
@@ -91,7 +93,7 @@ export function AuthField({ id, label, hint, type = "text", ...props }: AuthFiel
             variant="ghost"
             size="icon-sm"
             className="absolute top-1/2 -translate-y-1/2 right-1.5 text-muted-foreground hover:text-foreground"
-            aria-label={visible ? "Hide password" : "Show password"}
+            aria-label={visible ? t("form.hidePassword") : t("form.showPassword")}
             onClick={() => setVisible((v) => !v)}
           >
             {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}

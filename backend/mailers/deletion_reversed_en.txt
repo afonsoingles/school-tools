@@ -1,0 +1,8 @@
+Hello {name},
+
+Good news: your account deletion request has been reversed and your School Tools account has been restored.
+
+You can sign in again with your usual credentials.
+
+Warmly,
+School Tools

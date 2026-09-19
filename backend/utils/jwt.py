@@ -6,7 +6,7 @@ from errors.user import InvalidOrExpiredTokenError
 
 class JWT:
     def __init__(self) -> None:
-        self.secret = os.environ.get("JWT_SECRET")
+        self.secret = os.environ.get("JWT_SECRET", "")
 
     def encode(self, payload):
 

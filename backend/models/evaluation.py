@@ -18,6 +18,7 @@ class SafeEvaluation(BaseModel):
     class_id: uuid.UUID
     date: datetime.datetime
     type: EvaluationType
+    grade: int | None = Field(default=None, ge=0, le=100)
 
 class Evaluation(SafeEvaluation):
     model_config = ConfigDict(extra="ignore", revalidate_instances="always")

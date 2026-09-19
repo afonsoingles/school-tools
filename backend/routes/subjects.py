@@ -6,6 +6,7 @@ from decorators.valid_json import valid_json
 from errors.subject import *
 from tools.subjects import SubjectTools
 from models.subject import SubjectIcon, SubjectColor
+from tools.audit import audit_request
 import uuid
 
 router = APIRouter()
@@ -28,6 +29,7 @@ async def subject_create(request: Request) -> JSONResponse:
         raise InvalidSubjectColor
     subject = tools.create_subject(request.state.user.id, name, icon, color)
 
+    audit_request(request, "create", "subject", resource_id=subject.id, summary=f"Created subject '{subject.name}'")
     return JSONResponse(jsonable_encoder({"success": True, "subject": subject.model_dump()}))
 
 @router.get("/v1/subjects")
@@ -44,33 +46,39 @@ async def delete_subject(request: Request, subject_id: str) -> JSONResponse:
     if not subject:
         raise SubjectNotFound
 
+    audit_request(request, "delete", "subject", resource_id=subject.id, summary=f"Deleted subject '{subject.name}'")
     return JSONResponse({"success": True, "message":"Deleted subject successfully."})
 
 @router.patch("/v1/subjects/{subject_id}")
 @require_auth
+@valid_json()
 async def edit_subject(request: Request, subject_id: str) -> JSONResponse:
-    json = await request.json()
-    if not json.get("new_name") and not json.get("new_icon") and not json.get("new_color"):
+    json = request.state.json
+    new_name = json.get("new_name")
+    new_icon = json.get("new_icon")
+    new_color = json.get("new_color")
+
+    if not (new_name or new_icon or new_color):
         raise SubjectEditMissingFields
 
     edited = False
 
-    if json.get("new_name"):
-        new_name = str(json["new_name"]).strip()
+    if new_name:
+        new_name = str(new_name).strip()
         if len(new_name) < 3 or len(new_name) > 50:
             raise InvalidSubjectName
         edited = True
 
-    if json.get("new_icon"):
+    if new_icon:
         try:
-            new_icon = SubjectIcon(json["new_icon"])
+            new_icon = SubjectIcon(new_icon)
         except:
             raise InvalidSubjectIcon
         edited = True
 
-    if json.get("new_color"):
+    if new_color:
         try:
-            new_color = SubjectColor(json["new_color"])
+            new_color = SubjectColor(new_color)
         except:
             raise InvalidSubjectColor
         edited = True
@@ -79,15 +87,21 @@ async def edit_subject(request: Request, subject_id: str) -> JSONResponse:
         raise SubjectEditMissingFields
 
     data = {}
-    if json.get("new_name"):
+    if new_name:
         data["name"] = new_name
-    if json.get("new_icon"):
+    if new_icon:
         data["icon"] = new_icon
-    if json.get("new_color"):
+    if new_color:
         data["color"] = new_color
 
-    subject = tools.edit_subject(user_id=request.state.user.id, subject_id=uuid.UUID(subject_id), data=data)
+    try:
+        parsed_subject_id = uuid.UUID(subject_id)
+    except (ValueError, TypeError, AttributeError):
+        raise SubjectNotFound
+
+    subject = tools.edit_subject(user_id=request.state.user.id, subject_id=parsed_subject_id, data=data)
     if not subject:
         raise SubjectNotFound
 
+    audit_request(request, "update", "subject", resource_id=subject.id, summary=f"Updated subject '{subject.name}'")
     return JSONResponse(jsonable_encoder({"success": True, "subject": subject.model_dump()}))

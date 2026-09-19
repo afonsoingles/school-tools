@@ -1,6 +1,9 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import createNextIntlPlugin from "next-intl/plugin";
 import { networkInterfaces } from "node:os";
 import type { NextConfig } from "next";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 function lanAddresses(): string[] {
   const addresses = new Set<string>();
@@ -21,7 +24,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: lanAddresses(),
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withNextIntl(nextConfig), {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 

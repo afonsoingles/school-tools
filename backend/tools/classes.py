@@ -8,6 +8,7 @@ from tools.calendar import CalendarTools
 from tools.evaluations import EvaluationTools
 import json
 import datetime
+from typing import Any
 
 calendar_tools = CalendarTools()
 evaluation_tools = EvaluationTools()
@@ -21,7 +22,7 @@ def _prepare_mongo(model) -> dict:
     rest of the app, and the models parse them back on read.
     """
 
-    def convert(value):
+    def convert(value: Any) -> Any:
         if isinstance(value, datetime.date):
             return value.isoformat()
         if isinstance(value, list):
@@ -30,7 +31,7 @@ def _prepare_mongo(model) -> dict:
             return {key: convert(item) for key, item in value.items()}
         return value
 
-    return convert(model.model_dump())
+    return dict(convert(model.model_dump()))
 
 
 def _active_schedule(class_event: ClassEvent, date: datetime.date) -> SafeClassSchedule | None:

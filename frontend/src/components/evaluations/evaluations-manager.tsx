@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarClock, FileText, Plus, Trash2 } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
+import { CalendarClock, Check, FileText, Loader2, Plus, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -20,31 +21,120 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { ErrorBox } from "@/components/ui/error-box"
 import { LoadingState } from "@/components/ui/loading"
 import { SubjectSelect } from "@/components/ui/subject-select"
-import { cn } from "@/lib/utils"
 import { SubjectIcon } from "@/components/ui/subject-icon"
 import { errorMessage } from "@/lib/errors"
-import { subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
-import { datePart, formatDateWeekday } from "@/lib/date-time"
+import { classSubjectMap as buildClassSubjectMap, subjectIconMap as buildSubjectIconMap, subjectNameMap as buildSubjectNameMap } from "@/lib/subjects"
+import { evaluationTypeBadgeClass, evaluationTypeLabel } from "@/lib/evaluations"
+import { datePart, formatDateWeekday, isUpcoming, todayDateString } from "@/lib/date-time"
 import { getClasses } from "@/lib/api/calendar"
 import { getSubjects } from "@/lib/api/settings"
-import { getEvaluations } from "@/lib/api/evaluations"
+import { toast } from "sonner"
+import { ErrorBox } from "@/components/ui/error-box"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { getEvaluations, updateEvaluationGrade } from "@/lib/api/evaluations"
 import type { ClassEvent, Evaluation, Subject } from "@/types"
-import { EVALUATION_TYPE_LABELS } from "./constants"
 import { CreateEvaluationDialog } from "./create-evaluation-dialog"
 import { DeleteEvaluationDialog } from "./delete-evaluation-dialog"
 
 type ShowFilter = "upcoming" | "past" | "all"
 
-const SHOW_LABELS: Record<ShowFilter, string> = {
-  upcoming: "Upcoming",
-  past: "Past",
-  all: "All",
+function GradeEditDialog({
+  evaluation,
+  subjectName,
+  onClose,
+  onSaved,
+}: {
+  evaluation: Evaluation
+  subjectName: string
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const t = useTranslations("evaluations")
+  const tCommon = useTranslations("common")
+  const locale = useLocale()
+  const [value, setValue] = useState(evaluation.grade == null ? "" : String(evaluation.grade))
+  const [saving, setSaving] = useState(false)
+
+  async function save(clear: boolean) {
+    const next = clear ? null : value.trim() === "" ? null : Number(value.trim())
+    if (next !== null && (Number.isNaN(next) || next < 0 || next > 100 || !Number.isInteger(next))) {
+      toast.error(t("gradeInvalid"))
+      return
+    }
+    if (next === evaluation.grade) {
+      onClose()
+      return
+    }
+    setSaving(true)
+    try {
+      await updateEvaluationGrade(evaluation.id, next)
+      toast.success(next === null ? t("gradeCleared") : t("gradeSaved"))
+      onSaved()
+      onClose()
+    } catch (err) {
+      toast.error(errorMessage(err))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(next) => !next && !saving && onClose()}>
+      <DialogContent>
+        <form className="flex flex-col gap-4" onSubmit={(event) => { event.preventDefault(); save(false) }}>
+          <DialogHeader>
+            <DialogTitle>{t("editGrade.title")}</DialogTitle>
+            <DialogDescription>
+              {subjectName} · {formatDateWeekday(datePart(evaluation.date), locale)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="edit-grade">{t("grade")}</Label>
+            <Input
+              id="edit-grade"
+              type="number"
+              min={0}
+              max={100}
+              inputMode="numeric"
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" disabled={saving} onClick={() => save(true)}>
+              {t("editGrade.clearGrade")}
+            </Button>
+            <Button type="button" variant="ghost" disabled={saving} onClick={onClose}>
+              {tCommon("actions.cancel")}
+            </Button>
+            <Button type="submit" disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              {tCommon("actions.save")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 export function EvaluationsManager() {
+  const t = useTranslations("evaluations")
+  const tCommon = useTranslations("common")
+  const locale = useLocale()
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [classes, setClasses] = useState<ClassEvent[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -57,6 +147,13 @@ export function EvaluationsManager() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ evaluation: Evaluation; subjectName: string } | null>(null)
+  const [gradeTarget, setGradeTarget] = useState<{ evaluation: Evaluation; subjectName: string } | null>(null)
+
+  function showLabel(value: string): string {
+    if (value === "upcoming") return tCommon("filters.upcoming")
+    if (value === "past") return tCommon("filters.past")
+    return tCommon("filters.all")
+  }
 
   const fetchData = () => {
     Promise.all([getEvaluations(), getClasses(), getSubjects()])
@@ -72,7 +169,7 @@ export function EvaluationsManager() {
   useEffect(() => { fetchData() }, [])
 
   const classSubjectMap = useMemo(() => {
-    return new Map(classes.map((c) => [c.id, c.subject_id]))
+    return buildClassSubjectMap(classes)
   }, [classes])
 
   const subjectNameMap = useMemo(
@@ -86,14 +183,13 @@ export function EvaluationsManager() {
   )
 
   const rows = useMemo(() => {
-    const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const todayStr = todayDateString()
 
     const mapped = evaluations
       .map((e) => {
         const subjectId = classSubjectMap.get(e.class_id)
-        const subjectName = (subjectId && subjectNameMap.get(subjectId)) ?? "Unknown"
-        const upcoming = datePart(e.date) >= todayStr
+        const subjectName = (subjectId && subjectNameMap.get(subjectId)) ?? t("unknownSubject")
+        const upcoming = isUpcoming(e.date, todayStr)
         return {
           evaluation: e,
           subjectId,
@@ -115,7 +211,7 @@ export function EvaluationsManager() {
       })
 
     return mapped
-  }, [evaluations, showFilter, typeFilter, subjectFilter, classSubjectMap, subjectNameMap, subjectIconMap])
+  }, [evaluations, showFilter, typeFilter, subjectFilter, classSubjectMap, subjectNameMap, subjectIconMap, t])
 
   if (loading) {
     return (
@@ -132,15 +228,15 @@ export function EvaluationsManager() {
   if (evaluations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-lg py-24 text-center">
-        <p className="text-sm text-muted-foreground">You have no evaluations.</p>
+        <p className="text-sm text-muted-foreground">{t("noEvaluations")}</p>
         {classes.length === 0 ? (
           <Button size="sm" disabled>
-            Please create a class before creating an evaluation
+            {t("createClassFirst")}
           </Button>
         ) : (
           <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-3.5" />
-            New evaluation
+            {t("newEvaluation")}
           </Button>
         )}
 
@@ -163,17 +259,17 @@ export function EvaluationsManager() {
             <SelectTrigger className="h-9 w-48">
               <span className="flex min-w-0 flex-1 items-center gap-1.5">
                 <CalendarClock className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="text-muted-foreground">Show</span>
+                <span className="text-muted-foreground">{t("showFilter")}</span>
                 <span className="select-none text-muted-foreground">·</span>
                 <SelectValue className="truncate">
-                  {(value) => SHOW_LABELS[String(value) as ShowFilter] ?? "All"}
+                  {(value) => showLabel(String(value))}
                 </SelectValue>
               </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="upcoming" label="Upcoming">Upcoming</SelectItem>
-              <SelectItem value="past" label="Past">Past</SelectItem>
-              <SelectItem value="all" label="All">All</SelectItem>
+              <SelectItem value="upcoming" label={tCommon("filters.upcoming")}>{tCommon("filters.upcoming")}</SelectItem>
+              <SelectItem value="past" label={tCommon("filters.past")}>{tCommon("filters.past")}</SelectItem>
+              <SelectItem value="all" label={tCommon("filters.all")}>{tCommon("filters.all")}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -181,22 +277,18 @@ export function EvaluationsManager() {
             <SelectTrigger className="h-9 w-44">
               <span className="flex min-w-0 flex-1 items-center gap-1.5">
                 <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="text-muted-foreground">Type</span>
+                <span className="text-muted-foreground">{tCommon("fields.type")}</span>
                 <span className="select-none text-muted-foreground">·</span>
                 <SelectValue className="truncate">
-                  {(value) =>
-                    value === "all"
-                      ? "All"
-                      : EVALUATION_TYPE_LABELS[String(value)] ?? String(value)
-                  }
+                  {(value) => (String(value) === "all" ? tCommon("filters.all") : evaluationTypeLabel(t, String(value)))}
                 </SelectValue>
               </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" label="All types">All types</SelectItem>
-              {Object.entries(EVALUATION_TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
-              ))}
+              <SelectItem value="all" label={t("allTypes")}>{t("allTypes")}</SelectItem>
+              <SelectItem value="exam" label={t("type.exam")}>{t("type.exam")}</SelectItem>
+              <SelectItem value="quiz" label={t("type.quiz")}>{t("type.quiz")}</SelectItem>
+              <SelectItem value="other" label={t("type.other")}>{t("type.other")}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -204,7 +296,7 @@ export function EvaluationsManager() {
             value={subjectFilter}
             onValueChange={setSubjectFilter}
             subjects={subjects}
-            placeholder="All subjects"
+            placeholder={t("allSubjects")}
             className="w-52"
             variant="filter"
           />
@@ -212,23 +304,24 @@ export function EvaluationsManager() {
 
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
           <Plus className="size-3.5" />
-          New evaluation
+          {t("newEvaluation")}
         </Button>
       </div>
 
       <div className="rounded-lg border border-border bg-background">
         {rows.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted-foreground">
-            No evaluations match your filters.
+            {t("noMatches")}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="w-20 text-right">Actions</TableHead>
+                <TableHead>{tCommon("fields.subject")}</TableHead>
+                <TableHead>{tCommon("fields.type")}</TableHead>
+                <TableHead>{tCommon("fields.date")}</TableHead>
+                <TableHead className="w-28 text-right">{tCommon("fields.grade")}</TableHead>
+                <TableHead className="w-20 text-right">{tCommon("fields.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -241,25 +334,32 @@ export function EvaluationsManager() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge
-                      className={cn(
-                        evaluation.type === "exam"
-                          ? "bg-red-500/15 text-red-400"
-                          : evaluation.type === "quiz"
-                            ? "bg-amber-500/15 text-amber-400"
-                            : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                    <StatusBadge className={evaluationTypeBadgeClass(evaluation.type)}>
+                      {evaluationTypeLabel(t, evaluation.type)}
                     </StatusBadge>
                   </TableCell>
-                  <TableCell>{formatDateWeekday(datePart(evaluation.date))}</TableCell>
+                  <TableCell>{formatDateWeekday(datePart(evaluation.date), locale)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="tabular-nums"
+                      onClick={() => setGradeTarget({ evaluation, subjectName })}
+                      aria-label={t("editGrade.aria", { subject: subjectName })}
+                    >
+                      {evaluation.grade != null ? (
+                        evaluation.grade
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="destructive"
                       size="icon-sm"
                       onClick={() => setDeleteTarget({ evaluation, subjectName })}
-                      aria-label={`Delete evaluation for ${subjectName}`}
+                      aria-label={t("deleteAria", { subject: subjectName })}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
@@ -286,6 +386,16 @@ export function EvaluationsManager() {
         subjectName={deleteTarget?.subjectName ?? ""}
         onDeleted={fetchData}
       />
+
+      {gradeTarget && (
+        <GradeEditDialog
+          key={gradeTarget.evaluation.id}
+          evaluation={gradeTarget.evaluation}
+          subjectName={gradeTarget.subjectName}
+          onClose={() => setGradeTarget(null)}
+          onSaved={fetchData}
+        />
+      )}
     </div>
   )
 }

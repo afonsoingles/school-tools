@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 const SESSION_COOKIE = "school_tools_session"
-const PROTECTED_PREFIXES = ["/dashboard", "/calendar", "/homework", "/evaluations", "/settings", "/admin"]
+const PROTECTED_PREFIXES = ["/dashboard", "/calendar", "/homework", "/evaluations", "/settings", "/notifications", "/admin"]
 const AUTH_PAGES = ["/auth/login", "/auth/signup"]
 
 export function proxy(request: NextRequest) {
@@ -32,6 +32,7 @@ export const config = {
     "/homework/:path*",
     "/evaluations/:path*",
     "/settings/:path*",
+    "/notifications/:path*",
     "/admin/:path*",
     "/auth/login",
     "/auth/signup",

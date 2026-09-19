@@ -9,6 +9,7 @@ from errors.classes import *
 from tools.subjects import SubjectTools
 from tools.classes import ClassTools
 from tools.holidays import HolidayTools
+from tools.audit import audit_request
 from models.time_field import is_valid_hhmm_string
 from models.classes import Weekday, SafeClassEvent, SafeClassCancellation, SafeDayCancellation, CancellationReason
 import datetime
@@ -108,6 +109,7 @@ async def add_class(request: Request) -> JSONResponse:
         schedules=schedules,
     )
 
+    audit_request(request, "create", "class", resource_id=class_event.id, summary=f"Created class with {len(schedules)} schedule(s)")
     return JSONResponse(jsonable_encoder({"success": True, "class": _safe_class(class_event)}))
 
 
@@ -148,6 +150,7 @@ async def update_class_subject(request: Request, class_id: str) -> JSONResponse:
         raise SubjectNotFoundForClass
 
     class_event = class_tools.set_class_subject(request.state.user.id, class_uuid, request.state.json["subject_id"])
+    audit_request(request, "update", "class", resource_id=class_uuid, summary=f"Changed class subject to {request.state.json['subject_id']}")
     return JSONResponse(jsonable_encoder({"success": True, "class": _safe_class(class_event)}))
 
 
@@ -160,6 +163,7 @@ async def delete_class(request: Request, class_id: str) -> JSONResponse:
         raise ClassNotFound
 
     class_tools.delete_class(request.state.user.id, class_uuid)
+    audit_request(request, "delete", "class", resource_id=class_uuid, summary="Deleted class")
     return JSONResponse({"success": True, "message": "Class deleted successfully."})
 
 
@@ -181,6 +185,7 @@ async def add_schedule(request: Request, class_id: str) -> JSONResponse:
         start=schedule["start_time"],
         end=schedule["end_time"],
     )
+    audit_request(request, "update", "class", resource_id=class_uuid, summary=f"Added schedule on weekday {schedule['scheduled_weekday'].value} at {schedule['start_time']}")
     return JSONResponse(jsonable_encoder({"success": True, "class": _safe_class(class_event)}))
 
 
@@ -208,6 +213,7 @@ async def reschedule(request: Request, class_id: str, schedule_id: str) -> JSONR
         end=schedule["end_time"],
         valid_from=valid_from,
     )
+    audit_request(request, "update", "class", resource_id=class_uuid, summary=f"Rescheduled schedule {schedule_uuid}")
     return JSONResponse(jsonable_encoder({"success": True, "class": _safe_class(class_event)}))
 
 
@@ -221,6 +227,7 @@ async def delete_schedule(request: Request, class_id: str, schedule_id: str) -> 
         raise ClassNotFound
 
     class_event = class_tools.delete_class_schedule(request.state.user.id, class_uuid, schedule_uuid)
+    audit_request(request, "update", "class", resource_id=class_uuid, summary=f"Deleted schedule {schedule_uuid}")
     return JSONResponse(jsonable_encoder({"success": True, "class": _safe_class(class_event)}))
 
 
@@ -251,6 +258,7 @@ async def cancel_class(request: Request, class_id: str) -> JSONResponse:
     )
     cancellation = class_event.cancellations[-1]
 
+    audit_request(request, "cancel", "class", resource_id=class_uuid, summary=f"Cancelled class on {cancel_date.isoformat()} ({reason.value})")
     return JSONResponse({"success": True, "cancellation": SafeClassCancellation(**cancellation.model_dump()).model_dump(mode="json")})
 
 
@@ -265,6 +273,7 @@ async def uncancel_class(request: Request, class_id: str, cancellation_id: str) 
 
     class_tools.uncancel_class(request.state.user.id, class_uuid, cancellation_uuid)
 
+    audit_request(request, "uncancel", "class", resource_id=class_uuid, summary=f"Uncancelled class cancellation {cancellation_uuid}")
     return JSONResponse({"success": True, "message": "Class uncancelled successfully."})
 
 
@@ -287,6 +296,7 @@ async def cancel_day(request: Request) -> JSONResponse:
         reason=reason,
         note=note,
     )
+    audit_request(request, "cancel", "class", resource_id=day_cancellation.id, summary=f"Cancelled day {cancel_date.isoformat()} ({reason.value})")
     return JSONResponse({"success": True, "day_cancellation": SafeDayCancellation(**day_cancellation.model_dump()).model_dump(mode="json")})
 
 
@@ -300,4 +310,5 @@ async def uncancel_day(request: Request, day_cancel_id: str) -> JSONResponse:
 
     class_tools.uncancel_day(request.state.user.id, day_cancel_uuid)
 
+    audit_request(request, "uncancel", "class", resource_id=day_cancel_uuid, summary=f"Uncancelled day {day_cancel_uuid}")
     return JSONResponse({"success": True, "message": "Day uncancelled successfully."})

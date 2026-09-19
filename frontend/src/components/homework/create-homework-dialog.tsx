@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -40,6 +41,8 @@ export function CreateHomeworkDialog({
   const [datetime, setDatetime] = useState<Date | undefined>(undefined)
   const [loading, setLoading] = useState(false)
 
+  const t = useTranslations("homework")
+  const tCommon = useTranslations("common.actions")
   const timezone = useTimezone()
 
   const dueDate = datetime ? toDateTimeInput(datetime, timezone) : ""
@@ -86,38 +89,38 @@ export function CreateHomeworkDialog({
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <DialogHeader>
-            <DialogTitle>New homework</DialogTitle>
-            <DialogDescription>Create a new homework task.</DialogDescription>
+            <DialogTitle>{t("newHomework")}</DialogTitle>
+            <DialogDescription>{t("newHomeworkDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} />
 
             <div className="flex flex-col gap-1.5">
-              <Label>Due date</Label>
+              <Label>{t("dueDate")}</Label>
               <DateTimePicker value={datetime} onChange={setDatetime} />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Title</Label>
+            <Label>{t("title")}</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={70}
-              placeholder="e.g. Solve chapter 3 exercises"
+              placeholder={t("placeholderTitle")}
               required
             />
             <span className="text-xs text-right text-muted-foreground">{title.length}/70</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
+            <Label>{t("description")}</Label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={1500}
-              placeholder="Describe the details…"
+              placeholder={t("placeholderDescription")}
               rows={6}
               required
               className="w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-hidden placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
@@ -131,7 +134,7 @@ export function CreateHomeworkDialog({
             className="gap-1.5 self-end"
           >
             {loading && <Loader2 className="size-4 animate-spin" />}
-            Create
+            {tCommon("create")}
           </Button>
         </form>
       </DialogContent>

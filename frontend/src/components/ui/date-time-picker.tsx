@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { CalendarDays, Clock3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useTimezone } from "@/components/layout/timezone-provider"
-import { getTzParts, tzDateFromParts } from "@/lib/date-time"
+import { formatInTz, getTzParts, tzDateFromParts } from "@/lib/date-time"
 import { cn } from "@/lib/utils"
 
 interface DateTimePickerProps {
@@ -22,20 +23,18 @@ interface DateTimePickerProps {
 
 const DEFAULT_TIME = "23:59"
 
-function formatSelected(d: Date, tz: string, dateOnly?: boolean): string {
-  const date = d.toLocaleDateString("en-GB", {
-    timeZone: tz,
+function formatSelected(d: Date, tz: string, dateOnly?: boolean, locale: string = "en-GB"): string {
+  const date = formatInTz(d, tz, {
     weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
-  })
+  }, locale)
   if (dateOnly) return date
-  const time = d.toLocaleTimeString("en-GB", {
-    timeZone: tz,
+  const time = formatInTz(d, tz, {
     hour: "2-digit",
     minute: "2-digit",
-  })
+  }, locale)
   return `${date}, ${time}`
 }
 
@@ -60,12 +59,15 @@ function mergeTime(base: Date | undefined, time: string, tz: string): Date {
 export function DateTimePicker({
   value,
   onChange,
-  placeholder = "Pick a date & time",
+  placeholder,
   disabled,
   dateOnly = false,
   className,
 }: DateTimePickerProps) {
+  const t = useTranslations("common")
+  const resolvedPlaceholder = placeholder ?? t("dateTimePicker.placeholder")
   const timezone = useTimezone()
+  const locale = useLocale()
   const [open, setOpen] = React.useState(false)
   const [time, setTime] = React.useState(() => {
     if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -95,9 +97,9 @@ export function DateTimePicker({
           >
             <CalendarDays className="size-3.5 shrink-0" />
             {value ? (
-              formatSelected(value, timezone, dateOnly)
+              formatSelected(value, timezone, dateOnly, locale)
             ) : (
-              <span className="truncate">{placeholder}</span>
+              <span className="truncate">{resolvedPlaceholder}</span>
             )}
           </Button>
         }
@@ -124,7 +126,7 @@ export function DateTimePicker({
           <div className="flex flex-col gap-1.5 border-t p-3">
             <Label htmlFor="dtp-time" className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock3 className="size-3.5" />
-              Time
+              {t("fields.time")}
             </Label>
             <div className="relative">
               <Input
@@ -137,7 +139,7 @@ export function DateTimePicker({
                   setTime(next || "23:59")
                   onChange(value ? mergeTime(value, next || "23:59", timezone) : undefined)
                 }}
-                aria-label="Time"
+                aria-label={t("fields.time")}
               />
             </div>
           </div>

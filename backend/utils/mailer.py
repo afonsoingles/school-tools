@@ -6,15 +6,17 @@ from pathlib import Path
 import datetime
 from sentry_sdk import metrics, capture_exception
 
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
 class Mailer:
     def _load_template(self, template, **vars):
-        path = os.path.join("mailers", f"{template}.txt")
+        path = BACKEND_ROOT / "mailers" / f"{template}.txt"
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         return content.format(**vars)
 
     def _write_to_disk(self, payload):
-        path = Path("tmp/emails")
+        path = BACKEND_ROOT / "tmp" / "emails"
         path.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")

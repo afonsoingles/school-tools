@@ -12,7 +12,6 @@ def migrate():
         IndexModel([("user_id", ASCENDING), ("date", ASCENDING)], name="idx_user_date"),
         IndexModel([("class_id", ASCENDING)], name="idx_class_id")
     ])
-    db.mongo.class_camcellations.drop_indexes()
 
     print(f"[MIGRATIONS][{MIGRATION_ID}] Fixed indexes for class cancellations successfully.")
 

@@ -4,6 +4,7 @@ import sys
 import datetime
 from pathlib import Path
 from utils.database import Database
+from pymongo.errors import DuplicateKeyError
 import sentry_sdk
 
 
@@ -83,7 +84,7 @@ def mark_applied(migration_id: str) -> None:
                 "applied_at": datetime.datetime.now(datetime.timezone.utc),
             }
         )
-    except Exception:
+    except DuplicateKeyError:
         # Already recorded (duplicate key), which is fine.
         pass
 
@@ -108,7 +109,7 @@ def run_migrations() -> list[str]:
         except Exception as e:
             sentry_sdk.capture_exception(e)
             print(f"[MIGRATIONS] Failed to apply migration {path.name}: {e}")
-            quit(1)
+            raise
 
     if not ran:
         print("[MIGRATIONS] Nothing to run, all migrations are up to date.")

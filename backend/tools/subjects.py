@@ -51,19 +51,23 @@ class SubjectTools:
             )
             self.db.redis.expire(f"users.subjects:{str(user_id)}", 7200)
         else:
-            self.db.redis.set(f"users.subjects.is_empty:{str(user_id)}", "", ex=7200)
+            self.db.redis.set(f"users.subjects.is_empty:{str(user_id)}", "1", ex=7200)
 
 
         return [SafeSubject.model_validate(subject) for subject in subjects_list]
 
     def delete_subject(self, user_id: uuid.UUID, subject_id: str) -> SafeSubject | None:
+        try:
+            parsed_subject_id = uuid.UUID(subject_id)
+        except (ValueError, TypeError, AttributeError):
+            return None
 
-        is_used_by_classes = self.db.mongo.classes.find_one({"subject_id": uuid.UUID(subject_id), "user_id": user_id})
-        is_used_by_homework = self.db.mongo.homework.find_one({"subject_id": uuid.UUID(subject_id), "user_id": user_id})
+        is_used_by_classes = self.db.mongo.classes.find_one({"subject_id": parsed_subject_id, "user_id": user_id})
+        is_used_by_homework = self.db.mongo.homework.find_one({"subject_id": parsed_subject_id, "user_id": user_id})
         if is_used_by_classes or is_used_by_homework:
             raise SubjectInUse
         subject = self.db.mongo.subjects.find_one_and_delete(
-            {"id": uuid.UUID(subject_id), "user_id": user_id},
+            {"id": parsed_subject_id, "user_id": user_id},
             return_document=ReturnDocument.BEFORE
         )
         if not subject:

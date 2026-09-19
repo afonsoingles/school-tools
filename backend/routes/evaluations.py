@@ -9,6 +9,7 @@ from tools.classes import ClassTools
 from models.classes import Weekday
 from tools.evaluations import EvaluationTools
 from models.evaluation import SafeEvaluation, EvaluationType
+from tools.audit import audit_request
 import uuid
 import datetime
 from zoneinfo import ZoneInfo
@@ -51,20 +52,26 @@ async def add_evaluation(request: Request) -> JSONResponse:
             for cls in user_classes
         ):
             raise ClassNotFound
-        if any(cancellation.class_id == class_id and cancellation.date.date() == date_obj.date() for cancellation in cancellations):
+        if any(cancellation.class_id == class_id and cancellation.date == date_obj.date() for cancellation in cancellations):
             raise ClassCancelled
     except ClassCancelled:
         raise ClassCancelled
     except:
         raise ClassNotFound
 
+    grade = request.state.json.get("grade")
+    if grade is not None and (not isinstance(grade, int) or isinstance(grade, bool) or not (0 <= grade <= 100)):
+        raise InvalidEvaluationGrade
+
     evaluation = evaluation_tools.create_evaluation(
         user_id=request.state.user.id,
         class_id=class_id,
         date=date_obj,
         type=evaluation_type,
+        grade=grade,
     )
 
+    audit_request(request, "create", "evaluation", resource_id=evaluation.id, summary=f"Created {evaluation_type.value} evaluation on {date_obj.date().isoformat()}")
     return JSONResponse(jsonable_encoder({"success": True, "evaluation": SafeEvaluation(**evaluation.model_dump()).model_dump()}))
 
 @router.get("/v1/evaluations")
@@ -81,7 +88,26 @@ async def delete_evaluation(request: Request, evaluation_id: str) -> JSONRespons
     try:
         evaluation_uuid = uuid.UUID(evaluation_id)
     except:
-        raise ClassNotFound
+        raise EvaluationNotFound
 
     evaluation_tools.delete_evaluation(request.state.user.id, evaluation_uuid)
+    audit_request(request, "delete", "evaluation", resource_id=evaluation_uuid, summary=f"Deleted evaluation {evaluation_uuid}")
     return JSONResponse({"success": True, "message": "Evaluation deleted successfully."})
+
+
+@router.patch("/v1/evaluations/{evaluation_id}")
+@require_auth
+@valid_json(["grade"])
+async def update_evaluation_grade(request: Request, evaluation_id: str) -> JSONResponse:
+    try:
+        evaluation_uuid = uuid.UUID(evaluation_id)
+    except:
+        raise EvaluationNotFound
+
+    grade = request.state.json["grade"]
+    if grade is not None and (not isinstance(grade, int) or isinstance(grade, bool) or not (0 <= grade <= 100)):
+        raise InvalidEvaluationGrade
+
+    evaluation = evaluation_tools.update_grade(request.state.user.id, evaluation_uuid, grade)
+    audit_request(request, "update", "evaluation", resource_id=evaluation_uuid, summary=f"Updated grade for evaluation {evaluation_uuid}")
+    return JSONResponse(jsonable_encoder({"success": True, "evaluation": SafeEvaluation(**evaluation.model_dump()).model_dump()}))

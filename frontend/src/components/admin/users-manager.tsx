@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLocale } from "next-intl"
 import { ArrowUpDown, Ban, Loader2, MailCheck, RefreshCcw, Search, ShieldCheck, Zap } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -97,6 +98,7 @@ function buildListParams(offset: number, filters: ListFilters) {
 
 export function UsersManager() {
   const router = useRouter()
+  const locale = useLocale()
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -409,7 +411,7 @@ export function UsersManager() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {formatDateDmy(user.created_at)}
+                      {formatDateDmy(user.created_at, locale)}
                     </TableCell>
                   </TableRow>
                 ))

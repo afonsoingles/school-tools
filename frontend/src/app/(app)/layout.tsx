@@ -5,6 +5,7 @@ import { AppBar } from "@/components/layout/app-bar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TimezoneProvider } from "@/components/layout/timezone-provider"
 import { TimezoneSync } from "@/components/layout/timezone-sync"
+import { ServiceWorkerRegister } from "@/components/notifications/service-worker-register"
 import { getCurrentUser } from "@/lib/api/auth"
 import type { User } from "@/types"
 
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <TimezoneProvider timezone={user.timezone}>
       <TimezoneSync />
+      <ServiceWorkerRegister />
       <SidebarProvider className="min-h-0! h-dvh!">
         <AppSidebar user={user} />
         <SidebarInset className="overflow-hidden!">

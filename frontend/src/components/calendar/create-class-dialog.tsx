@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { Loader2, Plus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -23,7 +24,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ErrorBox } from "@/components/ui/error-box"
 import { SubjectSelect } from "@/components/ui/subject-select"
-import { DAY_NAMES, timeToMinutes } from "@/lib/date-time"
+import { dayNamesShort, timeToMinutes } from "@/lib/date-time"
 
 interface CreateClassDialogProps {
   open: boolean
@@ -58,6 +59,9 @@ export function CreateClassDialog({
   const [rows, setRows] = useState<ScheduleRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const t = useTranslations("calendar")
+  const tActions = useTranslations("common.actions")
+  const locale = useLocale()
 
   function reset() {
     setSubjectId("")
@@ -108,7 +112,7 @@ export function CreateClassDialog({
       reset()
     } catch (err) {
       const body = (err as { body?: { message?: string } }).body
-      setError(body?.message ?? "Something went wrong.")
+      setError(body?.message ?? t("errorUnknown"))
     } finally {
       setLoading(false)
     }
@@ -124,22 +128,22 @@ export function CreateClassDialog({
       <DialogContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>New class</DialogTitle>
-            <DialogDescription>Add a class to your schedule</DialogDescription>
+            <DialogTitle>{t("createClass.title")}</DialogTitle>
+            <DialogDescription>{t("createClass.description")}</DialogDescription>
           </DialogHeader>
 
           {subjects.length === 0 ? (
             <div className="flex flex-col gap-1.5 p-4">
               <p className="text-sm text-muted-foreground">
-                Please add a subject in settings first before creating a class
+                {t("createClass.noSubjects")}
               </p>
             </div>
           ) : (
             <>
-              <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} placeholder="Select a subject" />
+              <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} />
 
               <div className="flex flex-col gap-2">
-                <Label>Schedules</Label>
+                <Label>{t("schedules.label")}</Label>
                 {rows.map((row, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Select
@@ -148,11 +152,11 @@ export function CreateClassDialog({
                     >
                       <SelectTrigger className="w-28 shrink-0 justify-center">
                         {row.weekday
-                          ? DAY_NAMES[Number(row.weekday) - 1]
-                          : <span className="text-muted-foreground">Day</span>}
+                          ? dayNamesShort(locale)[Number(row.weekday) - 1]
+                          : <span className="text-muted-foreground">{t("schedules.dayPlaceholder")}</span>}
                       </SelectTrigger>
                       <SelectContent>
-                        {DAY_NAMES.map((name, i) => (
+                        {dayNamesShort(locale).map((name, i) => (
                           <SelectItem key={i + 1} value={String(i + 1)} label={name}>{name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -162,7 +166,7 @@ export function CreateClassDialog({
                       value={row.start_time}
                       onChange={(e) => updateRow(index, { start_time: e.target.value })}
                       required
-                      aria-label={`Start time for schedule ${index + 1}`}
+                      aria-label={t("schedules.startTimeAria", { index: index + 1 })}
                       className="max-md:px-2 max-md:text-sm"
                     />
                     <span className="text-muted-foreground">–</span>
@@ -171,7 +175,7 @@ export function CreateClassDialog({
                       value={row.end_time}
                       onChange={(e) => updateRow(index, { end_time: e.target.value })}
                       required
-                      aria-label={`End time for schedule ${index + 1}`}
+                      aria-label={t("schedules.endTimeAria", { index: index + 1 })}
                       className="max-md:px-2 max-md:text-sm"
                     />
                     {rows.length > 1 && (
@@ -181,7 +185,7 @@ export function CreateClassDialog({
                         size="icon-sm"
                         className="shrink-0 hover:bg-foreground/10!"
                         onClick={() => removeRow(index)}
-                        aria-label="Remove schedule"
+                        aria-label={t("schedules.removeAria")}
                       >
                         <X className="size-3.5" />
                       </Button>
@@ -196,7 +200,7 @@ export function CreateClassDialog({
                   onClick={addRow}
                 >
                   <Plus className="size-3.5" />
-                  Add schedule
+                  {t("schedules.add")}
                 </Button>
               </div>
 
@@ -206,7 +210,7 @@ export function CreateClassDialog({
 
               <Button type="submit" disabled={loading || !subjectId || rows.some((r) => !r.weekday)} className="gap-1.5">
                 {loading && <Loader2 className="size-4 animate-spin" />}
-                Create
+                {tActions("create")}
               </Button>
             </>
           )}

@@ -1,8 +1,12 @@
 import { apiFetch } from "@/lib/api/client"
+import type { PushDevice } from "@/lib/api/notifications"
 import type {
   AdminUserContent,
   AdminUserContentType,
   AdoptionStats,
+  AuditLog,
+  DeletionRequest,
+  DeletionStatus,
   FunctionalityStats,
   User,
   UserStats,
@@ -49,6 +53,33 @@ export async function getAdminUsers(params: AdminUserListParams = {}): Promise<A
 export async function getAdminUser(userId: string): Promise<User> {
   const res = await apiFetch<{ success: boolean; user: User }>(`/v1/admin/users/${userId}`)
   return res.user
+}
+
+export interface AdminAuditParams {
+  limit?: number
+  offset?: number
+  user_id?: string
+  resource?: string
+  action?: string
+  via?: "web" | "api"
+}
+
+export interface AdminAuditResponse {
+  success: boolean
+  logs: AuditLog[]
+  total: number
+}
+
+export async function getAdminAudit(params: AdminAuditParams = {}): Promise<AdminAuditResponse> {
+  const searchParams = new URLSearchParams()
+  if (params.limit !== undefined) searchParams.set("limit", String(params.limit))
+  if (params.offset !== undefined) searchParams.set("offset", String(params.offset))
+  if (params.user_id) searchParams.set("user_id", params.user_id)
+  if (params.resource) searchParams.set("resource", params.resource)
+  if (params.action) searchParams.set("action", params.action)
+  if (params.via) searchParams.set("via", params.via)
+  const qs = searchParams.toString()
+  return apiFetch<AdminAuditResponse>(`/v1/admin/audit${qs ? `?${qs}` : ""}`)
 }
 
 export async function getUserContent<C extends AdminUserContentType>(
@@ -107,6 +138,112 @@ export async function promoteUser(userId: string, role: PromoteRole): Promise<st
     { method: "POST" }
   )
   return res.message
+}
+
+export interface AdminNotificationPayload {
+  title: string
+  body: string
+  deep_link?: string
+  user_id?: string
+}
+
+export async function sendAdminNotification(payload: AdminNotificationPayload): Promise<number> {
+  const res = await apiFetch<{ success: boolean; delivered: number }>("/v1/admin/notifications", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+  return res.delivered
+}
+
+export interface AdminDeletionListParams {
+  limit?: number
+  offset?: number
+  status?: DeletionStatus
+}
+
+export interface AdminDeletionListResponse {
+  success: boolean
+  requests: DeletionRequest[]
+  total: number
+}
+
+export async function getAdminDeletions(
+  params: AdminDeletionListParams = {}
+): Promise<AdminDeletionListResponse> {
+  const searchParams = new URLSearchParams()
+  if (params.limit !== undefined) searchParams.set("limit", String(params.limit))
+  if (params.offset !== undefined) searchParams.set("offset", String(params.offset))
+  if (params.status) searchParams.set("status", params.status)
+  const qs = searchParams.toString()
+  return apiFetch<AdminDeletionListResponse>(`/v1/admin/deletions${qs ? `?${qs}` : ""}`)
+}
+
+export async function getActiveDeletionForUser(userId: string): Promise<DeletionRequest | null> {
+  const res = await apiFetch<{ success: boolean; request: DeletionRequest | null }>(
+    `/v1/admin/deletions/by-user/${userId}`
+  )
+  return res.request
+}
+
+export async function nominateDeletion(userId: string, reason = ""): Promise<DeletionRequest> {
+  const res = await apiFetch<{ success: boolean; request: DeletionRequest }>(
+    "/v1/admin/deletions/nominate",
+    { method: "POST", body: JSON.stringify({ user_id: userId, reason }) }
+  )
+  return res.request
+}
+
+export async function approveDeletion(requestId: string): Promise<DeletionRequest> {
+  const res = await apiFetch<{ success: boolean; request: DeletionRequest }>(
+    `/v1/admin/deletions/${requestId}/approve`,
+    { method: "POST" }
+  )
+  return res.request
+}
+
+export async function reverseDeletion(requestId: string): Promise<DeletionRequest> {
+  const res = await apiFetch<{ success: boolean; request: DeletionRequest }>(
+    `/v1/admin/deletions/${requestId}/reverse`,
+    { method: "POST" }
+  )
+  return res.request
+}
+
+export async function runDailyPurge(): Promise<number> {
+  const res = await apiFetch<{ success: boolean; purged: number }>("/v1/admin/deletions/run", {
+    method: "POST",
+  })
+  return res.purged
+}
+
+export interface AdminTestSheetState {
+  success: boolean
+  enabled: boolean
+  stock: { lined: number; graph: number }
+  granted_at: string | null
+}
+
+export async function getUserTestSheets(userId: string): Promise<AdminTestSheetState> {
+  return apiFetch<AdminTestSheetState>(`/v1/admin/users/${userId}/test-sheets`)
+}
+
+export async function setUserTestSheets(userId: string, enabled: boolean): Promise<AdminTestSheetState> {
+  return apiFetch<AdminTestSheetState>(`/v1/admin/users/${userId}/test-sheets`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
+  })
+}
+
+export interface AdminUserNotifications {
+  enabled: boolean
+  devices: PushDevice[]
+}
+
+export async function getUserNotifications(userId: string): Promise<AdminUserNotifications> {
+  const res = await apiFetch<{ success: boolean; content: AdminUserNotifications }>(
+    `/v1/admin/users/${userId}/notifications`
+  )
+  return res.content
 }
 
 async function fetchStats<T>(path: string): Promise<T> {

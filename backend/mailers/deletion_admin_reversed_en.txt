@@ -1,0 +1,5 @@
+Hello,
+
+The account deletion request for {name} ({email}) was reversed by {admin}. The account has been restored.
+
+School Tools

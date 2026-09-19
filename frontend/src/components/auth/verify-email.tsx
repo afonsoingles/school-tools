@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button"
 export function VerifyEmailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations("auth")
   const token = searchParams.get("token")
   const [status, setStatus] = useState<"verifying" | "success" | "needs-login" | "error">(
     token ? "verifying" : "error"
@@ -56,38 +58,36 @@ export function VerifyEmailContent() {
 
       {status === "success" && (
         <>
-          <h1 className="text-2xl font-bold tracking-tight">Verification succeeded!</h1>
-          <p className="text-base text-muted-foreground">Redirecting...</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("verify.successTitle")}</h1>
+          <p className="text-base text-muted-foreground">{t("verify.redirecting")}</p>
         </>
       )}
 
       {status === "needs-login" && (
         <>
-          <h1 className="text-2xl font-bold tracking-tight">Login first</h1>
-          <p className="text-base text-muted-foreground">
-            You need to login first before verifying your email.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("verify.loginFirstTitle")}</h1>
+          <p className="text-base text-muted-foreground">{t("verify.loginFirstBody")}</p>
           <Button
             render={<Link href={loginWithNext} />}
             nativeButton={false}
             size="lg"
             className="h-12 text-base"
           >
-            Login
+            {t("login")}
           </Button>
         </>
       )}
 
       {status === "error" && (
         <>
-          <h1 className="text-2xl font-bold tracking-tight">Invalid or expired link</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("verify.invalidOrExpired")}</h1>
           <Button
             render={<Link href="/auth/login" />}
             nativeButton={false}
             size="lg"
             className="h-12 text-base"
           >
-            Back to login
+            {t("backToLogin")}
           </Button>
         </>
       )}

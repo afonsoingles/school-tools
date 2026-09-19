@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import Link from "next/link"
 import * as Sentry from "@sentry/nextjs"
 import { ChevronsUpDown, Loader2, LogOut, Settings } from "lucide-react"
@@ -24,6 +25,8 @@ import type { User } from "@/types"
 
 export function UserMenu({ user }: { user: User }) {
   const router = useRouter()
+  const t = useTranslations("nav")
+  const tCommon = useTranslations("common.actions")
   const { setOpenMobile } = useSidebar()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -73,7 +76,7 @@ export function UserMenu({ user }: { user: User }) {
           onClick={closeDrawer}
         >
           <Settings className="size-4" />
-          Settings
+          {t("settings")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -84,7 +87,7 @@ export function UserMenu({ user }: { user: User }) {
           disabled={loggingOut}
         >
           {loggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-          Logout
+          {tCommon("logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

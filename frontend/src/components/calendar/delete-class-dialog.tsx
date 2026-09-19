@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -25,6 +26,8 @@ interface DeleteClassDialogProps {
 
 export function DeleteClassDialog({ open, onOpenChange, subjectName, classId, onDeleted }: DeleteClassDialogProps) {
   const [deleting, setDeleting] = useState(false)
+  const t = useTranslations("calendar")
+  const tActions = useTranslations("common.actions")
 
   async function handleDelete() {
     setDeleting(true)
@@ -38,9 +41,7 @@ export function DeleteClassDialog({ open, onOpenChange, subjectName, classId, on
 
       if (code === "class_used_by_evaluation") {
         onOpenChange(false)
-        toast.error(
-          `This class has one or more evaluations and can't be deleted.`
-        )
+        toast.error(t("deleteClass.usedByEvaluation"))
       }
     } finally {
       setDeleting(false)
@@ -51,9 +52,9 @@ export function DeleteClassDialog({ open, onOpenChange, subjectName, classId, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete {subjectName} class?</DialogTitle>
+          <DialogTitle>{t("deleteClass.title", { subject: subjectName })}</DialogTitle>
           <DialogDescription>
-            This will remove all recurring instances of this class from your schedule.
+            {t("deleteClass.description")}
           </DialogDescription>
         </DialogHeader>
           <Button
@@ -64,7 +65,7 @@ export function DeleteClassDialog({ open, onOpenChange, subjectName, classId, on
           >
             {deleting && <Loader2 className="size-4 animate-spin" />}
             {!deleting && <Trash2 className="size-4 " />}
-            Delete
+            {tActions("delete")}
           </Button>
 
       </DialogContent>

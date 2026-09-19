@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -27,8 +28,8 @@ import { SubjectIcon } from "@/components/ui/subject-icon"
 import { subjectIconMap, subjectNameMap } from "@/lib/subjects"
 import { useTimezone } from "@/components/layout/timezone-provider"
 import { datePart, getTzParts, toDateTimeInput } from "@/lib/date-time"
+import { evaluationTypeLabel } from "@/lib/evaluations"
 import type { ClassEvent, ClassSchedule, Subject } from "@/types"
-import { EVALUATION_TYPE_LABELS } from "./constants"
 
 interface CreateEvaluationDialogProps {
   open: boolean
@@ -45,6 +46,8 @@ export function CreateEvaluationDialog({
   subjects,
   onCreated,
 }: CreateEvaluationDialogProps) {
+  const t = useTranslations("evaluations")
+  const tCommon = useTranslations("common")
   const timezone = useTimezone()
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [classId, setClassId] = useState("")
@@ -85,7 +88,7 @@ export function CreateEvaluationDialog({
     ? timeRangeFor(selectedClass, dateStr, weekday)
     : null
   const selectedLabel = selectedClass
-    ? `${classSubjectMap.get(selectedClass.subject_id) ?? "Unknown"}${selectedTimeRange ? ` · ${selectedTimeRange}` : ""}`
+    ? `${classSubjectMap.get(selectedClass.subject_id) ?? t("unknownSubject")}${selectedTimeRange ? ` · ${selectedTimeRange}` : ""}`
     : null
 
   function reset() {
@@ -109,7 +112,7 @@ export function CreateEvaluationDialog({
 
     try {
       await createEvaluation({ class_id: classId, date: toDateTimeInput(date, timezone), type })
-      toast.success("Evaluation created successfully.")
+      toast.success(t("createdSuccess"))
       onCreated()
       handleOpenChange(false)
     } catch (err) {
@@ -124,12 +127,12 @@ export function CreateEvaluationDialog({
       <DialogContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>New evaluation</DialogTitle>
-            <DialogDescription>Schedule an exam or quiz on one of your classes.</DialogDescription>
+            <DialogTitle>{t("newEvaluation")}</DialogTitle>
+            <DialogDescription>{t("create.description")}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Date</Label>
+            <Label>{tCommon("fields.date")}</Label>
             <DateTimePicker
               value={date}
               onChange={(next) => {
@@ -142,12 +145,12 @@ export function CreateEvaluationDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Class</Label>
+            <Label>{tCommon("fields.class")}</Label>
             {!date ? (
-              <p className="text-sm text-muted-foreground">Please select a date first.</p>
+              <p className="text-sm text-muted-foreground">{t("create.selectDateFirst")}</p>
             ) : availableClasses.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No classes occur on this weekday. Pick another date or add a class first.
+                {t("create.noClassesWeekday")}
               </p>
             ) : (
               <Select value={classId} onValueChange={(v) => setClassId(String(v))}>
@@ -158,18 +161,18 @@ export function CreateEvaluationDialog({
                       {selectedLabel}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">Select a class</span>
+                    <span className="text-muted-foreground">{t("create.selectClass")}</span>
                   )}
                 </SelectTrigger>
                 <SelectContent>
                   {availableClasses.map((c) => (
-                    <SelectItem key={c.id} value={c.id} label={classSubjectMap.get(c.subject_id) ?? "Unknown"}>
+                    <SelectItem key={c.id} value={c.id} label={classSubjectMap.get(c.subject_id) ?? t("unknownSubject")}>
                       <span className="flex items-center gap-1.5">
                         <SubjectIcon
                           icon={subjectIcon.get(c.subject_id) ?? ""}
                           className="size-3.5 shrink-0 text-muted-foreground"
                         />
-                        {classSubjectMap.get(c.subject_id) ?? "Unknown"}
+                        {classSubjectMap.get(c.subject_id) ?? t("unknownSubject")}
                         {weekday && dateStr ? ` · ${timeRangeFor(c, dateStr, weekday) ?? ""}` : ""}
                       </span>
                     </SelectItem>
@@ -180,15 +183,15 @@ export function CreateEvaluationDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Type</Label>
+            <Label>{tCommon("fields.type")}</Label>
             <Select value={type} onValueChange={(v) => setType(String(v))}>
               <SelectTrigger>
-                {EVALUATION_TYPE_LABELS[type] ?? type}
+                {evaluationTypeLabel(t, type)}
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(EVALUATION_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
-                ))}
+                <SelectItem value="exam" label={t("type.exam")}>{t("type.exam")}</SelectItem>
+                <SelectItem value="quiz" label={t("type.quiz")}>{t("type.quiz")}</SelectItem>
+                <SelectItem value="other" label={t("type.other")}>{t("type.other")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -199,7 +202,7 @@ export function CreateEvaluationDialog({
 
           <Button type="submit" disabled={loading || !classId || !date} className="gap-1.5">
             {loading && <Loader2 className="size-4 animate-spin" />}
-            Create
+            {tCommon("actions.create")}
           </Button>
         </form>
       </DialogContent>

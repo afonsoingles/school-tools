@@ -10,6 +10,7 @@ from decorators.auth import require_auth
 from decorators.valid_json import valid_json
 from sentry_sdk import metrics
 from utils.limiter import limiter
+from tools.audit import AuditTools, audit_request
 from zoneinfo import ZoneInfo
 import uuid
 
@@ -40,6 +41,7 @@ async def authenticate(request: Request) -> JSONResponse:
     token = session_tools.create_session(user.id)
 
     metrics.count("user.login", 1, attributes={"user_id": user.id})
+    AuditTools().log(user.id, "login", "auth", resource_id=None, summary=f"User {user.email} logged in", via="web")
     return JSONResponse({"success": True, "message": "Authentication was successful!", "token": token})
 
 @router.post("/v1/auth/signup")
@@ -122,6 +124,7 @@ async def logout(request: Request) -> JSONResponse:
 
     session_tools.revoke_session(request.state.token)
     metrics.count("user.logout", 1, attributes={"user_id": request.state.user.id})
+    audit_request(request, "logout", "auth", resource_id=None, summary="User logged out")
     return JSONResponse({"success": True, "message": "Logged out and session revoked!"})
 
 @router.post("/v1/auth/settings/change_name")
@@ -136,6 +139,7 @@ async def change_name(request: Request) -> JSONResponse:
     
     user_tools.update_user(request.state.user.id, name=name)
     metrics.count("user.name_changed", 1, attributes={"user_id": request.state.user.id})
+    audit_request(request, "update", "settings", resource_id=None, summary=f"Name changed to {name}")
     return JSONResponse({"success": True, "message": "Your name as updated successfully!"})
 
 @router.post("/v1/auth/settings/change_password")
@@ -158,9 +162,10 @@ async def change_password(request: Request) -> JSONResponse:
     if not user_tools.verify_password_hash(old_password, pwd):
         raise PasswordChangeIncorrectError
 
-    user_tools.update_user(request.state.user.id, password=new_password)
+    user_tools.update_user(request.state.user.id, safe_update=False, password=new_password)
     session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
     metrics.count("user.password_changed", 1, attributes={"user_id": request.state.user.id})
+    audit_request(request, "update", "settings", resource_id=None, summary="Password changed")
 
     return JSONResponse({"success": True, "message": "Your password has been updated successfully!"})
 
@@ -194,6 +199,7 @@ async def change_email(request: Request) -> JSONResponse:
     session_tools.revoke_user_sessions(request.state.user.id, keep_token=request.state.token)
 
     metrics.count("user.email_changed", 1, attributes={"user_id": request.state.user.id})
+    audit_request(request, "update", "settings", resource_id=None, summary=f"Email changed to {new_email}")
     return JSONResponse({"success": True, "message": "Your email has been updated successfully! Please check your new email to verify it and regain access."})
 
 @router.post("/v1/auth/password_reset/request")

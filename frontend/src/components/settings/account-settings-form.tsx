@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { AlertTriangle, KeyRound, Loader2, Mail, Pencil, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -30,19 +31,21 @@ import {
   changeUserEmail,
   changeUserPassword,
 } from "@/lib/api/settings"
-import { isValidName, PASSWORD_HINT, PASSWORD_REGEX } from "@/lib/user-rules"
+import { isValidName, PASSWORD_REGEX } from "@/lib/user-rules"
 
 function AccountCard({
   icon: Icon,
   title,
   description,
   value,
+  editAriaLabel,
   onEdit,
 }: {
   icon: typeof User
   title: string
   description: string
   value: string
+  editAriaLabel: string
   onEdit: () => void
 }) {
 return (
@@ -59,7 +62,7 @@ return (
             size="icon-sm"
             onClick={onEdit}
             className="hover:bg-foreground/10!"
-            aria-label={`Edit ${title}`}
+            aria-label={editAriaLabel}
           >
             <Pencil className="size-3.5" />
           </Button>
@@ -80,6 +83,8 @@ export function AccountSettingsForm({
   userEmail: string
 }) {
   const router = useRouter()
+  const t = useTranslations("settings.account")
+  const tCommon = useTranslations("common")
 
   const [name, setName] = useState(userName)
 
@@ -105,7 +110,7 @@ export function AccountSettingsForm({
     event.preventDefault()
     setNameError(null)
     if (!isValidName(nameValue)) {
-      setNameError("Name must be between 2 and 50 characters.")
+      setNameError(t("name.validation"))
       return
     }
     setSavingName(true)
@@ -125,11 +130,11 @@ export function AccountSettingsForm({
     event.preventDefault()
     setPasswordError(null)
     if (!PASSWORD_REGEX.test(newPassword)) {
-      setPasswordError(PASSWORD_HINT)
+      setPasswordError(tCommon("passwordHint"))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match.")
+      setPasswordError(t("password.noMatch"))
       return
     }
     setSavingPassword(true)
@@ -151,7 +156,7 @@ export function AccountSettingsForm({
     event.preventDefault()
     setEmailError(null)
     if (!emailPassword) {
-      setEmailError("Enter your current password to change your email.")
+      setEmailError(t("email.passwordRequired"))
       return
     }
     setSavingEmail(true)
@@ -172,9 +177,10 @@ export function AccountSettingsForm({
     <div className="flex flex-col gap-4">
       <AccountCard
         icon={User}
-        title="Name"
-        description="Your name as shown across School Tools."
+        title={t("name.title")}
+        description={t("name.description")}
         value={name}
+        editAriaLabel={t("name.ariaLabel")}
         onEdit={() => {
           setNameValue(name)
           setNameError(null)
@@ -184,9 +190,10 @@ export function AccountSettingsForm({
 
       <AccountCard
         icon={Mail}
-        title="Email"
-        description="Your email is used to sign in and receive notifications."
+        title={t("email.title")}
+        description={t("email.description")}
         value={userEmail}
+        editAriaLabel={t("email.ariaLabel")}
         onEdit={() => {
           setEmailValue("")
           setEmailPassword("")
@@ -197,9 +204,10 @@ export function AccountSettingsForm({
 
       <AccountCard
         icon={KeyRound}
-        title="Password"
-        description="Change your password to keep your account secure."
+        title={t("password.title")}
+        description={t("password.description")}
         value="••••••••"
+        editAriaLabel={t("password.ariaLabel")}
         onEdit={() => {
           setOldPassword("")
           setNewPassword("")
@@ -212,8 +220,8 @@ export function AccountSettingsForm({
       <Dialog open={nameOpen} onOpenChange={setNameOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change name</DialogTitle>
-            <DialogDescription>Update the name shown across the app.</DialogDescription>
+            <DialogTitle>{t("name.dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("name.dialogDescription")}</DialogDescription>
           </DialogHeader>
           <form
             id="change-name-form"
@@ -221,7 +229,7 @@ export function AccountSettingsForm({
             onSubmit={handleNameSubmit}
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="account-name">Name</Label>
+              <Label htmlFor="account-name">{t("name.label")}</Label>
               <Input
                 id="account-name"
                 value={nameValue}
@@ -239,7 +247,7 @@ export function AccountSettingsForm({
               className="gap-1.5"
             >
               {savingName ? <Loader2 className="size-4 animate-spin" /> : null}
-              Save
+              {tCommon("actions.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -248,8 +256,8 @@ export function AccountSettingsForm({
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change email</DialogTitle>
-            <DialogDescription>Set a new email address for your account.</DialogDescription>
+            <DialogTitle>{t("email.dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("email.dialogDescription")}</DialogDescription>
           </DialogHeader>
           <form
             id="change-email-form"
@@ -257,7 +265,7 @@ export function AccountSettingsForm({
             onSubmit={handleEmailSubmit}
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="account-new-email">New email</Label>
+              <Label htmlFor="account-new-email">{t("email.newEmail")}</Label>
               <Input
                 id="account-new-email"
                 type="email"
@@ -267,7 +275,7 @@ export function AccountSettingsForm({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="account-email-password">Current password</Label>
+              <Label htmlFor="account-email-password">{t("email.currentPassword")}</Label>
               <Input
                 id="account-email-password"
                 type="password"
@@ -279,10 +287,7 @@ export function AccountSettingsForm({
 
             <div className="flex items-start gap-2 p-3 text-sm border rounded-md border-amber-500/30 bg-amber-500/10 text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span>
-                Updating your email will temporarily suspend your access until you verify the new
-                address. A verification link will be sent to your new email.
-              </span>
+              <span>{t("email.warning")}</span>
             </div>
 
             {emailError && <p className="text-sm text-destructive">{emailError}</p>}
@@ -295,7 +300,7 @@ export function AccountSettingsForm({
               className="gap-1.5"
             >
               {savingEmail ? <Loader2 className="size-4 animate-spin" /> : null}
-              Update
+              {t("email.update")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -304,8 +309,8 @@ export function AccountSettingsForm({
       <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change password</DialogTitle>
-            <DialogDescription>Enter your current and a new password.</DialogDescription>
+            <DialogTitle>{t("password.dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("password.dialogDescription")}</DialogDescription>
           </DialogHeader>
           <form
             id="change-password-form"
@@ -313,7 +318,7 @@ export function AccountSettingsForm({
             onSubmit={handlePasswordSubmit}
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="account-old-password">Current password</Label>
+              <Label htmlFor="account-old-password">{t("password.currentPassword")}</Label>
               <Input
                 id="account-old-password"
                 type="password"
@@ -323,7 +328,7 @@ export function AccountSettingsForm({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="account-new-password">New password</Label>
+              <Label htmlFor="account-new-password">{t("password.newPassword")}</Label>
               <Input
                 id="account-new-password"
                 type="password"
@@ -331,10 +336,10 @@ export function AccountSettingsForm({
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">{PASSWORD_HINT}</p>
+              <p className="text-xs text-muted-foreground">{tCommon("passwordHint")}</p>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="account-confirm-password">Confirm new password</Label>
+              <Label htmlFor="account-confirm-password">{t("password.confirmNewPassword")}</Label>
               <Input
                 id="account-confirm-password"
                 type="password"
@@ -353,7 +358,7 @@ export function AccountSettingsForm({
               className="gap-1.5"
             >
               {savingPassword ? <Loader2 className="size-4 animate-spin" /> : null}
-              Save
+              {tCommon("actions.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

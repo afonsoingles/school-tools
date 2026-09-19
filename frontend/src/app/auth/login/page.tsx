@@ -1,11 +1,15 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
+import { getTranslations } from "next-intl/server"
 import { LoginForm } from "@/components/auth/login-form"
 import { RedirectIfAuthed } from "@/components/auth/redirect-if-authed"
 
-export const metadata: Metadata = {
-  title: "Login",
-  description: "Login to your School Tools account"
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth")
+  return {
+    title: t("loginForm.title"),
+    description: t("meta.loginDescription"),
+  }
 }
 
 export default function LoginPage() {

@@ -9,6 +9,7 @@ from errors.classes import InvalidTimeFormat
 from tools.homework import HomeworkTools
 from tools.subjects import SubjectTools
 from models.homework import Homework, SafeHomework, HomeworkStatus
+from tools.audit import audit_request
 import uuid
 import datetime
 from zoneinfo import ZoneInfo
@@ -33,7 +34,12 @@ async def create_homework(request: Request) -> JSONResponse:
         raise InvalidTimeFormat
 
 
-    if not subject_tools.does_subject_exist(user_id=request.state.user.id, subject_id=request.state.json["subject_id"]): 
+    try:
+        subject_id = uuid.UUID(request.state.json["subject_id"])
+    except (ValueError, TypeError, AttributeError):
+        raise SubjectNotFound
+
+    if not subject_tools.does_subject_exist(user_id=request.state.user.id, subject_id=subject_id):
         raise SubjectNotFound
 
     if len(request.state.json["title"]) > 70 or not request.state.json["title"].strip():
@@ -44,7 +50,7 @@ async def create_homework(request: Request) -> JSONResponse:
     
     homework = Homework(
         user_id=request.state.user.id,
-        subject_id=uuid.UUID(request.state.json["subject_id"]),
+        subject_id=subject_id,
         title=request.state.json["title"],
         description=request.state.json["description"],
         status=HomeworkStatus.NOT_STARTED,
@@ -53,6 +59,7 @@ async def create_homework(request: Request) -> JSONResponse:
 
     homework = homework_tools.create_homework(homework)
     safe_homework = SafeHomework.model_validate(homework)
+    audit_request(request, "create", "homework", resource_id=homework.id, summary=f"Created homework '{homework.title}'")
     return JSONResponse(jsonable_encoder({"success": True, "homework": safe_homework.model_dump()}), status_code=201)
 
 @router.get("/v1/homework")
@@ -77,13 +84,7 @@ async def update_homework(request: Request, homework_id: str) -> JSONResponse:
         try:
             update_data["due_date"] = parse_user_datetime(data["due_date"], request.state.user.timezone)
         except HomeworkDateInThePast:
-            existing_hw = homework_tools.get_user_homeworks(request.state.user.id)
-            for hw in existing_hw:
-                if hw.id == hw_id:
-                    update_data["due_date"] = hw.due_date
-                    break
-            else:
-                raise
+            raise
         except:
             raise InvalidTimeFormat
     
@@ -119,6 +120,7 @@ async def update_homework(request: Request, homework_id: str) -> JSONResponse:
     )
 
     safe_result = SafeHomework.model_validate(result)
+    audit_request(request, "update", "homework", resource_id=hw_id, summary=f"Updated homework '{result.title}'")
     return JSONResponse(jsonable_encoder({"success": True, "homework": safe_result.model_dump()}))
 
 @router.delete("/v1/homework/{homework_id}")
@@ -138,4 +140,5 @@ async def delete_homework(request: Request, homework_id: str) -> JSONResponse:
         raise HomeworkNotFound
 
     safe_result = SafeHomework.model_validate(result)
+    audit_request(request, "delete", "homework", resource_id=hw_id, summary=f"Deleted homework '{result.title}'")
     return JSONResponse(jsonable_encoder({"success": True, "homework": safe_result.model_dump()}))

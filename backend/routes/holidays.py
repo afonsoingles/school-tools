@@ -7,6 +7,7 @@ from decorators.auth import require_auth
 from decorators.valid_json import valid_json
 from errors.holidays import *
 from tools.holidays import HolidayTools
+from tools.audit import audit_request
 
 router = APIRouter()
 holiday_tools = HolidayTools()
@@ -47,6 +48,7 @@ async def set_holiday_settings(request: Request) -> JSONResponse:
 
     settings = holiday_tools.set_auto_cancel(request.state.user.id, request.state.json["auto_cancel_enabled"])
 
+    audit_request(request, "update", "holiday", resource_id=None, summary=f"Auto-cancel holidays set to {request.state.json['auto_cancel_enabled']}")
     return JSONResponse(jsonable_encoder({
         "success": True,
         "auto_cancel_enabled": settings.auto_cancel_enabled,
@@ -62,6 +64,7 @@ async def add_holiday_override(request: Request) -> JSONResponse:
     override_date = _parse_date(request.state.json["date"])
     settings = holiday_tools.add_override(request.state.user.id, override_date)
 
+    audit_request(request, "create", "holiday", resource_id=None, summary=f"Added holiday override on {override_date.isoformat()}")
     return JSONResponse(jsonable_encoder({
         "success": True,
         "auto_cancel_enabled": settings.auto_cancel_enabled,
@@ -76,6 +79,7 @@ async def remove_holiday_override(request: Request, date: str) -> JSONResponse:
     override_date = _parse_date(date)
     settings = holiday_tools.remove_override(request.state.user.id, override_date)
 
+    audit_request(request, "delete", "holiday", resource_id=None, summary=f"Removed holiday override on {override_date.isoformat()}")
     return JSONResponse(jsonable_encoder({
         "success": True,
         "auto_cancel_enabled": settings.auto_cancel_enabled,

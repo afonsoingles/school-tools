@@ -1,5 +1,6 @@
 "use client"
 
+import { useLocale } from "next-intl"
 import { CalendarDays, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -18,10 +19,10 @@ interface DateRangePickerProps {
   className?: string
 }
 
-function formatRange(value: DateRange): string {
-  const from = value.from.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+function formatRange(value: DateRange, locale: string): string {
+  const from = value.from.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
   if (!value.to) return from
-  const to = value.to.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+  const to = value.to.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
   return `${from} – ${to}`
 }
 
@@ -31,6 +32,7 @@ export function DateRangePicker({
   placeholder = "Pick a range",
   className,
 }: DateRangePickerProps) {
+  const locale = useLocale()
   return (
     <Popover>
       <PopoverTrigger
@@ -45,7 +47,7 @@ export function DateRangePicker({
             )}
           >
             <CalendarDays className="size-3.5 shrink-0" />
-            <span className="truncate">{value ? formatRange(value) : placeholder}</span>
+            <span className="truncate">{value ? formatRange(value, locale) : placeholder}</span>
           </Button>
         }
       />

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { AlertTriangle, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -13,7 +14,13 @@ import {
 import type { CancelledClassEvent } from "@/types"
 import { uncancelClass } from "@/lib/api/calendar"
 import { timeToMinutes } from "@/lib/date-time"
-import { REASON_LABELS, SLOT_HEIGHT } from "./constants"
+import { SLOT_HEIGHT } from "./constants"
+
+const REASON_MESSAGE_KEYS: Record<string, string> = {
+  break: "reasons.break",
+  public_holiday: "reasons.publicHoliday",
+  other: "reasons.other",
+}
 
 interface CancelledOverlayProps {
   cancellation: CancelledClassEvent
@@ -24,6 +31,10 @@ interface CancelledOverlayProps {
 
 export function CancelledOverlay({ cancellation, startTime, endTime, onUncancelled }: CancelledOverlayProps) {
   const [uncanceling, setUncanceling] = useState(false)
+  const t = useTranslations("calendar")
+
+  const reasonKey = REASON_MESSAGE_KEYS[cancellation.reason]
+  const reason = reasonKey ? (t.has(reasonKey) ? t(reasonKey) : cancellation.reason) : cancellation.reason
 
   const top = (timeToMinutes(startTime) / 15) * SLOT_HEIGHT
   const height = Math.max(((timeToMinutes(endTime) - timeToMinutes(startTime)) / 15) * SLOT_HEIGHT, 20)
@@ -45,13 +56,13 @@ export function CancelledOverlay({ cancellation, startTime, endTime, onUncancell
         style={{ top: `${top}px`, height: `${height}px` }}
       >
         <AlertTriangle className="size-3 shrink-0" />
-        <span className="text-[10px] font-medium leading-tight truncate">Cancelled</span>
+        <span className="text-[10px] font-medium leading-tight truncate">{t("cancelled")}</span>
       </PopoverTrigger>
       <PopoverContent>
         <div className="flex flex-col gap-3">
-          <PopoverTitle className="text-destructive">Cancelled class</PopoverTitle>
+          <PopoverTitle className="text-destructive">{t("cancelledClass")}</PopoverTitle>
           <p className="text-sm text-muted-foreground">
-            Reason: {REASON_LABELS[cancellation.reason] ?? cancellation.reason}
+            {t("reasons.line", { reason })}
           </p>
           <p className="text-xs text-muted-foreground/70">
             {cancellation.date}
@@ -64,7 +75,7 @@ export function CancelledOverlay({ cancellation, startTime, endTime, onUncancell
             className="gap-1.5"
           >
             {uncanceling && <Loader2 className="size-3.5 animate-spin" />}
-            Uncancel
+            {t("uncancel")}
           </Button>
         </div>
       </PopoverContent>

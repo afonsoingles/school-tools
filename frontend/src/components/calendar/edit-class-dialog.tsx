@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { Loader2, Plus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ErrorBox } from "@/components/ui/error-box"
 import { SubjectSelect } from "@/components/ui/subject-select"
-import { DAY_NAMES, formatDateDdMmYyyy } from "@/lib/date-time"
+import { dayNamesShort, formatDateDdMmYyyy } from "@/lib/date-time"
 
 interface EditClassDialogProps {
   open: boolean
@@ -67,6 +68,9 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const t = useTranslations("calendar")
+  const tActions = useTranslations("common.actions")
+  const locale = useLocale()
 
   function reset() {
     setSubjectId(cls?.subject_id ?? "")
@@ -148,7 +152,7 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
       reset()
     } catch (err) {
       const body = (err as { body?: { message?: string } }).body
-      setError(body?.message ?? "Something went wrong.")
+      setError(body?.message ?? t("errorUnknown"))
     } finally {
       setLoading(false)
     }
@@ -162,24 +166,24 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
       <DialogContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Edit class</DialogTitle>
-            <DialogDescription>Rescheduling only affects upcoming dates starting today.</DialogDescription>
+            <DialogTitle>{t("editClass.title")}</DialogTitle>
+            <DialogDescription>{t("editClass.description")}</DialogDescription>
           </DialogHeader>
 
-          <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} placeholder="Select a subject" />
+          <SubjectSelect value={subjectId} onValueChange={setSubjectId} subjects={subjects} />
 
           <div className="flex flex-col gap-2">
-            <Label>Schedules</Label>
+            <Label>{t("schedules.label")}</Label>
             <div ref={listRef} className="flex max-h-64 flex-col gap-1.5 overflow-y-auto pr-1">
               {rows.map((row, index) => {
               if (row.ended) {
                 return (
                   <div key={row.id} className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5 text-sm text-muted-foreground">
                     <span className="truncate">
-                      {DAY_NAMES[Number(row.weekday) - 1]} · {row.start_time}–{row.end_time}
+                      {dayNamesShort(locale)[Number(row.weekday) - 1]} · {row.start_time}–{row.end_time}
                     </span>
                     <span className="ml-auto shrink-0 text-[11px]">
-                      ended {formatDateDdMmYyyy(row.endedUntil ?? "")}
+                      {t("schedules.endedOn", { date: formatDateDdMmYyyy(row.endedUntil ?? "") })}
                     </span>
                   </div>
                 )
@@ -192,11 +196,11 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
                   >
                     <SelectTrigger className="w-full min-w-0 justify-center gap-0 truncate px-2">
                       {row.weekday
-                        ? DAY_NAMES[Number(row.weekday) - 1]
-                        : <span className="text-muted-foreground">Day</span>}
+                        ? dayNamesShort(locale)[Number(row.weekday) - 1]
+                        : <span className="text-muted-foreground">{t("schedules.dayPlaceholder")}</span>}
                     </SelectTrigger>
                     <SelectContent>
-                      {DAY_NAMES.map((name, i) => (
+                      {dayNamesShort(locale).map((name, i) => (
                         <SelectItem key={i + 1} value={String(i + 1)} label={name}>{name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -206,7 +210,7 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
                     value={row.start_time}
                     onChange={(e) => updateRow(index, { start_time: e.target.value })}
                     required
-                    aria-label={`Start time for schedule ${index + 1}`}
+                    aria-label={t("schedules.startTimeAria", { index: index + 1 })}
                     className="min-w-0 px-1.5 text-center md:text-sm"
                   />
                   <span className="text-muted-foreground">–</span>
@@ -215,7 +219,7 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
                     value={row.end_time}
                     onChange={(e) => updateRow(index, { end_time: e.target.value })}
                     required
-                    aria-label={`End time for schedule ${index + 1}`}
+                    aria-label={t("schedules.endTimeAria", { index: index + 1 })}
                     className="min-w-0 px-1.5 text-center md:text-sm"
                   />
                   {editableRows.length > 1 && (
@@ -225,7 +229,7 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
                       size="icon-sm"
                       className="shrink-0 hover:bg-foreground/10!"
                       onClick={() => removeRow(index)}
-                      aria-label="Remove schedule"
+                      aria-label={t("schedules.removeAria")}
                     >
                       <X className="size-3.5" />
                     </Button>
@@ -242,7 +246,7 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
               onClick={addRow}
             >
               <Plus className="size-3.5" />
-              Add schedule
+              {t("schedules.add")}
             </Button>
           </div>
 
@@ -252,7 +256,7 @@ export function EditClassDialog({ open, onOpenChange, cls, subjects, onUpdated }
 
           <Button type="submit" disabled={loading || !canSubmit} className="gap-1.5">
             {loading && <Loader2 className="size-4 animate-spin" />}
-            Save
+            {tActions("save")}
           </Button>
         </form>
       </DialogContent>

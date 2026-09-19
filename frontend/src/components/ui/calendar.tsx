@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import {
   DayPicker,
@@ -25,6 +26,8 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const activeLocale = useLocale()
+  const fmtLocale = locale?.code ?? activeLocale
 
   return (
     <DayPicker
@@ -39,7 +42,11 @@ function Calendar({
       locale={locale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(fmtLocale, { month: "short" }),
+        formatCaption: (date) =>
+          new Intl.DateTimeFormat(fmtLocale, { month: "long", year: "numeric" }).format(date),
+        formatWeekdayName: (date) =>
+          new Intl.DateTimeFormat(fmtLocale, { weekday: "short" }).format(date),
         ...formatters,
       }}
       classNames={{

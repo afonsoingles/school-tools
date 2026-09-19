@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,12 @@ import { ErrorBox } from "@/components/ui/error-box"
 import { formatDateDdMmYyyy } from "@/lib/date-time"
 import { REASON_LABELS } from "./constants"
 
+const REASON_MESSAGE_KEYS: Record<string, string> = {
+  break: "reasons.break",
+  public_holiday: "reasons.publicHoliday",
+  other: "reasons.other",
+}
+
 interface DayCancelDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -33,6 +40,12 @@ export function DayCancelDialog({ open, onOpenChange, date, onCancelled }: DayCa
   const [note, setNote] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const t = useTranslations("calendar")
+
+  function reasonLabel(value: string): string {
+    const key = REASON_MESSAGE_KEYS[value]
+    return key ? (t.has(key) ? t(key) : value) : value
+  }
 
   function reset() {
     setReason("")
@@ -53,7 +66,7 @@ export function DayCancelDialog({ open, onOpenChange, date, onCancelled }: DayCa
       reset()
     } catch (err) {
       const body = (err as { body?: { message?: string } }).body
-      setError(body?.message ?? "Something went wrong.")
+      setError(body?.message ?? t("errorUnknown"))
     } finally {
       setLoading(false)
     }
@@ -63,18 +76,18 @@ export function DayCancelDialog({ open, onOpenChange, date, onCancelled }: DayCa
     <Dialog open={open} onOpenChange={(next) => { if (!next) reset(); onOpenChange(next) }}>
       <DialogContent className="sm:max-w-xs gap-3">
         <DialogHeader className="gap-1">
-          <DialogTitle className="text-base">Cancel day</DialogTitle>
+          <DialogTitle className="text-base">{t("cancelDay")}</DialogTitle>
         </DialogHeader>
 
         <Select value={reason} onValueChange={(v) => setReason(String(v))}>
           <SelectTrigger className="h-9 text-sm">
             {reason
-              ? REASON_LABELS[reason] ?? reason
-              : <span className="text-muted-foreground">Reason</span>}
+              ? reasonLabel(reason)
+              : <span className="text-muted-foreground">{t("reasons.field")}</span>}
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(REASON_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
+            {Object.keys(REASON_LABELS).map((value) => (
+              <SelectItem key={value} value={value} label={reasonLabel(value)}>{reasonLabel(value)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -85,7 +98,7 @@ export function DayCancelDialog({ open, onOpenChange, date, onCancelled }: DayCa
             onChange={(e) => setNote(e.target.value)}
             maxLength={200}
             required
-            placeholder="Note (required)"
+            placeholder={t("note.required")}
             className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         )}
@@ -102,7 +115,7 @@ export function DayCancelDialog({ open, onOpenChange, date, onCancelled }: DayCa
           className="w-full gap-1.5"
         >
           {loading && <Loader2 className="size-4 animate-spin" />}
-          Cancel day
+          {t("cancelDay")}
         </Button>
       </DialogContent>
     </Dialog>

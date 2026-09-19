@@ -15,8 +15,8 @@ class EvaluationTools:
         self.db = Database()
         pass
 
-    def create_evaluation(self, user_id: uuid.UUID, class_id: uuid.UUID, date: datetime.datetime, type: EvaluationType) -> Evaluation:
-        evaluation = Evaluation(user_id=user_id, class_id=class_id, date=date, type=type)
+    def create_evaluation(self, user_id: uuid.UUID, class_id: uuid.UUID, date: datetime.datetime, type: EvaluationType, grade: int | None = None) -> Evaluation:
+        evaluation = Evaluation(user_id=user_id, class_id=class_id, date=date, type=type, grade=grade)
         evaluation_dict = evaluation.model_dump()
         evaluation_dict["_id"] = evaluation.id
 
@@ -60,6 +60,22 @@ class EvaluationTools:
             raise EvaluationNotFound
 
         self.db.redis.hdel(f"users.evaluations:{str(user_id)}", str(evaluation_id))
+
+        calendar_tools.mark_feed_dirty(user_id)
+
+        return Evaluation.model_validate(evaluation)
+
+    def update_grade(self, user_id: uuid.UUID, evaluation_id: uuid.UUID, grade: int | None) -> Evaluation:
+        evaluation = self.db.mongo.evaluations.find_one_and_update(
+            {"id": evaluation_id, "user_id": user_id},
+            {"$set": {"grade": grade}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not evaluation:
+            raise EvaluationNotFound
+
+        self.db.redis.hset(f"users.evaluations:{str(user_id)}", str(evaluation_id), Evaluation.model_validate(evaluation).model_dump_json())
+        self.db.redis.expire(f"users.evaluations:{str(user_id)}", 7200)
 
         calendar_tools.mark_feed_dirty(user_id)
 

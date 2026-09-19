@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -43,19 +45,19 @@ function DevToolButton({
   onRun,
 }: DevToolButtonProps) {
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   async function run() {
     if (disabled) return
     setLoading(true)
-    setMessage(null)
+    setError(null)
 
     try {
       const text = await onRun()
-      setMessage({ ok: true, text })
+      toast.success(text)
     } catch (err) {
-      setMessage({ ok: false, text: errorMessage(err) })
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
       setConfirmOpen(false)
@@ -77,27 +79,21 @@ function DevToolButton({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
-        <span className={cn("text-sm font-medium", disabled && "text-muted-foreground")}>
-          {label}
-        </span>
+      <Card size="sm">
+        <CardContent className="flex items-center justify-between gap-3">
+          <span className={cn("text-sm font-medium", disabled && "text-muted-foreground")}>
+            {label}
+          </span>
 
-        {disabled && tooltip ? (
-          <GatedTooltip label={tooltip}>{trigger}</GatedTooltip>
-        ) : (
-          trigger
-        )}
-      </div>
+          {disabled && tooltip ? (
+            <GatedTooltip label={tooltip}>{trigger}</GatedTooltip>
+          ) : (
+            trigger
+          )}
+        </CardContent>
+      </Card>
 
-      {!disabled && message && (
-        message.ok ? (
-          <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/25 rounded-md px-3 py-2">
-            {message.text}
-          </p>
-        ) : (
-          <ErrorBox>{message.text}</ErrorBox>
-        )
-      )}
+      {!disabled && error && <ErrorBox>{error}</ErrorBox>}
 
       {confirm && (
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -119,7 +115,7 @@ function DevToolButton({
 
 export function DevTools({ isSuperadmin }: { isSuperadmin: boolean }) {
   return (
-    <div className="flex max-w-xl flex-col gap-2">
+    <div className="flex w-full flex-col gap-3">
       <DevToolButton label="Clear global user cache" onRun={adminClearGlobalUserCache} />
       <DevToolButton
         label="Force generate pending feeds"

@@ -1,0 +1,10 @@
+Hello {name},
+
+We received your request to permanently delete your School Tools account and all associated data.
+
+Your account has been deactivated and you have been signed out of all devices. An administrator will review your request shortly. Once approved, your account and all of its data will be permanently deleted and cannot be recovered.
+
+If you change your mind, you can contact us at hi@afonsoingles.dev before the deletion is completed.
+
+Warmly,
+School Tools

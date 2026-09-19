@@ -1,0 +1,55 @@
+const evaluations = {
+  page: {
+    title: "Evaluations",
+    subtitle: "exams, quizzes and other assessments",
+  },
+  type: {
+    exam: "Exam",
+    quiz: "Quiz",
+    other: "Other",
+  },
+  evaluation: "evaluation",
+  unknownSubject: "Unknown",
+  showFilter: "Show",
+  allTypes: "All types",
+  allSubjects: "All subjects",
+  newEvaluation: "New evaluation",
+  noEvaluations: "You have no evaluations.",
+  createClassFirst: "Please create a class before creating an evaluation",
+  noMatches: "No evaluations match your filters.",
+  deleteAria: "Delete evaluation for {subject}",
+  createdSuccess: "Evaluation created successfully.",
+  grade: "Grade",
+  gradeLabel: "Grade (0-100)",
+  gradeSaved: "Grade saved.",
+  gradeCleared: "Grade removed.",
+  gradeInvalid: "Enter a whole grade between 0 and 100.",
+  editGrade: {
+    title: "Edit grade",
+    aria: "Edit grade for {subject}",
+    noGrade: "No grade",
+    clearGrade: "Clear grade",
+  },
+  create: {
+    description: "Schedule an exam or quiz on one of your classes.",
+    selectDateFirst: "Please select a date first.",
+    noClassesWeekday: "No classes occur on this weekday. Pick another date or add a class first.",
+    selectClass: "Select a class",
+  },
+  delete: {
+    title: "Delete evaluation?",
+    description: "This will remove the {type} for {subject}. This can't be undone.",
+    thisSubject: "this subject",
+  },
+  reconcile: {
+    title: "Reconcile test sheets",
+    description: "These assessments have happened. Record how many sheets you used so your stock stays accurate.",
+    action: "Reconcile",
+    linedUsed: "Lined used",
+    graphUsed: "Graph used",
+    noSheetsUsed: "No sheets used",
+    reconciledSuccess: "Test sheets reconciled.",
+  },
+}
+
+export default evaluations
