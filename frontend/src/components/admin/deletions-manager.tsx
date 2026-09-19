@@ -87,12 +87,22 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
     }
   }, [fetchRequests, reloadKey])
 
-  async function runAction(id: string, action: () => Promise<DeletionRequest>, success: string) {
+  async function runAction(
+    id: string,
+    action: () => Promise<DeletionRequest>,
+    success: string,
+    hideOnSuccess = false
+  ) {
     setActingId(id)
     try {
       await action()
       toast.success(success)
-      await fetchRequests()
+      if (hideOnSuccess) {
+        setRequests((prev) => prev.filter((r) => r.id !== id))
+        setTotal((prev) => Math.max(0, prev - 1))
+      } else {
+        await fetchRequests()
+      }
     } catch (err) {
       toast.error(errorMessage(err))
     } finally {
@@ -106,8 +116,8 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
       const purged = await runDailyPurge()
       toast.success(
         purged === 0
-          ? "No approved requests were due for purging."
-          : `Purged ${purged} account(s) via the daily purge.`
+          ? "No approved requests to purge."
+          : `Purged ${purged} account(s) immediately.`
       )
       await fetchRequests()
     } catch (err) {
@@ -177,7 +187,7 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
       {isSuperadmin && (
         <p className="text-xs text-muted-foreground">
           Approved requests are purged automatically by the daily cron job at 00:00. Run purges now
-          to bypass it.
+          (superadmin only) to purge every approved request immediately, skipping the grace period.
         </p>
       )}
 
@@ -242,7 +252,8 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
                                 runAction(
                                   request.id,
                                   () => approveDeletion(request.id),
-                                  "Deletion request approved. It will be purged by the next daily cron (00:00)."
+                                  "Deletion request approved. It will be purged by the next daily cron (00:00).",
+                                  true
                                 )
                               }
                             >
@@ -257,7 +268,8 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
                                 runAction(
                                   request.id,
                                   () => reverseDeletion(request.id),
-                                  "Deletion request reversed."
+                                  "Deletion request reversed.",
+                                  true
                                 )
                               }
                             >
@@ -274,7 +286,8 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
                               runAction(
                                 request.id,
                                 () => reverseDeletion(request.id),
-                                "Deletion request reversed."
+                                "Deletion request reversed.",
+                                true
                               )
                             }
                           >

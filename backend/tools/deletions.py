@@ -1,5 +1,4 @@
 from models.deletion import DeletionRequest, DeletionStatus
-from models.notification import NotificationType
 from models.user import User
 from errors.deletions import *
 from errors.user import UserNotFoundError
@@ -7,7 +6,6 @@ from utils.database import Database
 from utils.mailer import Mailer
 from tools.users import UserTools
 from tools.sessions import SessionTools
-from tools.notifications import NotificationTools
 from tools.audit import AuditTools
 import uuid
 import datetime
@@ -39,7 +37,6 @@ class DeletionTools:
         self.db = Database()
         self.user_tools = UserTools()
         self.session_tools = SessionTools()
-        self.notification_tools = NotificationTools()
         self.audit_tools = AuditTools()
         self.mailer = Mailer()
 
@@ -56,11 +53,6 @@ class DeletionTools:
         if user.active:
             self.user_tools.update_user(user.id, safe_update=False, active=False)
         self.session_tools.revoke_user_sessions(user.id)
-
-    def _notify_admins(self, title: str, body: str, deep_link: str | None = None) -> None:
-        admins, _ = self.user_tools.get_users(role="admin", limit=200)
-        for admin in admins:
-            self.notification_tools.create(admin.id, NotificationType.DELETION, title, body, deep_link)
 
     # Queries
 
@@ -115,11 +107,6 @@ class DeletionTools:
             template="deletion_requested_en",
             to=user.email,
             name=user.name,
-        )
-        self._notify_admins(
-            "New deletion request",
-            f"{user.name} ({user.email}) requested account deletion.",
-            "/admin/deletions",
         )
 
         return request
@@ -263,17 +250,14 @@ class DeletionTools:
         )
         return self.get_request(request.id)
 
-    def process_daily_purges(self) -> int:
-        now = self._now()
-        raw = self.db.mongo.deletion_requests.find(
-            {
-                "status": DeletionStatus.APPROVED.value,
-                "$or": [
-                    {"scheduled_purge_at": None},
-                    {"scheduled_purge_at": {"$lte": now}},
-                ],
-            }
-        )
+    def process_daily_purges(self, ignore_grace: bool = False) -> int:
+        query: dict[str, object] = {"status": DeletionStatus.APPROVED.value}
+        if not ignore_grace:
+            query["$or"] = [
+                {"scheduled_purge_at": None},
+                {"scheduled_purge_at": {"$lte": self._now()}},
+            ]
+        raw = self.db.mongo.deletion_requests.find(query)
         purged = 0
         for doc in raw:
             self.purge(doc["id"])

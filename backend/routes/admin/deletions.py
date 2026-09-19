@@ -99,6 +99,6 @@ async def reverse_deletion(request: Request, request_id: str) -> JSONResponse:
 @router.post("/v1/admin/deletions/run")
 @require_auth(require_superadmin=True)
 async def run_daily_purge(request: Request) -> JSONResponse:
-    purged = deletion_tools.process_daily_purges()
+    purged = deletion_tools.process_daily_purges(ignore_grace=True)
     audit_request(request, "run_purges", "deletion", summary=f"Ran daily purge job manually ({purged} purged)")
     return JSONResponse({"success": True, "purged": purged})
