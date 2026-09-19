@@ -4,13 +4,32 @@ from fastapi.responses import JSONResponse
 from decorators.auth import require_auth
 from decorators.valid_json import valid_json
 from tools.deletions import DeletionTools
-from tools.audit import audit_request
+from tools.audit import AuditTools, audit_request
+from utils.scheduler import scheduler
 from errors.deletions import DeletionRequestNotFound
 import uuid
+import datetime
+import sentry_sdk
 
 
 router = APIRouter()
 deletion_tools = DeletionTools()
+
+
+def _run_manual_purge(user_id: str, via: str) -> None:
+    purged = 0
+    try:
+        purged = deletion_tools.process_daily_purges(ignore_grace=True)
+    except Exception as err:
+        sentry_sdk.capture_exception(err)
+
+    AuditTools().log(
+        user_id=uuid.UUID(user_id),
+        action="run_purges",
+        resource="deletion",
+        summary=f"Ran daily purge job manually ({purged} purged)",
+        via=via,
+    )
 
 
 def _parse_uuid(value: str) -> uuid.UUID:
@@ -99,6 +118,12 @@ async def reverse_deletion(request: Request, request_id: str) -> JSONResponse:
 @router.post("/v1/admin/deletions/run")
 @require_auth(require_superadmin=True)
 async def run_daily_purge(request: Request) -> JSONResponse:
-    purged = deletion_tools.process_daily_purges(ignore_grace=True)
-    audit_request(request, "run_purges", "deletion", summary=f"Ran daily purge job manually ({purged} purged)")
-    return JSONResponse({"success": True, "purged": purged})
+    run_date = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=1)
+    scheduler.add_job(
+        _run_manual_purge,
+        trigger="date",
+        run_date=run_date,
+        id=f"deletions.manual.{uuid.uuid4().hex}",
+        args=[str(request.state.user.id), getattr(request.state, "via", "web")],
+    )
+    return JSONResponse({"success": True, "started": True})

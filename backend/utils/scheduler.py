@@ -1,6 +1,7 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.mongodb import MongoDBJobStore
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED, JobEvent
+from apscheduler.executors.pool import ThreadPoolExecutor as PoolExecutor
 import os
 import sentry_sdk
 
@@ -14,7 +15,10 @@ scheduler = AsyncIOScheduler(
             client=None,
             host=os.environ.get("MONGO_URL"),
         )
-    }
+    },
+    executors={
+        "default": PoolExecutor(max_workers=4),
+    },
 )
 
 def _report_job_failure(event: JobEvent) -> None:

@@ -113,16 +113,14 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
   async function handleRunPurges() {
     setRunning(true)
     try {
-      const purged = await runDailyPurge()
-      toast.success(
-        purged === 0
-          ? "No approved requests to purge."
-          : `Purged ${purged} account(s) immediately.`
-      )
+      await runDailyPurge()
+      toast.success("Purge started in the background.")
       await fetchRequests()
+      setTimeout(() => {
+        fetchRequests().finally(() => setRunning(false))
+      }, 4000)
     } catch (err) {
       toast.error(errorMessage(err))
-    } finally {
       setRunning(false)
     }
   }
@@ -187,7 +185,8 @@ export function DeletionsManager({ isSuperadmin }: { isSuperadmin: boolean }) {
       {isSuperadmin && (
         <p className="text-xs text-muted-foreground">
           Approved requests are purged automatically by the daily cron job at 00:00. Run purges now
-          (superadmin only) to purge every approved request immediately, skipping the grace period.
+          (superadmin only) to purge every approved request immediately in the background, skipping
+          the grace period.
         </p>
       )}
 

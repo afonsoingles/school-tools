@@ -209,11 +209,10 @@ export async function reverseDeletion(requestId: string): Promise<DeletionReques
   return res.request
 }
 
-export async function runDailyPurge(): Promise<number> {
-  const res = await apiFetch<{ success: boolean; purged: number }>("/v1/admin/deletions/run", {
+export async function runDailyPurge(): Promise<{ started: boolean }> {
+  return apiFetch<{ success: boolean; started: boolean }>("/v1/admin/deletions/run", {
     method: "POST",
   })
-  return res.purged
 }
 
 export interface AdminTestSheetState {
