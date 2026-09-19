@@ -22,14 +22,19 @@ const settingsTabs = [
   { href: "/settings/api-keys", labelKey: "apiKeys", icon: KeyRound },
 ]
 
-export function SettingsNav() {
+export function SettingsNav({ testSheetsEnabled = true }: { testSheetsEnabled?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const t = useTranslations("settings.nav")
 
+  const tabs = useMemo(
+    () => settingsTabs.filter((tab) => tab.href !== "/settings/test-sheets" || testSheetsEnabled),
+    [testSheetsEnabled]
+  )
+
   const active = useMemo(
-    () => settingsTabs.find((tab) => pathname === tab.href) ?? settingsTabs[0],
-    [pathname]
+    () => tabs.find((tab) => pathname === tab.href) ?? tabs[0],
+    [pathname, tabs]
   )
   const ActiveIcon = active.icon
 
@@ -45,7 +50,7 @@ export function SettingsNav() {
               </span>
             </SelectTrigger>
             <SelectContent className="w-full">
-              {settingsTabs.map((tab) => (
+              {tabs.map((tab) => (
                 <SelectItem key={tab.href} value={tab.href} label={t(tab.labelKey)}>
                   <span className="flex items-center gap-1.5">
                     <tab.icon className="size-4 shrink-0" aria-hidden />
@@ -58,7 +63,7 @@ export function SettingsNav() {
         </div>
 
         <div className="hidden min-w-max items-center gap-1 overflow-x-auto no-scrollbar md:flex">
-          {settingsTabs.map((tab) => {
+          {tabs.map((tab) => {
             const isActive = pathname === tab.href
             const label = t(tab.labelKey)
 
