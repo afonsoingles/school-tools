@@ -29,7 +29,7 @@ export function AppBar() {
   return (
     <header
       data-slot="app-bar"
-      className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] md:hidden"
+      className="flex shrink-0 items-center gap-2 border-b border-border bg-background px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.625rem)] min-h-[calc(env(safe-area-inset-top)+4rem)] md:hidden"
     >
       <SidebarTrigger className="size-9" />
       <Link href="/dashboard" className="flex shrink-0" aria-label={t("dashboard")}>

@@ -81,7 +81,7 @@ scheduler.add_job(
 
 scheduler.add_job(
     send_pending_pushes,
-    trigger=CronTrigger(minute="*", second=30, timezone="Europe/London"),
+    trigger=CronTrigger(minute="*", second="*/15", timezone="Europe/London"),
     id="notifications.push",
     replace_existing=True,
     misfire_grace_time=30,

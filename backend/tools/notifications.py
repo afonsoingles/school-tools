@@ -2,6 +2,7 @@ from models.notification import Notification, NotificationType, SafeNotification
 from errors.notifications import *
 from utils.database import Database
 from utils.vapid import make_vapid_helper
+from concurrent.futures import ThreadPoolExecutor
 import uuid
 import datetime
 import pywebpush
@@ -187,21 +188,23 @@ class NotificationTools:
         now = datetime.datetime.now(datetime.timezone.utc)
         cutoff = (now - datetime.timedelta(hours=1)).isoformat().replace("+00:00", "Z")
 
-        pending = self.db.mongo.notifications.find(
-            {"pushed_at": None, "created_at": {"$gte": cutoff}}
-        ).limit(200)
+        pending = list(
+            self.db.mongo.notifications.find(
+                {"pushed_at": None, "created_at": {"$gte": cutoff}}
+            ).limit(200)
+        )
 
-        for raw in pending:
+        def handle(raw: dict) -> None:
             notification = Notification.model_validate(raw)
             if not self.get_settings_enabled(notification.user_id):
                 self.db.mongo.notifications.update_one({"id": notification.id}, {"$set": {"pushed_at": now}})
-                continue
+                return
 
             subscriptions = self.get_subscriptions(notification.user_id, enabled_only=True)
             if not subscriptions:
-                # Nothing to push to right now; mark so we don't rescan it every minute.
+                # Nothing to push to right now; mark so we don't rescan it every run.
                 self.db.mongo.notifications.update_one({"id": notification.id}, {"$set": {"pushed_at": now}})
-                continue
+                return
 
             sent = False
             for subscription in subscriptions:
@@ -211,3 +214,6 @@ class NotificationTools:
             if sent:
                 self.db.mongo.notifications.update_one({"id": notification.id}, {"$set": {"pushed_at": now}})
                 self.db.redis.hdel(f"users.notifications:{str(notification.user_id)}", str(notification.id))
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            list(executor.map(handle, pending))
