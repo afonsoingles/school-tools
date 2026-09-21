@@ -131,9 +131,9 @@ function isScheduleActiveOn(s: ClassSchedule, dateStr: string): boolean {
   return s.valid_from <= dateStr && (!s.valid_until || dateStr <= s.valid_until)
 }
 
-function activeScheduleFor(cls: ClassEvent, dateStr: string): ClassSchedule | undefined {
+function activeSchedulesFor(cls: ClassEvent, dateStr: string): ClassSchedule[] {
   const weekday = weekdayFromDateStr(dateStr)
-  return cls.schedules.find((s) => isScheduleActiveOn(s, dateStr) && s.scheduled_weekday === weekday)
+  return cls.schedules.filter((s) => isScheduleActiveOn(s, dateStr) && s.scheduled_weekday === weekday)
 }
 
 interface DayBlock {
@@ -252,8 +252,7 @@ export function CalendarWeekView() {
   function dayBlocks(dateStr: string): DayBlock[] {
     const blocks: DayBlock[] = []
     for (const cls of classes) {
-      const schedule = activeScheduleFor(cls, dateStr)
-      if (schedule) {
+      for (const schedule of activeSchedulesFor(cls, dateStr)) {
         blocks.push({ key: `${cls.id}:${schedule.id}`, cls, schedule })
       }
     }
