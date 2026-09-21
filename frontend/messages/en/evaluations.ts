@@ -1,11 +1,13 @@
 const evaluations = {
   page: {
     title: "Evaluations",
-    subtitle: "exams, quizzes and other assessments",
+    subtitle: "exams, quizzes, worksheets, reports and other assessments",
   },
   type: {
     exam: "Exam",
     quiz: "Quiz",
+    worksheet: "Worksheet",
+    report: "Report",
     other: "Other",
   },
   evaluation: "evaluation",
@@ -31,7 +33,7 @@ const evaluations = {
     clearGrade: "Clear grade",
   },
   create: {
-    description: "Schedule an exam or quiz on one of your classes.",
+    description: "Schedule an exam, quiz, worksheet or report on one of your classes.",
     selectDateFirst: "Please select a date first.",
     noClassesWeekday: "No classes occur on this weekday. Pick another date or add a class first.",
     selectClass: "Select a class",

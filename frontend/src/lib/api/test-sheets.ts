@@ -4,7 +4,7 @@ export interface PendingReconciliation {
   id: string
   class_id: string
   date: string
-  type: "exam" | "quiz" | "other"
+  type: "exam" | "quiz" | "worksheet" | "report" | "other"
   subject: string
 }
 

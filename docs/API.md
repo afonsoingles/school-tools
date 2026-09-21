@@ -272,7 +272,7 @@ replies with `day_cancellation`.
 { "class_id": "7d12...", "type": "exam", "date": "2026-10-05", "grade": 82 }
 ```
 
-- `type`: `exam` | `quiz` | `other`.
+- `type`: `exam` | `quiz` | `worksheet` | `report` | `other`.
 - `date`: ISO-8601 datetime (normalized to midnight in the account's timezone).
   Must fall on a day the class meets and must not be a cancelled day.
 - `grade` (optional): integer `0`–`100`.

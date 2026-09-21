@@ -339,6 +339,8 @@ export function GradesManager() {
               <SelectItem value="all" label={tEval("allTypes")}>{tEval("allTypes")}</SelectItem>
               <SelectItem value="exam" label={tEval("type.exam")}>{tEval("type.exam")}</SelectItem>
               <SelectItem value="quiz" label={tEval("type.quiz")}>{tEval("type.quiz")}</SelectItem>
+              <SelectItem value="worksheet" label={tEval("type.worksheet")}>{tEval("type.worksheet")}</SelectItem>
+              <SelectItem value="report" label={tEval("type.report")}>{tEval("type.report")}</SelectItem>
               <SelectItem value="other" label={tEval("type.other")}>{tEval("type.other")}</SelectItem>
             </SelectContent>
           </Select>

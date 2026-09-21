@@ -47,6 +47,8 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     evaluations_map = {
         "exam": "Exam",
         "quiz": "Quiz",
+        "worksheet": "Worksheet",
+        "report": "Report",
         "other": "Assignment"
     }
     for evaluation in evaluations:

@@ -288,6 +288,8 @@ export function EvaluationsManager() {
               <SelectItem value="all" label={t("allTypes")}>{t("allTypes")}</SelectItem>
               <SelectItem value="exam" label={t("type.exam")}>{t("type.exam")}</SelectItem>
               <SelectItem value="quiz" label={t("type.quiz")}>{t("type.quiz")}</SelectItem>
+              <SelectItem value="worksheet" label={t("type.worksheet")}>{t("type.worksheet")}</SelectItem>
+              <SelectItem value="report" label={t("type.report")}>{t("type.report")}</SelectItem>
               <SelectItem value="other" label={t("type.other")}>{t("type.other")}</SelectItem>
             </SelectContent>
           </Select>

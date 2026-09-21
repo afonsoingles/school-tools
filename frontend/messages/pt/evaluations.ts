@@ -1,11 +1,13 @@
 const evaluations = {
   page: {
     title: "Avaliações",
-    subtitle: "testes, questões de aula e outras avaliações",
+    subtitle: "testes, questões de aula, fichas, relatórios e outras avaliações",
   },
   type: {
     exam: "Teste",
     quiz: "Questão Aula",
+    worksheet: "Ficha",
+    report: "Relatório",
     other: "Outro",
   },
   evaluation: "avaliação",
@@ -31,7 +33,7 @@ const evaluations = {
     clearGrade: "Limpar nota",
   },
   create: {
-    description: "Agenda um teste ou uma questão de aula numa das tuas aulas.",
+    description: "Agenda um teste, uma questão de aula, uma ficha ou um relatório numa das tuas aulas.",
     selectDateFirst: "Escolhe primeiro uma data.",
     noClassesWeekday: "Não há aulas neste dia da semana. Escolhe outra data ou adiciona uma aula primeiro.",
     selectClass: "Escolhe uma aula",

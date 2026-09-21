@@ -10,6 +10,8 @@ const dashboard = {
     "{count, plural, one {# avaliação pendente} other {# avaliações pendentes}}",
   examCount: "{count, plural, one {# teste} other {# testes}}",
   quizCount: "{count, plural, one {# questão aula} other {# questões de aula}}",
+  worksheetCount: "{count, plural, one {# ficha} other {# fichas}}",
+  reportCount: "{count, plural, one {# relatório} other {# relatórios}}",
   otherCount: "{count, plural, one {# outro} other {# outros}}",
   noExamsScheduled: "Sem testes agendados",
   nextExamToday: "Próximo(a) {type} hoje — {subject}",
@@ -23,7 +25,7 @@ const dashboard = {
   scheduleTitle: "Horário de hoje",
   nothingScheduled: "Nada agendado para hoje.",
   evaluationsTitle: "Avaliações pendentes",
-  evaluationsDescription: "Próximos testes, questões de aula e avaliações",
+  evaluationsDescription: "Próximos testes, questões de aula, fichas, relatórios e avaliações",
   noUpcomingEvaluationsCard: "Sem avaliações pendentes.",
   homeworkTitle: "Tarefas",
   homeworkDescription: "Não queres perder estas tarefas",
@@ -34,6 +36,8 @@ const dashboard = {
   evalTypes: {
     exam: "Teste",
     quiz: "Questão Aula",
+    worksheet: "Ficha",
+    report: "Relatório",
     other: "Outra",
   },
 }

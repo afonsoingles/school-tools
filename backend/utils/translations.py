@@ -5,7 +5,9 @@ import datetime
 
 _STRINGS: dict[str, dict[str, str]] = {
     "eval_exam": {"pt": "Exame", "en": "Exam"},
-    "eval_quiz": {"pt": "Ficha", "en": "Quiz"},
+    "eval_quiz": {"pt": "Questão de Aula", "en": "Quiz"},
+    "eval_worksheet": {"pt": "Ficha", "en": "Worksheet"},
+    "eval_report": {"pt": "Relatório", "en": "Report"},
     "eval_other": {"pt": "Avaliação", "en": "Evaluation"},
     "eval_title": {"pt": "Avaliação amanhã", "en": "Evaluation tomorrow"},
     "eval_body": {

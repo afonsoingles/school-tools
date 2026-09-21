@@ -8,6 +8,8 @@ import uuid
 class EvaluationType(str, Enum):
     EXAM = "exam"
     QUIZ = "quiz"
+    WORKSHEET = "worksheet"
+    REPORT = "report"
     OTHER = "other"
 
 

@@ -10,6 +10,8 @@ const dashboard = {
     "{count, plural, one {# upcoming evaluation} other {# upcoming evaluations}}",
   examCount: "{count, plural, one {# exam} other {# exams}}",
   quizCount: "{count, plural, one {# quiz} other {# quizzes}}",
+  worksheetCount: "{count, plural, one {# worksheet} other {# worksheets}}",
+  reportCount: "{count, plural, one {# report} other {# reports}}",
   otherCount: "{count, plural, one {# other} other {# others}}",
   noExamsScheduled: "No exams scheduled",
   nextExamToday: "Next {type} today — {subject}",
@@ -23,7 +25,7 @@ const dashboard = {
   scheduleTitle: "Today\u2019s schedule",
   nothingScheduled: "Nothing scheduled today.",
   evaluationsTitle: "Upcoming evaluations",
-  evaluationsDescription: "Next exams, quizzes and assessments",
+  evaluationsDescription: "Next exams, quizzes, worksheets, reports and assessments",
   noUpcomingEvaluationsCard: "No upcoming evaluations.",
   homeworkTitle: "Homework",
   homeworkDescription: "You don\u2019t want to miss those assignments",
@@ -34,6 +36,8 @@ const dashboard = {
   evalTypes: {
     exam: "Exam",
     quiz: "Quiz",
+    worksheet: "Worksheet",
+    report: "Report",
     other: "Other",
   },
 }

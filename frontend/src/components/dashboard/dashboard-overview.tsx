@@ -268,11 +268,15 @@ export function DashboardOverview() {
   const upcomingEvalCount = upcoming.length
   const examCount = upcoming.filter((e) => e.type === "exam").length
   const quizCount = upcoming.filter((e) => e.type === "quiz").length
+  const worksheetCount = upcoming.filter((e) => e.type === "worksheet").length
+  const reportCount = upcoming.filter((e) => e.type === "report").length
   const otherCount = upcoming.filter((e) => e.type === "other").length
 
   const evalTypeLabels: Record<string, string> = {
     exam: t("evalTypes.exam"),
     quiz: t("evalTypes.quiz"),
+    worksheet: t("evalTypes.worksheet"),
+    report: t("evalTypes.report"),
     other: t("evalTypes.other"),
   }
   const hwStatusLabels: Record<string, string> = {
@@ -283,6 +287,8 @@ export function DashboardOverview() {
   const evalCountParts = [
     examCount > 0 ? t("examCount", { count: examCount }) : "",
     quizCount > 0 ? t("quizCount", { count: quizCount }) : "",
+    worksheetCount > 0 ? t("worksheetCount", { count: worksheetCount }) : "",
+    reportCount > 0 ? t("reportCount", { count: reportCount }) : "",
     otherCount > 0 ? t("otherCount", { count: otherCount }) : "",
   ].filter(Boolean)
   const evalBreakdown = evalCountParts.length > 0 ? ` (${evalCountParts.join(", ")})` : ""

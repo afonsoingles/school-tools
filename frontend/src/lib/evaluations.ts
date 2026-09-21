@@ -11,6 +11,8 @@ export function evaluationTypeLabel(t: EvalTranslator, type: string): string {
 const EVALUATION_TYPE_BADGE_CLASS: Record<string, string> = {
   exam: "bg-red-500/15 text-red-400",
   quiz: "bg-amber-500/15 text-amber-400",
+  worksheet: "bg-sky-500/15 text-sky-400",
+  report: "bg-violet-500/15 text-violet-400",
 }
 
 export function evaluationTypeBadgeClass(type: string): string {
