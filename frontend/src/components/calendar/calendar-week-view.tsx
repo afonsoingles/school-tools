@@ -146,7 +146,6 @@ export function CalendarWeekView() {
   const scrollDesktopRef = useRef<HTMLDivElement>(null)
   const scrollMobileRef = useRef<HTMLDivElement>(null)
   const headerScrollRef = useRef<HTMLDivElement>(null)
-  const gutterScrollRef = useRef<HTMLDivElement>(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [mobileDayOffset, setMobileDayOffset] = useState(0)
   const [classes, setClasses] = useState<ClassEvent[]>([])
@@ -406,37 +405,12 @@ export function CalendarWeekView() {
     return `${formatDateShort(weekStart, timezone, locale)} – ${formatDateShort(end, timezone, locale)} ${e.y}`
   }
 
-  function syncGridScroll() {
-    const g = scrollMobileRef.current
-    if (!g || syncRef.current) return
-    syncRef.current = true
-    try {
-      if (headerScrollRef.current && headerScrollRef.current.scrollLeft !== g.scrollLeft) {
-        headerScrollRef.current.scrollLeft = g.scrollLeft
-      }
-      if (gutterScrollRef.current && gutterScrollRef.current.scrollTop !== g.scrollTop) {
-        gutterScrollRef.current.scrollTop = g.scrollTop
-      }
-    } finally {
-      syncRef.current = false
-    }
-  }
-
   function syncHeaderScroll() {
     const h = headerScrollRef.current
     const g = scrollMobileRef.current
     if (!h || !g || syncRef.current || g.scrollLeft === h.scrollLeft) return
     syncRef.current = true
     g.scrollLeft = h.scrollLeft
-    syncRef.current = false
-  }
-
-  function syncGutterScroll() {
-    const u = gutterScrollRef.current
-    const g = scrollMobileRef.current
-    if (!u || !g || syncRef.current || g.scrollTop === u.scrollTop) return
-    syncRef.current = true
-    g.scrollTop = u.scrollTop
     syncRef.current = false
   }
 
@@ -764,18 +738,13 @@ export function CalendarWeekView() {
 
           <div className="flex md:hidden flex-1 min-h-0">
             <div
-              ref={gutterScrollRef}
-              onScroll={syncGutterScroll}
-              className="w-14 shrink-0 overflow-y-auto border-r border-border bg-background no-scrollbar max-md:overscroll-y-contain"
-            >
-              {renderHourLabels()}
-            </div>
-            <div
               ref={scrollMobileRef}
-              onScroll={syncGridScroll}
-              className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+              className="flex flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar"
             >
               <div className="flex relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
+                <div className="w-14 shrink-0 relative border-r border-border bg-background">
+                  {renderHourLabels()}
+                </div>
                 {renderDayCell(mobileDay)}
               </div>
             </div>
