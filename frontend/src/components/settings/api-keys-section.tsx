@@ -231,13 +231,13 @@ export function ApiKeysSection() {
               {t("revealDialog.description")}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-2 rounded-md border border-border bg-background p-3">
-            <code className="flex-1 truncate text-xs font-mono text-foreground">{revealKey}</code>
+          <div className="flex items-start gap-2 rounded-md border border-border bg-background p-3">
+            <code className="min-w-0 flex-1 break-all text-xs leading-relaxed font-mono text-foreground">{revealKey}</code>
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={handleCopy}
-              className="hover:bg-foreground/10!"
+              className="shrink-0 hover:bg-foreground/10!"
               aria-label={t("revealDialog.copyAriaLabel")}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
