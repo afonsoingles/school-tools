@@ -35,10 +35,11 @@ def _prepare_mongo(model) -> dict:
 
 
 def _active_schedule(class_event: ClassEvent, date: datetime.date) -> SafeClassSchedule | None:
-    """Schedule entry effective on the given date (latest valid_from <= date)."""
     matches = [
         s for s in class_event.schedules
-        if s.valid_from <= date and (s.valid_until is None or s.valid_until >= date)
+        if s.valid_from <= date
+        and (s.valid_until is None or s.valid_until >= date)
+        and int(getattr(s.scheduled_weekday, "value", s.scheduled_weekday)) == date.weekday() + 1
     ]
     if not matches:
         return None

@@ -28,7 +28,7 @@ import { Separator } from "@/components/ui/separator"
 import { getClassSchedule, uncancelClass, uncancelDay } from "@/lib/api/calendar"
 import { overrideHoliday } from "@/lib/api/holidays"
 import { getSubjects } from "@/lib/api/settings"
-import { EVALUATION_TYPE_LABELS } from "@/components/evaluations/constants"
+import { evaluationTypeLabel } from "@/lib/evaluations"
 import { getEvaluations, deleteEvaluation } from "@/lib/api/evaluations"
 import type { ClassEvent, ClassSchedule, DayCancellation, Subject, Evaluation } from "@/types"
 import { SubjectIcon } from "@/components/ui/subject-icon"
@@ -187,6 +187,7 @@ export function CalendarWeekView() {
 
   const isMobile = useIsMobile()
   const t = useTranslations("calendar")
+  const tEval = useTranslations("evaluations")
   const tCommon = useTranslations("common")
 
   function reasonLabel(value: string): string {
@@ -518,7 +519,7 @@ export function CalendarWeekView() {
                 </span>
                 {height >= 40 && (
                   <span className="text-xs leading-tight opacity-90 text-left">
-                    {hasEvaluation ? EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type : times}
+                    {hasEvaluation ? evaluationTypeLabel(tEval, evaluation.type) : times}
                   </span>
                 )}
               </PopoverTrigger>
@@ -528,7 +529,7 @@ export function CalendarWeekView() {
                     <PopoverTitle>{subjectName}</PopoverTitle>
                     {hasEvaluation ? (
                       <PopoverDescription>
-                        {EVALUATION_TYPE_LABELS[evaluation.type] ?? evaluation.type}
+                        {evaluationTypeLabel(tEval, evaluation.type)}
                       </PopoverDescription>
                     ) : isCancelled ? (
                       <div className="flex items-center gap-1 text-destructive mt-1">
@@ -739,7 +740,7 @@ export function CalendarWeekView() {
           <div className="flex md:hidden flex-1 min-h-0">
             <div
               ref={scrollMobileRef}
-              className="flex flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar"
+              className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar"
             >
               <div className="flex relative" style={{ height: `${24 * 4 * SLOT_HEIGHT}px` }}>
                 <div className="w-14 shrink-0 relative border-r border-border bg-background">

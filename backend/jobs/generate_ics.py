@@ -9,6 +9,7 @@ from tools.evaluations import EvaluationTools
 from tools.holidays import HolidayTools
 from tools.users import UserTools
 from models.calendar import CalendarFeedType
+from utils.translations import evaluation_type_label
 import sentry_sdk
 
 def generate_and_publish_ics_feed(user: uuid.UUID):
@@ -20,7 +21,9 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     user_tools = UserTools()
     holiday_tools = HolidayTools()
 
-    user_tz_raw = user_tools.get_user_by_id(str(user)).timezone
+    user_model = user_tools.get_user_by_id(str(user))
+    user_tz_raw = user_model.timezone
+    user_locale = user_model.locale
     calendar_tokens = calendar_tools.get_calendar_tokens(user)
     ics_enabled = calendar_tokens.is_enabled if calendar_tokens is not None else False
 
@@ -44,13 +47,6 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
     day_cancellations = class_tools.get_user_day_cancellations(user)
     day_cancelled_dates = {dc.date for dc in day_cancellations}
     subject_map = {subject.id: subject.name for subject in subject_tools.get_user_subjects(user)}
-    evaluations_map = {
-        "exam": "Exam",
-        "quiz": "Quiz",
-        "worksheet": "Worksheet",
-        "report": "Report",
-        "other": "Assignment"
-    }
     for evaluation in evaluations:
         evaluation_class = next((cls for cls in classes if cls.id == evaluation.class_id), None)
         if evaluation_class is None:
@@ -63,7 +59,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         end = datetime.datetime.combine(evaluation_date, schedule.end_time, tzinfo=user_tz)
         evaluations_calendar.build_event(
             uid=str(evaluation.id),
-            summary=f"{evaluations_map[evaluation.type]} - {subject_map.get(evaluation_class.subject_id, 'Unknown')}",
+            summary=f"{evaluation_type_label(evaluation.type.value, user_locale)} - {subject_map.get(evaluation_class.subject_id, 'Unknown')}",
             start=start,
             end=end,
         )
