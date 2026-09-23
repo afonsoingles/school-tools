@@ -4,7 +4,7 @@ import datetime
 # in the recipient's locale at creation time.
 
 _STRINGS: dict[str, dict[str, str]] = {
-    "eval_exam": {"pt": "Exame", "en": "Exam"},
+    "eval_exam": {"pt": "Teste", "en": "Exam"},
     "eval_quiz": {"pt": "Questão de Aula", "en": "Quiz"},
     "eval_worksheet": {"pt": "Ficha", "en": "Worksheet"},
     "eval_report": {"pt": "Relatório", "en": "Report"},
