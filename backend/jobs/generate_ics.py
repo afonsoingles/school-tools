@@ -41,7 +41,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
         user_tz = user_tz_raw
 
     # Evaluations
-    eval_by_class: dict[uuid.UUID, list[datetime.datetime]] = {}
+    eval_by_schedule: dict[uuid.UUID, list[datetime.date]] = {}
     evaluations = evaluation_tools.get_user_evaluations(user)
     classes = class_tools.get_user_class_schedule(user)
     day_cancellations = class_tools.get_user_day_cancellations(user)
@@ -63,7 +63,7 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
             start=start,
             end=end,
         )
-        eval_by_class.setdefault(evaluation.class_id, []).append(evaluation_date)
+        eval_by_schedule.setdefault(schedule.id, []).append(evaluation_date.date())
 
     evaluation_ics = evaluations_calendar.cal.to_ical().decode("utf-8")
 
@@ -104,8 +104,8 @@ def generate_and_publish_ics_feed(user: uuid.UUID):
             first_end = datetime.datetime.combine(first_start.date(), schedule.end_time, tzinfo=user_tz)
 
             evaluation_dates = [
-                d.date() for d in eval_by_class.get(cls.id, [])
-                if eff_start <= d.date() <= eff_end and d.date().weekday() == schedule_weekday_index
+                d for d in eval_by_schedule.get(schedule.id, [])
+                if eff_start <= d <= eff_end
             ]
             cancellation_dates = [
                 c.date for c in cls.cancellations
